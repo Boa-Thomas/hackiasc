@@ -15,9 +15,9 @@ export default function Hero() {
 
         {/* Title */}
         <h1 className="animate-slide-up text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold leading-[0.95] tracking-tight mb-6" style={{ animationDelay: '100ms' }}>
-          <span className="text-white">AI Venture</span>
+          <span className="text-white">AI Hackathon</span>
           <br />
-          <span className="text-gradient-cyan">Hackathon</span>
+          <span className="text-gradient-cyan">Blumenau 2026</span>
         </h1>
 
         {/* Subtitle */}

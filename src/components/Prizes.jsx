@@ -23,10 +23,10 @@ const PRIZES = [
 ]
 
 const CRITERIA = [
-  { name: 'Execução Técnica e IA', weight: '30%', color: 'cyan' },
-  { name: 'Validação do Problema', weight: '25%', color: 'electric' },
-  { name: 'Escalabilidade e Negócio', weight: '25%', color: 'violet' },
-  { name: 'Pitch e Equipe', weight: '20%', color: 'hot' },
+  { name: 'Execução Técnica e IA', weight: '30%', hex: '#06d6a0' },
+  { name: 'Validação do Problema', weight: '25%', hex: '#3a86ff' },
+  { name: 'Escalabilidade e Negócio', weight: '25%', hex: '#8338ec' },
+  { name: 'Pitch e Equipe', weight: '20%', hex: '#ff006e' },
 ]
 
 export default function Prizes() {
@@ -65,28 +65,36 @@ export default function Prizes() {
           ))}
         </div>
 
-        {/* Evaluation criteria */}
-        <div className="card-glass rounded-2xl p-8 sm:p-10">
-          <h3 className="text-xl font-bold text-white mb-6 text-center">Critérios de Avaliação</h3>
-          <div className="grid sm:grid-cols-2 gap-4">
-            {CRITERIA.map(({ name, weight, color }) => (
-              <div key={name} className="flex items-center gap-4 p-4 rounded-xl bg-dark/50">
-                <span className={`font-mono text-2xl font-bold text-${color} w-16 text-right`}>
+        {/* Evaluation criteria — single bar */}
+        <div className="card-glass rounded-2xl p-6 sm:p-8">
+          <h3 className="text-lg font-bold text-white mb-5 text-center">Critérios de Avaliação</h3>
+
+          {/* Labels above the bar */}
+          <div className="flex mb-2">
+            {CRITERIA.map(({ name, weight, hex }) => (
+              <div key={name} className="text-center" style={{ width: weight }}>
+                <span className="block font-mono text-base sm:text-lg font-bold" style={{ color: hex }}>
                   {weight}
                 </span>
-                <div className="flex-1">
-                  <div className="text-sm font-semibold text-white">{name}</div>
-                  <div className={`mt-2 h-1.5 rounded-full bg-dark-border overflow-hidden`}>
-                    <div
-                      className={`h-full rounded-full bg-${color}`}
-                      style={{ width: weight }}
-                    />
-                  </div>
-                </div>
+                <span className="block text-[10px] sm:text-xs text-text-muted leading-tight">
+                  {name}
+                </span>
               </div>
             ))}
           </div>
-          <p className="text-xs text-text-muted text-center mt-6 font-mono">
+
+          {/* Single segmented bar */}
+          <div className="flex h-3 rounded-full overflow-hidden gap-0.5">
+            {CRITERIA.map(({ name, weight, hex }) => (
+              <div
+                key={name}
+                className="rounded-sm"
+                style={{ width: weight, backgroundColor: hex }}
+              />
+            ))}
+          </div>
+
+          <p className="text-[10px] sm:text-xs text-text-muted text-center mt-4 font-mono">
             + Bônus: Avaliação do Mentor Fixo | Vendas comprovadas | Internacionalização | Eixos de Governança
           </p>
         </div>

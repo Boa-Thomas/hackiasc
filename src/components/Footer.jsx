@@ -14,7 +14,7 @@ export default function Footer() {
               <span className="text-text-muted">.sc</span>
             </div>
             <p className="text-sm text-text-muted leading-relaxed">
-              AI Venture Hackathon Blumenau. Criando startups reais com IA em Santa Catarina.
+              AI Hackathon Blumenau 2026. Criando startups reais com IA em Santa Catarina.
             </p>
           </div>
 

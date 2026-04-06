@@ -3,7 +3,7 @@
 // ============================================================
 
 export const EVENT_CONFIG = {
-  name: 'AI Venture Hackathon',
+  name: 'AI Hackathon Blumenau 2026',
   brand: 'HackIA SC',
   dates: '22 - 24 de Maio de 2026',
   location: 'Centro de Inovação de Blumenau (CIB)',
