@@ -716,8 +716,8 @@ export default function RegistrationForm() {
 
           {/* ===== CRITÉRIOS ELIMINATÓRIOS ===== */}
           <fieldset className="card-glass rounded-2xl p-6 sm:p-8 space-y-5">
-            <legend className="text-sm font-mono text-electric tracking-wider uppercase mb-2">Compromisso com os Critérios</legend>
-
+            <legend className="text-sm font-mono text-electric tracking-wider uppercase mb-2">Compromisso com os Critérios *</legend>
+            <p className="text-xs text-hot mb-3">Todos os itens abaixo são obrigatórios para participar do evento.</p>
             <div className="space-y-3">
               {[
                 { name: 'commit_ia', text: 'Nossa solução terá como uso central e obrigatório tecnologias de Inteligência Artificial (IA)' },
