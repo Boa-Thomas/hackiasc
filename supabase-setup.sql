@@ -34,6 +34,8 @@ CREATE TABLE registrations (
   -- Modalidade de inscrição
   inscription_modality TEXT NOT NULL CHECK (inscription_modality IN ('individual_form_team','individual_own','team')),
   team_name TEXT,
+  -- Team leader flag (only relevant when inscription_modality = 'team')
+  is_team_leader BOOLEAN NOT NULL DEFAULT false,
 
   -- Pagamento
   payment_method TEXT NOT NULL CHECK (payment_method IN ('pix','card')),

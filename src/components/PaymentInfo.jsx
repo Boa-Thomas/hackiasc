@@ -1,7 +1,8 @@
 import { EVENT_CONFIG } from '../lib/config'
 
-export default function PaymentInfo({ paymentMethod, price, email }) {
+export default function PaymentInfo({ paymentMethod, price, email, totalPrice, memberCount }) {
   const { pixKey, pixKeyType, cardPaymentUrl } = EVENT_CONFIG.payment
+  const isTeam = memberCount > 1
 
   return (
     <div className="text-center">
@@ -16,14 +17,27 @@ export default function PaymentInfo({ paymentMethod, price, email }) {
         Inscrição Enviada!
       </h2>
       <p className="text-text-muted mb-8">
-        Agora finalize o pagamento para garantir sua vaga.
+        {isTeam
+          ? `Inscrição da equipe enviada com ${memberCount} participantes. Finalize o pagamento para garantir as vagas.`
+          : 'Agora finalize o pagamento para garantir sua vaga.'}
       </p>
 
       {/* Payment card */}
       <div className="card-glass rounded-2xl p-8 text-left mb-8">
         <div className="flex items-center justify-between mb-6 pb-4 border-b border-dark-border">
           <span className="text-sm text-text-muted">Valor da Inscrição</span>
-          <span className="text-2xl font-bold font-mono text-white">{price}</span>
+          <div className="text-right">
+            {isTeam ? (
+              <>
+                <p className="text-xs text-text-muted mb-1">
+                  {price} &times; {memberCount} pessoas
+                </p>
+                <span className="text-2xl font-bold font-mono text-white">{totalPrice}</span>
+              </>
+            ) : (
+              <span className="text-2xl font-bold font-mono text-white">{price}</span>
+            )}
+          </div>
         </div>
 
         {paymentMethod === 'pix' ? (
@@ -61,7 +75,10 @@ export default function PaymentInfo({ paymentMethod, price, email }) {
             <div className="bg-gold/5 border border-gold/20 rounded-xl p-4">
               <p className="text-sm text-gold font-semibold mb-1">Importante</p>
               <p className="text-xs text-text-muted">
-                Inclua seu e-mail ({email}) na descrição do Pix para facilitar a confirmação.
+                {isTeam
+                  ? `Inclua o nome da equipe na descrição do Pix para facilitar a confirmação. Valor total: ${totalPrice} (${memberCount} participantes).`
+                  : `Inclua seu e-mail (${email}) na descrição do Pix para facilitar a confirmação.`
+                }{' '}
                 Sua inscrição será confirmada em até 24h úteis após o pagamento.
               </p>
             </div>
