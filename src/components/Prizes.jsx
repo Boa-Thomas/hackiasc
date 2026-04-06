@@ -15,17 +15,17 @@ const PRIZES = [
   },
   {
     place: '3o',
-    value: 'Beneficios',
-    desc: 'Consultorias e beneficios exclusivos (a divulgar).',
+    value: 'Benefícios',
+    desc: 'Consultorias e benefícios exclusivos (a divulgar).',
     color: 'hot',
     featured: false,
   },
 ]
 
 const CRITERIA = [
-  { name: 'Execucao Tecnica e IA', weight: '30%', color: 'cyan' },
-  { name: 'Validacao do Problema', weight: '25%', color: 'electric' },
-  { name: 'Escalabilidade e Negocio', weight: '25%', color: 'violet' },
+  { name: 'Execução Técnica e IA', weight: '30%', color: 'cyan' },
+  { name: 'Validação do Problema', weight: '25%', color: 'electric' },
+  { name: 'Escalabilidade e Negócio', weight: '25%', color: 'violet' },
   { name: 'Pitch e Equipe', weight: '20%', color: 'hot' },
 ]
 
@@ -36,9 +36,9 @@ export default function Prizes() {
 
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-16">
-          <span className="font-mono text-sm text-gold tracking-wider uppercase">Premiacao</span>
+          <span className="font-mono text-sm text-gold tracking-wider uppercase">Premiação</span>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mt-4">
-            <span className="text-gradient-fire">R$ 9.000+</span> em premios
+            <span className="text-gradient-fire">R$ 9.000+</span> em prêmios
           </h2>
         </div>
 
@@ -67,7 +67,7 @@ export default function Prizes() {
 
         {/* Evaluation criteria */}
         <div className="card-glass rounded-2xl p-8 sm:p-10">
-          <h3 className="text-xl font-bold text-white mb-6 text-center">Criterios de Avaliacao</h3>
+          <h3 className="text-xl font-bold text-white mb-6 text-center">Critérios de Avaliação</h3>
           <div className="grid sm:grid-cols-2 gap-4">
             {CRITERIA.map(({ name, weight, color }) => (
               <div key={name} className="flex items-center gap-4 p-4 rounded-xl bg-dark/50">
@@ -87,7 +87,7 @@ export default function Prizes() {
             ))}
           </div>
           <p className="text-xs text-text-muted text-center mt-6 font-mono">
-            + Bonus: Avaliacao do Mentor Fixo | Vendas comprovadas | Internacionalizacao | Eixos de Governanca
+            + Bônus: Avaliação do Mentor Fixo | Vendas comprovadas | Internacionalização | Eixos de Governança
           </p>
         </div>
       </div>

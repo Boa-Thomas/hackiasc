@@ -22,14 +22,14 @@ export default function Hero() {
 
         {/* Subtitle */}
         <p className="animate-slide-up text-lg sm:text-xl text-text-muted max-w-2xl mx-auto mb-4" style={{ animationDelay: '200ms' }}>
-          Crie startups reais e escalaveis com Inteligencia Artificial.
+          Crie startups reais e escaláveis com Inteligência Artificial.
           <br className="hidden sm:block" />
-          3 dias. 1 objetivo: sair daqui com um negocio.
+          3 dias. 1 objetivo: sair daqui com um negócio.
         </p>
 
         {/* Location */}
         <p className="animate-slide-up text-sm text-text-muted font-mono mb-10" style={{ animationDelay: '300ms' }}>
-          <span className="text-electric">@</span> Centro de Inovacao de Blumenau (CIB) &mdash; Blumenau, SC
+          <span className="text-electric">@</span> Centro de Inovação de Blumenau (CIB) &mdash; Blumenau, SC
         </p>
 
         {/* CTAs */}
@@ -53,7 +53,7 @@ export default function Hero() {
         <div className="animate-slide-up mt-16 grid grid-cols-3 gap-4 sm:gap-8 max-w-lg mx-auto" style={{ animationDelay: '500ms' }}>
           {[
             { value: '3', label: 'Dias' },
-            { value: 'R$9k+', label: 'Em Premios' },
+            { value: 'R$9k+', label: 'Em Prêmios' },
             { value: '60-100', label: 'Participantes' },
           ].map(({ value, label }) => (
             <div key={label} className="text-center">

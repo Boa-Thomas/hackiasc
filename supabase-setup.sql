@@ -3,7 +3,7 @@
 -- Execute este SQL no Supabase SQL Editor (Dashboard > SQL Editor)
 -- ============================================================
 
--- 1. Tabela de inscricoes
+-- 1. Tabela de inscrições
 CREATE TABLE registrations (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
@@ -13,21 +13,27 @@ CREATE TABLE registrations (
   email TEXT NOT NULL UNIQUE,
   phone TEXT NOT NULL,
   birth_date DATE NOT NULL,
-  city TEXT NOT NULL,
+  linkedin_url TEXT NOT NULL,
 
-  -- Perfil profissional
-  occupation_type TEXT NOT NULL CHECK (occupation_type IN ('dev','designer','business','student')),
-  linkedin_url TEXT,
-  github_url TEXT,
-
-  -- Equipe
-  registration_type TEXT NOT NULL CHECK (registration_type IN ('individual','team')),
-  team_name TEXT,
-  desired_role TEXT NOT NULL CHECK (desired_role IN ('hacker','hustler','hipster')),
+  -- Perfil
+  occupation_type TEXT NOT NULL CHECK (occupation_type IN ('hacker','hustler','hipster','enthusiast')),
+  ai_experience_level INTEGER NOT NULL CHECK (ai_experience_level BETWEEN 1 AND 10),
 
   -- Necessidades do evento
-  dietary_restrictions TEXT,
-  accessibility_needs TEXT,
+  dietary_restrictions TEXT NOT NULL,
+  is_pcd BOOLEAN NOT NULL DEFAULT false,
+  pcd_type TEXT,
+
+  -- Projeto
+  has_project BOOLEAN NOT NULL DEFAULT false,
+  project_name TEXT,
+
+  -- Eixos econômicos (opcional)
+  economic_axes TEXT[] DEFAULT '{}',
+
+  -- Modalidade de inscrição
+  inscription_modality TEXT NOT NULL CHECK (inscription_modality IN ('individual_form_team','individual_own','team')),
+  team_name TEXT,
 
   -- Pagamento
   payment_method TEXT NOT NULL CHECK (payment_method IN ('pix','card')),
@@ -66,7 +72,7 @@ CREATE POLICY "Admin can update registrations"
   USING (true)
   WITH CHECK (true);
 
--- 7. Funcao RPC para contar inscricoes confirmadas (seguro para anon)
+-- 7. Função RPC para contar inscrições confirmadas (seguro para anon)
 CREATE OR REPLACE FUNCTION get_confirmed_count()
 RETURNS INTEGER
 LANGUAGE sql
@@ -78,5 +84,5 @@ AS $$
   WHERE payment_status = 'confirmed';
 $$;
 
--- Permitir que anon chame essa funcao
+-- Permitir que anon chame essa função
 GRANT EXECUTE ON FUNCTION get_confirmed_count() TO anon;

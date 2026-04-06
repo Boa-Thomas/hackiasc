@@ -6,7 +6,7 @@ const FEATURES = [
       </svg>
     ),
     title: 'Mentor Fixo',
-    desc: 'Cada equipe tera um mentor dedicado, selecionado por fit cultural e necessidade do time.',
+    desc: 'Cada equipe terá um mentor dedicado, selecionado por fit cultural e necessidade do time.',
   },
   {
     icon: (
@@ -14,8 +14,8 @@ const FEATURES = [
         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5" />
       </svg>
     ),
-    title: '4 Sessoes Hard',
-    desc: 'IA Aplicada, Problema Real, Modelo de Negocio e Pitch de Alta Performance. Participacao obrigatoria.',
+    title: '4 Sessões Hard',
+    desc: 'IA Aplicada, Problema Real, Modelo de Negócio e Pitch de Alta Performance. Participação obrigatória.',
   },
   {
     icon: (
@@ -24,7 +24,7 @@ const FEATURES = [
       </svg>
     ),
     title: 'Pitch de Guerrilha',
-    desc: 'Mentores visitam outros grupos para ouvir e criticar solucoes. Feedback real, sem rodeios.',
+    desc: 'Mentores visitam outros grupos para ouvir e criticar soluções. Feedback real, sem rodeios.',
   },
   {
     icon: (
@@ -33,7 +33,7 @@ const FEATURES = [
       </svg>
     ),
     title: 'IA Evaluator',
-    desc: 'Pitchs transcritos e analisados por IA. Feedback dos jurados tambem revisado por modelo de IA.',
+    desc: 'Pitchs transcritos e analisados por IA. Feedback dos jurados também revisado por modelo de IA.',
   },
 ]
 
@@ -42,7 +42,7 @@ export default function Mentorship() {
     <section className="relative py-24 sm:py-32 bg-grid">
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-16">
-          <span className="font-mono text-sm text-violet tracking-wider uppercase">Dinamica</span>
+          <span className="font-mono text-sm text-violet tracking-wider uppercase">Dinâmica</span>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mt-4">
             Mentoria <span className="text-gradient-violet">de verdade</span>
           </h2>

@@ -1,12 +1,8 @@
-// ============================================================
-// PLACEHOLDERS — Troque esses valores quando definir os dados
-// ============================================================
-const PIX_KEY = 'CHAVE_PIX_A_DEFINIR'
-const PIX_KEY_TYPE = 'E-mail / CPF / Telefone'
-const CARD_PAYMENT_URL = '#' // Link de pagamento (InfinitePay, MP, etc.)
-// ============================================================
+import { EVENT_CONFIG } from '../lib/config'
 
 export default function PaymentInfo({ paymentMethod, price, email }) {
+  const { pixKey, pixKeyType, cardPaymentUrl } = EVENT_CONFIG.payment
+
   return (
     <div className="text-center">
       {/* Success header */}
@@ -17,7 +13,7 @@ export default function PaymentInfo({ paymentMethod, price, email }) {
       </div>
 
       <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
-        Inscricao Enviada!
+        Inscrição Enviada!
       </h2>
       <p className="text-text-muted mb-8">
         Agora finalize o pagamento para garantir sua vaga.
@@ -26,7 +22,7 @@ export default function PaymentInfo({ paymentMethod, price, email }) {
       {/* Payment card */}
       <div className="card-glass rounded-2xl p-8 text-left mb-8">
         <div className="flex items-center justify-between mb-6 pb-4 border-b border-dark-border">
-          <span className="text-sm text-text-muted">Valor da Inscricao</span>
+          <span className="text-sm text-text-muted">Valor da Inscrição</span>
           <span className="text-2xl font-bold font-mono text-white">{price}</span>
         </div>
 
@@ -47,13 +43,13 @@ export default function PaymentInfo({ paymentMethod, price, email }) {
 
               {/* Pix key */}
               <div className="bg-dark rounded-xl p-4">
-                <p className="text-xs text-text-muted mb-2">Chave Pix ({PIX_KEY_TYPE})</p>
+                <p className="text-xs text-text-muted mb-2">Chave Pix ({pixKeyType})</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 text-sm font-mono text-cyan bg-cyan/5 px-3 py-2 rounded-lg break-all">
-                    {PIX_KEY}
+                    {pixKey}
                   </code>
                   <button
-                    onClick={() => navigator.clipboard.writeText(PIX_KEY)}
+                    onClick={() => navigator.clipboard.writeText(pixKey)}
                     className="px-3 py-2 text-xs bg-cyan/10 text-cyan rounded-lg hover:bg-cyan/20 transition-colors"
                   >
                     Copiar
@@ -65,8 +61,8 @@ export default function PaymentInfo({ paymentMethod, price, email }) {
             <div className="bg-gold/5 border border-gold/20 rounded-xl p-4">
               <p className="text-sm text-gold font-semibold mb-1">Importante</p>
               <p className="text-xs text-text-muted">
-                Inclua seu e-mail ({email}) na descricao do Pix para facilitar a confirmacao.
-                Sua inscricao sera confirmada em ate 24h uteis apos o pagamento.
+                Inclua seu e-mail ({email}) na descrição do Pix para facilitar a confirmação.
+                Sua inscrição será confirmada em até 24h úteis após o pagamento.
               </p>
             </div>
           </div>
@@ -75,20 +71,20 @@ export default function PaymentInfo({ paymentMethod, price, email }) {
             <div>
               <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                 <span className="w-8 h-8 rounded-lg bg-electric/10 flex items-center justify-center text-electric text-sm font-mono">C</span>
-                Pagamento via Cartao
+                Pagamento via Cartão
               </h3>
 
               <a
-                href={CARD_PAYMENT_URL}
+                href={cardPaymentUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block w-full py-4 px-8 bg-gradient-to-r from-electric to-violet text-white font-bold text-center rounded-xl transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(58,134,255,0.3)]"
               >
-                Ir para Pagamento com Cartao
+                Ir para Pagamento com Cartão
               </a>
 
               <p className="text-xs text-text-muted mt-3 text-center">
-                Voce sera redirecionado para o link de pagamento seguro.
+                Você será redirecionado para o link de pagamento seguro.
               </p>
             </div>
 
@@ -96,7 +92,7 @@ export default function PaymentInfo({ paymentMethod, price, email }) {
               <p className="text-sm text-gold font-semibold mb-1">Importante</p>
               <p className="text-xs text-text-muted">
                 Utilize o mesmo e-mail ({email}) no pagamento.
-                Sua inscricao sera confirmada em ate 24h uteis apos a confirmacao do pagamento.
+                Sua inscrição será confirmada em até 24h úteis após a confirmação do pagamento.
               </p>
             </div>
           </div>
@@ -105,13 +101,13 @@ export default function PaymentInfo({ paymentMethod, price, email }) {
 
       {/* Next steps */}
       <div className="card-glass rounded-2xl p-6 text-left">
-        <h3 className="text-sm font-bold text-white mb-4">Proximos Passos</h3>
+        <h3 className="text-sm font-bold text-white mb-4">Próximos Passos</h3>
         <ol className="space-y-3">
           {[
-            'Realize o pagamento usando as instrucoes acima.',
-            'Aguarde a confirmacao por e-mail (ate 24h uteis).',
-            'Voce sera adicionado(a) ao grupo oficial de WhatsApp.',
-            'Dia 22/05, apareca no CIB as 18:30!',
+            'Realize o pagamento usando as instruções acima.',
+            'Aguarde a confirmação por e-mail (até 24h úteis).',
+            'Você será adicionado(a) ao grupo oficial de WhatsApp.',
+            'Dia 22/05, apareça no CIB às 18:30!',
           ].map((step, i) => (
             <li key={i} className="flex gap-3 text-sm text-text-muted">
               <span className="flex-shrink-0 w-6 h-6 rounded-full bg-electric/10 text-electric text-xs font-mono flex items-center justify-center">
@@ -124,7 +120,10 @@ export default function PaymentInfo({ paymentMethod, price, email }) {
       </div>
 
       <p className="text-xs text-text-muted mt-6">
-        Duvidas? Entre em contato: <a href="mailto:vinirosadacosta@gmail.com" className="text-electric underline">vinirosadacosta@gmail.com</a>
+        Dúvidas? Entre em contato:{' '}
+        <a href={`mailto:${EVENT_CONFIG.organizer.email}`} className="text-electric underline">
+          {EVENT_CONFIG.organizer.email}
+        </a>
       </p>
     </div>
   )

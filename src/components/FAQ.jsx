@@ -3,35 +3,35 @@ import { useState } from 'react'
 const QUESTIONS = [
   {
     q: 'Preciso ter uma equipe formada para me inscrever?',
-    a: 'Nao! Voce pode se inscrever individualmente. Na noite de abertura (22/05), havera uma dinamica para formar ou completar equipes. Voce fara um pitch de 30 segundos sobre si mesmo para entrar em um time.',
+    a: 'Não! Você pode se inscrever individualmente. Na noite de abertura (22/05), haverá uma dinâmica para formar ou completar equipes. Você fará um pitch de 30 segundos sobre si mesmo para entrar em um time.',
   },
   {
     q: 'Quantas pessoas pode ter em uma equipe?',
-    a: 'Minimo 3, maximo 6 participantes. A equipe pode ter apenas 1 membro remoto, mas 80%+ devem estar fisicamente presentes. Recomendamos a composicao: Hacker (dev), Hustler (negocios) e Hipster (design).',
+    a: 'Mínimo 3, máximo 6 participantes. A equipe pode ter apenas 1 membro remoto, mas 80%+ devem estar fisicamente presentes. Recomendamos a composição: Hacker (dev), Hustler (negócios) e Hipster (design).',
   },
   {
-    q: 'O que esta incluso na inscricao?',
-    a: 'Alimentacao completa (cafe, almoco, jantar) durante os 3 dias, cracha de identificacao e kit do participante. Voce precisa trazer seu notebook, cabos e qualquer hardware necessario.',
+    q: 'O que está incluso na inscrição?',
+    a: 'Alimentação completa (café, almoço, jantar) durante os 3 dias, crachá de identificação e kit do participante. Você precisa trazer seu notebook, cabos e qualquer hardware necessário.',
   },
   {
     q: 'Posso usar IA generativa (Copilot, ChatGPT, Claude)?',
-    a: 'Sim! Ferramentas de IA generativa sao permitidas como auxiliares. Codigo pre-existente tambem, desde que declarado antes do pitch final. A equipe deve ser capaz de explicar todo o codigo apresentado.',
+    a: 'Sim! Ferramentas de IA generativa são permitidas como auxiliares. Código pré-existente também, desde que declarado antes do pitch final. A equipe deve ser capaz de explicar todo o código apresentado.',
   },
   {
-    q: 'Como funciona a avaliacao?',
-    a: 'Banca de 3-5 jurados (empreendedores e investidores). Cada equipe faz: 3min de pitch + 1min de demo com codigo funcional + 5min de Q&A + 1min para jurados testarem a solucao. Os pitchs tambem sao analisados por IA.',
+    q: 'Como funciona a avaliação?',
+    a: 'Banca de 3-5 jurados (empreendedores e investidores). Cada equipe faz: 3min de pitch + 1min de demo com código funcional + 5min de Q&A + 1min para jurados testarem a solução. Os pitchs também são analisados por IA.',
   },
   {
     q: 'Preciso ter vendas durante o evento?',
-    a: 'Nao e obrigatorio, mas equipes com evidencias de tracao comercial (vendas, pre-vendas, LOIs, landing pages com conversao) recebem pontuacao extra. Vendas para parentes diretos nao contam.',
+    a: 'Não é obrigatório, mas equipes com evidências de tração comercial (vendas, pré-vendas, LOIs, landing pages com conversão) recebem pontuação extra. Vendas para parentes diretos não contam.',
   },
   {
-    q: 'Qual a politica de cancelamento?',
-    a: 'Reembolso integral em ate 7 dias apos a compra (CDC). Ate 10 dias antes: reembolso de 50%. Menos de 10 dias: sem reembolso. No-show nao gera devolucao.',
+    q: 'Qual a política de cancelamento?',
+    a: 'Reembolso integral em até 7 dias após a compra (CDC). Até 10 dias antes: reembolso de 50%. Menos de 10 dias: sem reembolso. No-show não gera devolução.',
   },
   {
     q: 'Quem fica com a propriedade intelectual?',
-    a: 'Toda PI (codigo, designs, algoritmos, modelos de negocio) pertence exclusivamente a equipe. A organizacao nao detem nenhum direito ou participacao societaria sobre as solucoes.',
+    a: 'Toda PI (código, designs, algoritmos, modelos de negócio) pertence exclusivamente à equipe. A organização não detém nenhum direito ou participação societária sobre as soluções.',
   },
 ]
 

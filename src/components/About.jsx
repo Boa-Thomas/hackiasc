@@ -2,25 +2,25 @@ const PILLARS = [
   {
     icon: '{ }',
     title: 'Hacker',
-    desc: 'Desenvolvedor. Transforma ideias em codigo funcional com IA no centro.',
+    desc: 'Desenvolvedor. Transforma ideias em código funcional com IA no centro.',
     color: 'cyan',
   },
   {
     icon: '$',
     title: 'Hustler',
-    desc: 'Negocios e vendas. Valida o problema, acha o cliente, fecha a venda.',
+    desc: 'Negócios e vendas. Valida o problema, acha o cliente, fecha a venda.',
     color: 'electric',
   },
   {
     icon: '*',
     title: 'Hipster',
-    desc: 'Design e UX. Cria experiencias que as pessoas querem usar.',
+    desc: 'Design e UX. Cria experiências que as pessoas querem usar.',
     color: 'violet',
   },
 ]
 
 const AXES = [
-  'Metalmecanico', 'Textil', 'TIC', 'Turismo', 'Economia Criativa', 'Saude'
+  'Metalmecânico', 'Têxtil', 'TIC', 'Turismo', 'Economia Criativa', 'Saúde'
 ]
 
 export default function About() {
@@ -31,13 +31,13 @@ export default function About() {
         <div className="text-center mb-16">
           <span className="font-mono text-sm text-electric tracking-wider uppercase">Sobre o Evento</span>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mt-4 mb-6">
-            Nao e so um hackathon.
+            Não é só um hackathon.
             <br />
-            <span className="text-gradient-cyan">E o inicio da sua startup.</span>
+            <span className="text-gradient-cyan">É o início da sua startup.</span>
           </h2>
           <p className="text-text-muted text-lg max-w-2xl mx-auto">
-            O foco e gerar negocios que lucram, sao escalaveis, resolvem problemas reais
-            e podem ser internacionalizados. Uso de IA e obrigatorio.
+            O foco é gerar negócios que lucram, são escaláveis, resolvem problemas reais
+            e podem ser internacionalizados. Uso de IA é obrigatório.
           </p>
         </div>
 
@@ -56,10 +56,10 @@ export default function About() {
 
         {/* Governance axes */}
         <div className="card-glass rounded-2xl p-8 sm:p-10">
-          <h3 className="text-lg font-bold text-white mb-2">Pontuacao Extra</h3>
+          <h3 className="text-lg font-bold text-white mb-2">Pontuação Extra</h3>
           <p className="text-text-muted text-sm mb-6">
-            Projetos que atacam dores dentro dos eixos de governanca de Blumenau
-            recebem bonificacao na nota final:
+            Projetos que atacam dores dentro dos eixos de governança de Blumenau
+            recebem bonificação na nota final:
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             {AXES.map((axis) => (
