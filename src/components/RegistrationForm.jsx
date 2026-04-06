@@ -491,6 +491,8 @@ export default function RegistrationForm() {
             email={submittedData?.email}
             totalPrice={submittedData?.totalPriceFormatted}
             memberCount={submittedData?.memberCount}
+            fullName={submittedData?.full_name}
+            teamName={submittedData?.team_name}
           />
         </div>
       </section>
