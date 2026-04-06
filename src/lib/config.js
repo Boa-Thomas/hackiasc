@@ -10,15 +10,12 @@ export const EVENT_CONFIG = {
   city: 'Blumenau, SC',
   capacity: '60-100',
 
-  // Contato do organizador
+  // Contato
   organizer: {
-    name: 'Vinicius Adilson da Costa',
-    email: 'vinirosadacosta@gmail.com',
-    phone: '+55 47 9 9170-8404',
-    whatsappUrl: 'https://wa.me/5547991708404',
+    email: 'contato@hackiasc.com',
   },
 
-  // Redes sociais
+  // Redes sociais e comunidade
   social: {
     instagram: '@hackia.sc',
     instagramUrl: 'https://instagram.com/hackia.sc',
@@ -32,7 +29,7 @@ export const EVENT_CONFIG = {
     cardPaymentUrl: '#',
   },
 
-  // Links
-  editalUrl: '/V1. Edital de Participação do Hackathon de IA em Blumenau SC.pdf',
-  editalGoogleDocsUrl: 'https://docs.google.com/document/d/1eLAACRgfNIMVNr2D8HkmU-5t2Sznhj4zS2d0cqBXpgA/edit?usp=sharing',
+  // Links — edital em modo visualização até a divulgação oficial
+  editalUrl: 'https://docs.google.com/document/d/1eLAACRgfNIMVNr2D8HkmU-5t2Sznhj4zS2d0cqBXpgA/preview',
+  editalGoogleDocsUrl: 'https://docs.google.com/document/d/1eLAACRgfNIMVNr2D8HkmU-5t2Sznhj4zS2d0cqBXpgA/preview',
 }
