@@ -722,7 +722,7 @@ export default function RegistrationForm() {
               {[
                 { name: 'commit_ia', text: 'Nossa solução terá como uso central e obrigatório tecnologias de Inteligência Artificial (IA)' },
                 { name: 'commit_monetizable', text: 'Entendo que produtos não monetizáveis serão desclassificados' },
-                { name: 'commit_sales', text: 'Concordamos em buscar realizar VENDAS durante o período do evento' },
+                { name: 'commit_sales', text: 'Estou ciente de que evidências de tração comercial (vendas, pré-vendas, LOIs) geram pontuação extra na avaliação' },
                 { name: 'commit_edital', text: 'Eu li o edital completo e concordo com todas as cláusulas' },
               ].map(({ name, text }) => (
                 <label key={name} className={CHK_LABEL}>

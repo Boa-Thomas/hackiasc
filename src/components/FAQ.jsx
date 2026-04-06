@@ -14,24 +14,32 @@ const QUESTIONS = [
     a: 'Alimentação completa (café, almoço, jantar) durante os 3 dias, crachá de identificação e kit do participante. Você precisa trazer seu notebook, cabos e qualquer hardware necessário.',
   },
   {
-    q: 'Posso usar IA generativa (Copilot, ChatGPT, Claude)?',
-    a: 'Sim! Ferramentas de IA generativa são permitidas como auxiliares. Código pré-existente também, desde que declarado antes do pitch final. A equipe deve ser capaz de explicar todo o código apresentado.',
+    q: 'Posso usar ChatGPT, Copilot, Claude ou outras IAs para codar?',
+    a: 'Sim! O uso de ferramentas de IA generativa como auxiliares no desenvolvimento é permitido e incentivado. Você também pode usar código próprio pré-existente, desde que declare à organização antes do pitch final. O único requisito é que sua equipe consiga explicar e justificar todo o código na revisão técnica. Bibliotecas open-source também são permitidas desde que respeitem suas licenças.',
+  },
+  {
+    q: 'A organização fica com parte da minha startup?',
+    a: 'Não. Toda propriedade intelectual — código, designs, algoritmos e modelo de negócio — pertence 100% à sua equipe. A organização não detém qualquer direito de posse ou participação societária. A única concessão é o uso do nome do projeto, logo e capturas de tela para divulgação do evento, por até 5 anos.',
+  },
+  {
+    q: 'Preciso vender durante o hackathon?',
+    a: 'Não é obrigatório. Vendas não são critério eliminatório. Porém, equipes que apresentarem evidências de tração comercial (vendas, pré-vendas, LOIs, landing pages com conversão) receberão pontuação extra no critério "Escalabilidade e Negócio". Vendas para parentes diretos não são contabilizadas.',
+  },
+  {
+    q: 'O evento é acessível para pessoas com deficiência?',
+    a: 'Sim. Participantes com necessidades especiais de acessibilidade devem informar à organização no ato da inscrição para que as adequações sejam providenciadas. O CIB possui acesso para cadeirantes.',
+  },
+  {
+    q: 'Como posso usar o dinheiro do prêmio?',
+    a: 'O prêmio tem natureza de Capital Semente e deve ser reinvestido na startup. Gastos com domínios, hospedagem, serviços de nuvem, APIs de IA, abertura de CNPJ e ferramentas de desenvolvimento são pré-aprovados e não precisam de autorização. Gastos fora dessa lista passam pelo Comitê de Governança, que responde em até 5 dias úteis.',
   },
   {
     q: 'Como funciona a avaliação?',
     a: 'Banca de 3-5 jurados (empreendedores e investidores). Cada equipe faz: 3min de pitch + 1min de demo com código funcional + 5min de Q&A + 1min para jurados testarem a solução. Os pitchs também são analisados por IA.',
   },
   {
-    q: 'Preciso ter vendas durante o evento?',
-    a: 'Não é obrigatório, mas equipes com evidências de tração comercial (vendas, pré-vendas, LOIs, landing pages com conversão) recebem pontuação extra. Vendas para parentes diretos não contam.',
-  },
-  {
     q: 'Qual a política de cancelamento?',
     a: 'Reembolso integral em até 7 dias após a compra (CDC). Até 10 dias antes: reembolso de 50%. Menos de 10 dias: sem reembolso. No-show não gera devolução.',
-  },
-  {
-    q: 'Quem fica com a propriedade intelectual?',
-    a: 'Toda PI (código, designs, algoritmos, modelos de negócio) pertence exclusivamente à equipe. A organização não detém nenhum direito ou participação societária sobre as soluções.',
   },
 ]
 
