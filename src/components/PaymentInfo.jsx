@@ -128,10 +128,18 @@ export default function PaymentInfo({ paymentMethod, price, email, totalPrice, m
                 Pagamento via Cartão
               </h4>
 
-              {/* Value */}
+              {/* Value with copy button */}
               <div className="bg-electric/5 border border-electric/20 rounded-xl p-4 mb-4 text-center">
-                <p className="text-xs text-text-muted mb-1">Valor a pagar</p>
-                <p className="text-3xl font-bold font-mono text-electric">{displayTotal}</p>
+                <p className="text-xs text-text-muted mb-1">Digite este valor no Mercado Pago</p>
+                <div className="flex items-center justify-center gap-3">
+                  <p className="text-3xl font-bold font-mono text-electric">{displayTotal}</p>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(displayTotal.replace('R$ ', '').replace('.', '').replace(',', '.'))}
+                    className="px-3 py-1.5 text-xs bg-electric/10 text-electric rounded-lg hover:bg-electric/20 transition-colors"
+                  >
+                    Copiar valor
+                  </button>
+                </div>
               </div>
 
               <a
@@ -140,11 +148,11 @@ export default function PaymentInfo({ paymentMethod, price, email, totalPrice, m
                 rel="noopener noreferrer"
                 className="block w-full py-4 px-8 bg-gradient-to-r from-electric to-violet text-white font-bold text-center rounded-xl transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(58,134,255,0.3)]"
               >
-                Ir para Pagamento com Cartão
+                Pagar com Mercado Pago
               </a>
 
               <p className="text-xs text-text-muted mt-3 text-center">
-                Você será redirecionado para o link de pagamento seguro.
+                Você será redirecionado para o Mercado Pago. Insira o valor {displayTotal} manualmente.
               </p>
             </div>
 

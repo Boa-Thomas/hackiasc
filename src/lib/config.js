@@ -22,11 +22,11 @@ export const EVENT_CONFIG = {
     whatsappGroup: 'https://chat.whatsapp.com/EopEoGPpXmDAEl8Nz7auS3',
   },
 
-  // Pagamento — PLACEHOLDERS (trocar quando definir)
+  // Pagamento
   payment: {
-    pixKey: 'CHAVE_PIX_A_DEFINIR',
+    pixKey: 'CHAVE_PIX_A_DEFINIR', // trocar quando definir
     pixKeyType: 'E-mail / CPF / Telefone',
-    cardPaymentUrl: '#',
+    cardPaymentUrl: 'https://link.mercadopago.com.br/hackiasc',
   },
 
   // Links — edital em modo visualização até a divulgação oficial
