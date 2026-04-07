@@ -65,6 +65,178 @@ function exportCSV(data) {
   URL.revokeObjectURL(url)
 }
 
+function openPrintWindow(title, bodyHtml) {
+  const win = window.open('', '_blank')
+  if (!win) return
+  win.document.write(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>${title}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #111; padding: 20px; }
+  h1 { font-size: 18px; margin-bottom: 4px; }
+  .subtitle { color: #666; font-size: 12px; margin-bottom: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
+  th { background: #f5f5f5; font-weight: 600; text-transform: uppercase; font-size: 10px; }
+  tr:nth-child(even) { background: #fafafa; }
+  .sig-col { width: 120px; }
+  .badge-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .badge-card { border: 2px solid #333; border-radius: 8px; padding: 16px; text-align: center; page-break-inside: avoid; }
+  .badge-name { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
+  .badge-type { font-size: 12px; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px; }
+  .badge-team { font-size: 11px; color: #666; }
+  .team-section { page-break-inside: avoid; margin-bottom: 20px; }
+  .team-title { font-size: 14px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 4px; margin-bottom: 8px; }
+  .team-meta { font-size: 11px; color: #666; margin-bottom: 6px; }
+  .no-print { margin-bottom: 16px; }
+  @media print { .no-print { display: none; } }
+</style></head><body>
+<div class="no-print"><button onclick="window.print()" style="padding:8px 16px;cursor:pointer;font-size:14px;">Imprimir</button></div>
+${bodyHtml}
+</body></html>`)
+  win.document.close()
+}
+
+function exportAttendanceList(data) {
+  const sorted = [...data]
+    .filter(r => r.payment_status === 'confirmed')
+    .sort((a, b) => a.full_name.localeCompare(b.full_name))
+
+  const rows = sorted.map((r, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${r.full_name ?? ''}</td>
+      <td>${r.team_name ?? '—'}</td>
+      <td>${OCCUPATION_LABELS[r.occupation_type] ?? r.occupation_type ?? ''}</td>
+      <td class="sig-col"></td>
+    </tr>`).join('')
+
+  openPrintWindow('Lista de Presença — HackIA SC', `
+    <h1>Lista de Presença — HackIA SC</h1>
+    <p class="subtitle">AI Venture Hackathon Blumenau 2026 — ${sorted.length} participantes confirmados</p>
+    <table>
+      <thead><tr><th>#</th><th>Nome</th><th>Time</th><th>Perfil</th><th class="sig-col">Assinatura</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `)
+}
+
+function exportBadges(data) {
+  const sorted = [...data]
+    .filter(r => r.payment_status === 'confirmed')
+    .sort((a, b) => a.full_name.localeCompare(b.full_name))
+
+  const typeColors = {
+    hacker: { bg: '#e8f0ff', border: '#3a86ff', text: '#3a86ff' },
+    hustler: { bg: '#e6faf3', border: '#06d6a0', text: '#06d6a0' },
+    hipster: { bg: '#f0e8ff', border: '#8338ec', text: '#8338ec' },
+    enthusiast: { bg: '#fff8e0', border: '#ffbe0b', text: '#b88a00' },
+  }
+
+  const cards = sorted.map(r => {
+    const c = typeColors[r.occupation_type] ?? { bg: '#f5f5f5', border: '#999', text: '#333' }
+    return `
+      <div class="badge-card" style="border-color: ${c.border};">
+        <div class="badge-name">${r.full_name ?? ''}</div>
+        <div class="badge-type" style="background: ${c.bg}; color: ${c.text};">
+          ${OCCUPATION_LABELS[r.occupation_type] ?? r.occupation_type ?? ''}
+        </div>
+        <div class="badge-team">${r.team_name ?? 'Individual'}</div>
+      </div>`
+  }).join('')
+
+  openPrintWindow('Crachás — HackIA SC', `
+    <h1>Crachás — HackIA SC</h1>
+    <p class="subtitle">${sorted.length} participantes</p>
+    <div class="badge-grid">${cards}</div>
+  `)
+}
+
+function exportTeamReport(data) {
+  const teams = {}
+  const individuals = []
+
+  data.filter(r => r.payment_status === 'confirmed').forEach(r => {
+    if (r.team_name) {
+      if (!teams[r.team_name]) teams[r.team_name] = []
+      teams[r.team_name].push(r)
+    } else {
+      individuals.push(r)
+    }
+  })
+
+  const teamSections = Object.entries(teams)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([name, members]) => {
+      const leader = members.find(m => m.is_team_leader)
+      const project = members.find(m => m.project_name)
+      const axes = [...new Set(members.flatMap(m => m.economic_axes ?? []))]
+      const memberRows = members
+        .sort((a, b) => (b.is_team_leader ? 1 : 0) - (a.is_team_leader ? 1 : 0))
+        .map(m => `<tr>
+          <td>${m.full_name}${m.is_team_leader ? ' (líder)' : ''}</td>
+          <td>${OCCUPATION_LABELS[m.occupation_type] ?? m.occupation_type ?? ''}</td>
+          <td>${m.email ?? ''}</td>
+        </tr>`).join('')
+
+      return `
+        <div class="team-section">
+          <div class="team-title">${name} (${members.length} membros)</div>
+          ${leader ? `<div class="team-meta">Líder: ${leader.full_name}</div>` : ''}
+          ${project ? `<div class="team-meta">Projeto: ${project.project_name}</div>` : ''}
+          ${axes.length > 0 ? `<div class="team-meta">Eixos: ${axes.join(', ')}</div>` : ''}
+          <table>
+            <thead><tr><th>Nome</th><th>Perfil</th><th>Email</th></tr></thead>
+            <tbody>${memberRows}</tbody>
+          </table>
+        </div>`
+    }).join('')
+
+  openPrintWindow('Relatório de Times — HackIA SC', `
+    <h1>Relatório de Times — HackIA SC</h1>
+    <p class="subtitle">${Object.keys(teams).length} times, ${individuals.length} individuais</p>
+    ${teamSections}
+  `)
+}
+
+// ─── Export Dropdown ──────────────────────────────────────────────────────────
+
+function ExportDropdown({ filtered }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="px-4 py-2 rounded-lg text-sm bg-electric/20 text-electric border border-electric/30 hover:bg-electric/30 transition-colors font-display whitespace-nowrap"
+      >
+        Exportar ▾
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 z-50 card-glass rounded-xl border border-white/10 py-1 min-w-[200px] shadow-xl">
+            {[
+              { label: 'CSV', action: () => exportCSV(filtered) },
+              { label: 'Lista de presença', action: () => exportAttendanceList(filtered) },
+              { label: 'Crachás', action: () => exportBadges(filtered) },
+              { label: 'Relatório de times', action: () => exportTeamReport(filtered) },
+            ].map(item => (
+              <button
+                key={item.label}
+                onClick={() => { item.action(); setOpen(false) }}
+                className="w-full text-left px-4 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white transition-colors"
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ─── Badge components ─────────────────────────────────────────────────────────
 
 function StatusBadge({ status }) {
@@ -428,6 +600,10 @@ function DetailView({ registration, onBack, onRefetch }) {
 
 // ─── List View ────────────────────────────────────────────────────────────────
 
+function isStalePayment(r) {
+  return r.payment_status === 'pending' && r.created_at && (new Date() - new Date(r.created_at)) > 3 * 86400000
+}
+
 function ListView({ registrations, onSelect, onRefetch, loading }) {
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
@@ -525,12 +701,7 @@ function ListView({ registrations, onSelect, onRefetch, loading }) {
           <option value="team">Time</option>
         </select>
 
-        <button
-          onClick={() => exportCSV(filtered)}
-          className="px-4 py-2 rounded-lg text-sm bg-electric/20 text-electric border border-electric/30 hover:bg-electric/30 transition-colors font-display whitespace-nowrap"
-        >
-          Exportar CSV
-        </button>
+        <ExportDropdown filtered={filtered} />
       </div>
 
       {/* Stats row */}
@@ -568,7 +739,11 @@ function ListView({ registrations, onSelect, onRefetch, loading }) {
                 {paginated.map((r, i) => (
                   <tr
                     key={r.id}
-                    className={`border-b border-white/5 hover:bg-white/3 transition-colors ${i % 2 === 0 ? '' : 'bg-white/[0.02]'}`}
+                    className={`border-b border-white/5 hover:bg-white/3 transition-colors ${i % 2 === 0 ? '' : 'bg-white/[0.02]'} ${
+                      isStalePayment(r)
+                        ? 'border-l-2 border-l-gold bg-gold/[0.03]'
+                        : ''
+                    }`}
                   >
                     <td className="px-4 py-3 text-white font-display max-w-[160px] truncate" title={r.full_name}>
                       {r.full_name}
@@ -686,6 +861,17 @@ export default function AdminRegistrations({ selectedId, onClearSelection, onSel
 
   useEffect(() => {
     fetchRegistrations() // eslint-disable-line react-hooks/set-state-in-effect
+
+    // Realtime subscription
+    if (!supabase) return
+    const channel = supabase
+      .channel('registrations-list')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'registrations' }, () => {
+        fetchRegistrations()
+      })
+      .subscribe()
+
+    return () => { channel?.unsubscribe() }
   }, [])
 
   const selectedRegistration = selectedId

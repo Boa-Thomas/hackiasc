@@ -49,10 +49,16 @@ CREATE TABLE registrations (
   -- Early bird expiration (30 min window)
   price_expires_at TIMESTAMPTZ,
 
+  -- Check-in (dia do evento)
+  checked_in_at TIMESTAMPTZ,
+
   -- LGPD e declarações adicionais
   accept_lgpd BOOLEAN NOT NULL DEFAULT false,
   accept_code_ip BOOLEAN NOT NULL DEFAULT false
 );
+
+-- Para bancos de dados existentes, executar a migração:
+-- ALTER TABLE registrations ADD COLUMN IF NOT EXISTS checked_in_at TIMESTAMPTZ DEFAULT NULL;
 
 -- 2. Index para queries de status de pagamento
 CREATE INDEX idx_reg_payment_status ON registrations(payment_status);
