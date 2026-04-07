@@ -263,7 +263,7 @@ export default function PaymentInfo({ price, email, memberCount, teamName, fullN
             'Complete o pagamento (Pix, crédito ou débito).',
             'A confirmação é automática — você receberá um e-mail.',
             'Será adicionado(a) ao grupo oficial de WhatsApp.',
-            'Dia 22/05, apareça no CIB às 18:30!',
+            'Dia 29/05, apareça no CIB às 18:30!',
           ].map((step, i) => (
             <li key={i} className="flex gap-3 text-sm text-text-muted">
               <span className="flex-shrink-0 w-6 h-6 rounded-full bg-electric/10 text-electric text-xs font-mono flex items-center justify-center">

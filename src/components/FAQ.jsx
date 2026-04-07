@@ -3,7 +3,7 @@ import { useState } from 'react'
 const QUESTIONS = [
   {
     q: 'Preciso ter uma equipe formada para me inscrever?',
-    a: 'Não! Você pode se inscrever individualmente. Na noite de abertura (22/05), haverá uma dinâmica para formar ou completar equipes. Você fará um pitch de 30 segundos sobre si mesmo para entrar em um time.',
+    a: 'Não! Você pode se inscrever individualmente. Na noite de abertura (29/05), haverá uma dinâmica para formar ou completar equipes. Você fará um pitch de 30 segundos sobre si mesmo para entrar em um time.',
   },
   {
     q: 'Quantas pessoas pode ter em uma equipe?',

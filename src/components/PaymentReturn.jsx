@@ -17,7 +17,7 @@ const STATUS_CONFIG = {
       'Pagamento confirmado automaticamente.',
       'Você receberá um e-mail de confirmação em breve.',
       'Será adicionado(a) ao grupo oficial de WhatsApp.',
-      'Dia 22/05, apareça no CIB às 18:30!',
+      'Dia 29/05, apareça no CIB às 18:30!',
     ],
   },
   failure: {
@@ -53,7 +53,7 @@ const STATUS_CONFIG = {
       'Aguarde a confirmação do Mercado Pago (pode levar alguns minutos).',
       'Você receberá um e-mail quando o pagamento for aprovado.',
       'Será adicionado(a) ao grupo oficial de WhatsApp.',
-      'Dia 22/05, apareça no CIB às 18:30!',
+      'Dia 29/05, apareça no CIB às 18:30!',
     ],
   },
 }

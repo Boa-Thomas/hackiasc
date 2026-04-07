@@ -1125,6 +1125,67 @@ export default function AdminDashboard({ onViewRegistration }) {
         )}
       </div>
 
+      {/* Waitlist section */}
+      <WaitlistSection />
+
+    </div>
+  )
+}
+
+// ─── Waitlist Section ─────────────────────────────────────────────────────────
+
+function WaitlistSection() {
+  const [entries, setEntries] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!supabase) { setLoading(false); return }
+    supabase
+      .from('waitlist')
+      .select('id, full_name, email, phone, created_at')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setEntries(data ?? [])
+        setLoading(false)
+      })
+  }, [])
+
+  if (loading) return null
+  if (entries.length === 0) return null
+
+  return (
+    <div className="rounded-2xl border border-hot/20 bg-white/[0.02] p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-white font-bold flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-hot animate-pulse" />
+          Lista de Espera
+          <span className="text-hot font-mono text-sm">({entries.length})</span>
+        </h3>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-white/40 text-left font-mono text-xs border-b border-white/10">
+              <th className="pb-2 pr-4">Nome</th>
+              <th className="pb-2 pr-4">E-mail</th>
+              <th className="pb-2 pr-4">Telefone</th>
+              <th className="pb-2">Data</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((e) => (
+              <tr key={e.id} className="border-b border-white/5">
+                <td className="py-3 pr-4 text-white/80 truncate max-w-[160px]">{e.full_name}</td>
+                <td className="py-3 pr-4 text-white/50 font-mono text-xs truncate max-w-[180px]">{e.email}</td>
+                <td className="py-3 pr-4 text-white/50 font-mono text-xs">{e.phone}</td>
+                <td className="py-3 text-white/40 font-mono text-xs whitespace-nowrap">
+                  {e.created_at ? formatDate(e.created_at) : '—'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

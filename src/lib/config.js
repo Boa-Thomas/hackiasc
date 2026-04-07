@@ -5,11 +5,13 @@
 export const EVENT_CONFIG = {
   name: 'AI Venture Hackathon Blumenau 2026',
   brand: 'HackIA SC',
-  dates: '22 - 24 de Maio de 2026',
-  eventStartDate: '2026-05-22T08:00:00-03:00',
-  eventEndDate: '2026-05-24T22:00:00-03:00',
+  dates: '29 - 31 de Maio de 2026',
+  eventStartDate: '2026-05-29T08:00:00-03:00',
+  eventEndDate: '2026-05-31T22:00:00-03:00',
   maxCapacity: 100,
   earlyBirdLimit: 10,
+  registrationStart: '2026-04-08T12:00:00-03:00',
+  registrationEnd: '2026-05-13T15:00:00-03:00',
   location: 'Centro de Inovação de Blumenau (CIB)',
   city: 'Blumenau, SC',
   capacity: '60-100',
@@ -38,7 +40,7 @@ export const EVENT_CONFIG = {
     cardPaymentUrl: 'https://link.mercadopago.com.br/hackiasc',
   },
 
-  // Links — edital em modo visualização até a divulgação oficial
-  editalUrl: 'https://docs.google.com/document/d/1eLAACRgfNIMVNr2D8HkmU-5t2Sznhj4zS2d0cqBXpgA/preview',
-  editalGoogleDocsUrl: 'https://docs.google.com/document/d/1eLAACRgfNIMVNr2D8HkmU-5t2Sznhj4zS2d0cqBXpgA/preview',
+  // Links — edital assinado
+  editalUrl: '/edital-hackia-2026.pdf',
+  editalGoogleDocsUrl: '/edital-hackia-2026.pdf',
 }

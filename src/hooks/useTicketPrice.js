@@ -4,32 +4,36 @@ import { supabase } from '../lib/supabase'
 const EARLY_BIRD_LIMIT = 10
 const EARLY_BIRD_PRICE = 15000
 const REGULAR_PRICE = 20000
+const MAX_CAPACITY = 100
 
 export function useTicketPrice() {
   const [confirmedCount, setConfirmedCount] = useState(null)
+  const [totalCount, setTotalCount] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function fetchCount() {
+    async function fetchCounts() {
       if (!supabase) {
         setConfirmedCount(0)
+        setTotalCount(0)
         setLoading(false)
         return
       }
-      const { data, error } = await supabase.rpc('get_confirmed_count')
-      if (!error && data !== null) {
-        setConfirmedCount(data)
-      } else {
-        setConfirmedCount(0)
-      }
+      const [confirmed, total] = await Promise.all([
+        supabase.rpc('get_confirmed_count'),
+        supabase.rpc('get_total_registration_count'),
+      ])
+      setConfirmedCount(!confirmed.error && confirmed.data !== null ? confirmed.data : 0)
+      setTotalCount(!total.error && total.data !== null ? total.data : 0)
       setLoading(false)
     }
-    fetchCount()
+    fetchCounts()
   }, [])
 
   const earlyBirdAvailable = confirmedCount !== null && confirmedCount < EARLY_BIRD_LIMIT
   const currentPrice = earlyBirdAvailable ? EARLY_BIRD_PRICE : REGULAR_PRICE
   const earlyBirdSpotsLeft = earlyBirdAvailable ? EARLY_BIRD_LIMIT - confirmedCount : 0
+  const capacityFull = totalCount !== null && totalCount >= MAX_CAPACITY
 
   return {
     currentPrice,
@@ -37,6 +41,8 @@ export function useTicketPrice() {
     earlyBirdAvailable,
     earlyBirdSpotsLeft,
     confirmedCount,
+    totalCount,
+    capacityFull,
     loading,
     tier: earlyBirdAvailable ? 'early_bird' : 'regular',
   }

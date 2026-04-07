@@ -10,7 +10,7 @@ export default function Hero() {
         {/* Badge */}
         <div className="animate-slide-up inline-flex items-center gap-2 px-4 py-2 rounded-full border border-cyan/20 bg-cyan/5 text-cyan text-sm font-mono mb-8">
           <span className="w-2 h-2 rounded-full bg-cyan animate-pulse" />
-          22 - 24 de Maio de 2026
+          29 - 31 de Maio de 2026
         </div>
 
         {/* Title */}
@@ -29,7 +29,14 @@ export default function Hero() {
 
         {/* Location */}
         <p className="animate-slide-up text-sm text-text-muted font-mono mb-10" style={{ animationDelay: '300ms' }}>
-          <span className="text-electric">@</span> Centro de Inovação de Blumenau (CIB) &mdash; Blumenau, SC
+          <a
+            href="https://maps.google.com/?q=Centro+de+Inovação+de+Blumenau+CIB+Rua+São+Paulo+3366+Blumenau+SC"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-cyan transition-colors"
+          >
+            <span className="text-electric">@</span> CIB — R. São Paulo, 3366 — Itoupava Seca, Blumenau, SC
+          </a>
         </p>
 
         {/* CTAs */}

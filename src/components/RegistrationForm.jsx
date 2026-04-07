@@ -25,6 +25,7 @@ const EMPTY_MEMBER = {
   dietary_restrictions: '',
   is_pcd: 'no',
   pcd_type: '',
+  is_remote: false,
   accept_edital: false,
   accept_image: false,
   accept_responsibility: false,
@@ -288,6 +289,17 @@ function MemberCard({ index, member, errors, onChange, onRemove }) {
             </div>
           )}
 
+          {/* Participação remota */}
+          <label className={CHK_LABEL}>
+            <input
+              type="checkbox"
+              checked={member.is_remote}
+              onChange={e => onChange('is_remote', e.target.checked)}
+              className={CHK_INPUT}
+            />
+            <span>Este membro participará <strong>remotamente</strong> (máx. 1 por equipe — edital 2.2.1)</span>
+          </label>
+
           {/* Declaração de Ciência e Aceite */}
           <div>
             <label className={LBL}>Declaração de Ciência e Aceite *</label>
@@ -380,7 +392,12 @@ export default function RegistrationForm() {
   const [showRecovery, setShowRecovery] = useState(false)
   const [recoveryError, setRecoveryError] = useState('')
 
-  const { currentPrice, currentPriceFormatted, earlyBirdAvailable, earlyBirdSpotsLeft, tier, loading } = useTicketPrice()
+  const { currentPrice, currentPriceFormatted, earlyBirdAvailable, earlyBirdSpotsLeft, tier, capacityFull, loading } = useTicketPrice()
+
+  // Waitlist state
+  const [waitlistSubmitted, setWaitlistSubmitted] = useState(false)
+  const [waitlistSubmitting, setWaitlistSubmitting] = useState(false)
+  const [waitlistError, setWaitlistError] = useState('')
 
   const inscriptionModality = watch('inscription_modality')
   const hasProject = watch('has_project')
@@ -391,6 +408,14 @@ export default function RegistrationForm() {
   const totalPrice = currentPrice * totalPeople
   const totalPriceFormatted = `R$ ${(totalPrice / 100).toFixed(0)},00`
   const isTeamWithMembers = inscriptionModality === 'team' && teamMembers.length > 0
+
+  // Registration window — fallback to open if config fields not yet set
+  const now = new Date()
+  const regStart = EVENT_CONFIG.registrationStart ? new Date(EVENT_CONFIG.registrationStart) : null
+  const regEnd = EVENT_CONFIG.registrationEnd ? new Date(EVENT_CONFIG.registrationEnd) : null
+  const registrationOpen = (!regStart || !regEnd) ? true : (now >= regStart && now <= regEnd)
+  const registrationNotStarted = regStart && now < regStart
+  const registrationEnded = regEnd && now > regEnd
 
   // Scroll to top when form is submitted
   useEffect(() => {
@@ -502,6 +527,23 @@ export default function RegistrationForm() {
       }
     }
 
+    // Minimum 3 total participants for team registration (edital 2.2)
+    if (inscriptionModality === 'team' && teamMembers.length < 2) {
+      setSubmitError('Equipes devem ter no mínimo 3 participantes (edital 2.2). Adicione pelo menos mais ' + (2 - teamMembers.length) + ' membro(s).')
+      setSubmitting(false)
+      return
+    }
+
+    // At most 1 remote member per team (edital 2.2.1)
+    if (inscriptionModality === 'team') {
+      const remoteCount = teamMembers.filter(m => m.is_remote).length
+      if (remoteCount > 1) {
+        setSubmitError('Apenas 1 membro por equipe pode participar remotamente (edital 2.2.1).')
+        setSubmitting(false)
+        return
+      }
+    }
+
     const leaderBase = {
       full_name: data.full_name.trim(),
       email: data.email.trim().toLowerCase(),
@@ -558,6 +600,7 @@ export default function RegistrationForm() {
         dietary_restrictions: m.dietary_restrictions?.trim() || '',
         is_pcd: m.is_pcd === 'yes',
         pcd_type: m.is_pcd === 'yes' ? (m.pcd_type?.trim() || null) : null,
+        is_remote: m.is_remote || false,
         // Team-level fields — same as leader
         has_project: leaderBase.has_project,
         project_name: leaderBase.project_name,
@@ -603,6 +646,109 @@ export default function RegistrationForm() {
     })
     setSubmitted(true)
     setSubmitting(false)
+  }
+
+  if (!registrationOpen) {
+    return (
+      <section id="inscricao" className="relative py-24 sm:py-32">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6">
+          <div className="card-glass rounded-2xl p-8 sm:p-12 text-center">
+            <span className="font-mono text-sm text-cyan tracking-wider uppercase">Inscrição</span>
+            {registrationNotStarted ? (
+              <p className="mt-6 text-lg text-white font-semibold">
+                Inscrições abrem em 08 de abril às 12h. Fique ligado!
+              </p>
+            ) : registrationEnded ? (
+              <p className="mt-6 text-lg text-white font-semibold">
+                Inscrições encerradas em 13/05 às 15h. Dúvidas:{' '}
+                <a href="mailto:contato@hackiasc.com" className="text-electric underline">
+                  contato@hackiasc.com
+                </a>
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  // ─── Waitlist submit handler ──────────────────────────────────────────────
+  const handleWaitlistSubmit = async (e) => {
+    e.preventDefault()
+    setWaitlistSubmitting(true)
+    setWaitlistError('')
+    const form = new FormData(e.target)
+    const name = form.get('wl_name')?.trim()
+    const email = form.get('wl_email')?.trim()
+    const phone = form.get('wl_phone')?.trim()
+    if (!name || !email || !phone) {
+      setWaitlistError('Preencha todos os campos.')
+      setWaitlistSubmitting(false)
+      return
+    }
+    if (!supabase) {
+      setWaitlistError('Sistema indisponível. Tente novamente mais tarde.')
+      setWaitlistSubmitting(false)
+      return
+    }
+    const { error } = await supabase.from('waitlist').insert({ full_name: name, email: email.toLowerCase(), phone })
+    if (error) {
+      if (error.code === '23505') setWaitlistError('Este e-mail já está na lista de espera.')
+      else setWaitlistError('Erro ao salvar. Tente novamente.')
+      setWaitlistSubmitting(false)
+      return
+    }
+    setWaitlistSubmitted(true)
+    setWaitlistSubmitting(false)
+  }
+
+  // ─── Capacity full → waitlist ───────────────────────────────────────────────
+  if (capacityFull && !submitted) {
+    return (
+      <section id="inscricao" className="relative py-24 sm:py-32">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6">
+          <div className="card-glass rounded-2xl p-8 sm:p-12 text-center">
+            <span className="font-mono text-sm text-hot tracking-wider uppercase">Vagas esgotadas</span>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mt-4">
+              100 participantes inscritos
+            </h2>
+            <p className="text-text-muted mt-3 mb-8">
+              As vagas foram preenchidas! Entre na lista de espera e te avisaremos se surgir uma vaga.
+            </p>
+
+            {waitlistSubmitted ? (
+              <div className="bg-cyan/10 border border-cyan/20 rounded-xl p-6">
+                <p className="text-cyan font-semibold">Você está na lista de espera!</p>
+                <p className="text-text-muted text-sm mt-2">Entraremos em contato caso surja uma vaga.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleWaitlistSubmit} className="space-y-4 text-left max-w-md mx-auto">
+                <div>
+                  <label className={LBL}>Nome completo *</label>
+                  <input name="wl_name" className={INPUT} placeholder="Seu nome" required />
+                </div>
+                <div>
+                  <label className={LBL}>E-mail *</label>
+                  <input name="wl_email" type="email" className={INPUT} placeholder="seu@email.com" required />
+                </div>
+                <div>
+                  <label className={LBL}>Telefone *</label>
+                  <input name="wl_phone" type="tel" className={INPUT} placeholder="(47) 99999-9999" required />
+                </div>
+                {waitlistError && <p className={ERR}>{waitlistError}</p>}
+                <button
+                  type="submit"
+                  disabled={waitlistSubmitting}
+                  className="w-full py-3 bg-gradient-to-r from-hot to-violet text-white font-bold rounded-xl transition-all hover:scale-[1.02] disabled:opacity-50"
+                >
+                  {waitlistSubmitting ? 'Enviando...' : 'Entrar na Lista de Espera'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      </section>
+    )
   }
 
   if (submitted) {
@@ -864,7 +1010,7 @@ export default function RegistrationForm() {
 
             <div className="space-y-3">
               {[
-                { value: 'individual_form_team', label: 'Inscrição Individual', desc: 'Formarei ou serei integrado a uma equipe na noite de abertura (22/05)' },
+                { value: 'individual_form_team', label: 'Inscrição Individual', desc: 'Formarei ou serei integrado a uma equipe na noite de abertura (29/05)' },
                 { value: 'individual_own', label: 'Inscrição Individual (equipe já existe)', desc: 'Cada integrante da minha equipe se inscreverá por conta própria' },
                 { value: 'team', label: 'Inscrição em Equipe', desc: 'Já possuo um time e inscreverei todos agora' },
               ].map(({ value, label, desc }) => (
@@ -902,6 +1048,7 @@ export default function RegistrationForm() {
                     </p>
                     <p className="text-xs text-text-muted mt-0.5">
                       Você (líder) + {teamMembers.length} {teamMembers.length === 1 ? 'membro' : 'membros'} = {totalPeople} {totalPeople === 1 ? 'pessoa' : 'pessoas'}
+                      {totalPeople < 3 && <span className="text-hot ml-1">(mínimo 3)</span>}
                     </p>
                   </div>
 

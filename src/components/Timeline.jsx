@@ -1,7 +1,7 @@
 const DAYS = [
   {
     day: 'Sexta',
-    date: '22/05',
+    date: '29/05',
     time: '18:30 - 22:00',
     color: 'cyan',
     events: [
@@ -14,7 +14,7 @@ const DAYS = [
   },
   {
     day: 'Sábado',
-    date: '23/05',
+    date: '30/05',
     time: '09:00 - 22:00',
     color: 'electric',
     events: [
@@ -30,7 +30,7 @@ const DAYS = [
   },
   {
     day: 'Domingo',
-    date: '24/05',
+    date: '31/05',
     time: '09:00 - 20:00',
     color: 'violet',
     events: [

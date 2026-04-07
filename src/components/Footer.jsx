@@ -100,9 +100,14 @@ export default function Footer() {
             <p>&copy; 2026 HackIA SC. Uma iniciativa independente para o ecossistema de Santa Catarina.</p>
             <p className="mt-1">Realização: {EVENT_CONFIG.organizer.company} — CNPJ {EVENT_CONFIG.organizer.cnpj}</p>
           </div>
-          <p className="text-xs text-text-muted font-mono">
-            <span className="text-cyan">@</span> Centro de Inovação de Blumenau
-          </p>
+          <a
+            href="https://maps.google.com/?q=Centro+de+Inovação+de+Blumenau+CIB+Rua+São+Paulo+3366+Blumenau+SC"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-text-muted font-mono hover:text-cyan transition-colors"
+          >
+            <span className="text-cyan">@</span> CIB — R. São Paulo, 3366, Itoupava Seca, Blumenau/SC
+          </a>
         </div>
       </div>
     </footer>
