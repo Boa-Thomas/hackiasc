@@ -394,7 +394,10 @@ export default function RegistrationForm() {
 
   // Scroll to top when form is submitted
   useEffect(() => {
-    if (submitted) window.scrollTo({ top: 0, behavior: 'smooth' })
+    if (submitted) {
+      const el = document.getElementById('inscricao')
+      if (el) el.scrollIntoView({ behavior: 'smooth' })
+    }
   }, [submitted])
 
   // Team member helpers
