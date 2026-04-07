@@ -528,7 +528,7 @@ export default function RegistrationForm() {
     }
 
     if (!supabase) {
-      console.log('Supabase not configured. Registration data:', leaderBase)
+      console.warn('Supabase not configured — registration submitted in offline mode')
       setSubmittedData({
         ...leaderBase,
         payment_method: data.payment_method,
@@ -587,7 +587,7 @@ export default function RegistrationForm() {
         }
       } else {
         setSubmitError('Erro ao enviar inscrição. Tente novamente.')
-        console.error(insertError)
+        console.error('Registration insert failed:', insertError?.message || 'Unknown error')
       }
       setSubmitting(false)
       return

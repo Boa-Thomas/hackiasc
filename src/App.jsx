@@ -25,8 +25,9 @@ export default function App() {
   // Scroll to section when returning from subpages
   useEffect(() => {
     if (page && page !== '#privacidade' && !PAYMENT_HASHES.includes(page)) {
+      if (!/^#[a-zA-Z][\w-]*$/.test(page)) return
       setTimeout(() => {
-        const el = document.querySelector(page)
+        const el = document.getElementById(page.slice(1))
         if (el) el.scrollIntoView({ behavior: 'smooth' })
       }, 100)
     }
