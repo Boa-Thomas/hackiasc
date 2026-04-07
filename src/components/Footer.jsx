@@ -48,6 +48,11 @@ export default function Footer() {
                 </a>
               </li>
               <li>
+                <a href="#patrocinio" className="text-sm text-text-muted hover:text-white transition-colors">
+                  Seja Patrocinador
+                </a>
+              </li>
+              <li>
                 <a href="#privacidade" className="text-sm text-text-muted hover:text-white transition-colors">
                   Política de Privacidade
                 </a>

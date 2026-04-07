@@ -9,6 +9,7 @@ import RegistrationForm from './components/RegistrationForm'
 import FAQ from './components/FAQ'
 import Footer from './components/Footer'
 import PrivacyPolicy from './components/PrivacyPolicy'
+import SponsorshipPage from './components/SponsorshipPage'
 import PaymentReturn from './components/PaymentReturn'
 import AdminLogin from './admin/AdminLogin'
 import AdminPanel from './admin/AdminPanel'
@@ -29,7 +30,7 @@ export default function App() {
 
   // Scroll to section when returning from subpages
   useEffect(() => {
-    if (page && page !== '#privacidade' && !PAYMENT_HASHES.includes(page) && !ADMIN_HASHES.includes(page)) {
+    if (page && page !== '#privacidade' && page !== '#patrocinio' && !PAYMENT_HASHES.includes(page) && !ADMIN_HASHES.includes(page)) {
       if (!/^#[a-zA-Z][\w-]*$/.test(page)) return
       setTimeout(() => {
         const el = document.getElementById(page.slice(1))
@@ -58,6 +59,16 @@ export default function App() {
   if (page === '#privacidade') {
     return (
       <PrivacyPolicy onBack={() => {
+        window.location.hash = ''
+        setPage('')
+        window.scrollTo(0, 0)
+      }} />
+    )
+  }
+
+  if (page === '#patrocinio') {
+    return (
+      <SponsorshipPage onBack={() => {
         window.location.hash = ''
         setPage('')
         window.scrollTo(0, 0)

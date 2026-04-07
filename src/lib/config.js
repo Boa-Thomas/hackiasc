@@ -43,4 +43,12 @@ export const EVENT_CONFIG = {
   // Links — edital assinado
   editalUrl: '/edital-hackia-2026.pdf',
   editalGoogleDocsUrl: '/edital-hackia-2026.pdf',
+
+  // Patrocínio
+  sponsorship: {
+    coordinator: 'Vinicius Adilson da Costa',
+    role: 'Coordenador Geral',
+    whatsapp: '+55 47 9 9170-8404',
+    whatsappUrl: 'https://wa.me/5547991708404',
+  },
 }
