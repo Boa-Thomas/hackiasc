@@ -2,11 +2,13 @@ import { useState } from 'react'
 import AdminDashboard from './AdminDashboard'
 import AdminRegistrations from './AdminRegistrations'
 import AdminTeams from './AdminTeams'
+import AdminCheckin from './AdminCheckin'
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'registrations', label: 'Inscrições', icon: '📋' },
   { id: 'teams', label: 'Times', icon: '👥' },
+  { id: 'checkin', label: 'Check-in', icon: '✅' },
 ]
 
 export default function AdminPanel({ onLogout }) {
@@ -67,6 +69,7 @@ export default function AdminPanel({ onLogout }) {
           />
         )}
         {activeTab === 'teams' && <AdminTeams />}
+        {activeTab === 'checkin' && <AdminCheckin />}
       </main>
     </div>
   )

@@ -226,6 +226,69 @@ function MemberRow({ member, allTeamNames, onMove, onRemove }) {
   )
 }
 
+// ─── Profile Composition ──────────────────────────────────────────────────────
+
+const ALL_PROFILES = ['hacker', 'hustler', 'hipster']
+const PROFILE_COLORS = {
+  hacker:     '#3a86ff',
+  hustler:    '#06d6a0',
+  hipster:    '#8338ec',
+  enthusiast: '#ffbe0b',
+}
+const PROFILE_LABELS = {
+  hacker: 'H',
+  hustler: 'U',
+  hipster: 'D',
+  enthusiast: 'E',
+}
+
+function ProfileComposition({ members }) {
+  const types = new Set(members.map(m => m.occupation_type))
+  const missing = ALL_PROFILES.filter(p => !types.has(p))
+  const isBalanced = missing.length === 0
+
+  return (
+    <div className="flex items-center gap-1.5">
+      {['hacker', 'hustler', 'hipster', 'enthusiast'].map(type => {
+        const count = members.filter(m => m.occupation_type === type).length
+        if (count === 0) return null
+        return (
+          <span
+            key={type}
+            className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold font-mono"
+            style={{ background: `${PROFILE_COLORS[type]}30`, color: PROFILE_COLORS[type] }}
+            title={`${type}: ${count}`}
+          >
+            {PROFILE_LABELS[type]}
+          </span>
+        )
+      })}
+      {isBalanced ? (
+        <span className="text-[10px] font-mono text-cyan ml-1">Balanceado</span>
+      ) : (
+        <span className="text-[10px] font-mono text-gold/60 ml-1">
+          Falta: {missing.join(', ')}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function PaymentProgressBar({ confirmed, total }) {
+  const pct = total > 0 ? (confirmed / total) * 100 : 0
+  return (
+    <div className="w-16 h-1.5 rounded-full bg-white/10 overflow-hidden" title={`${confirmed}/${total} pagos`}>
+      <div
+        className="h-full rounded-full transition-all duration-300"
+        style={{
+          width: `${pct}%`,
+          background: pct === 100 ? '#06d6a0' : '#ffbe0b',
+        }}
+      />
+    </div>
+  )
+}
+
 // ─── TeamCard ─────────────────────────────────────────────────────────────────
 
 function TeamCard({ team, allTeamNames, expanded, onToggle, onRefetch }) {
@@ -293,8 +356,11 @@ function TeamCard({ team, allTeamNames, expanded, onToggle, onRefetch }) {
             <span className={`text-xs font-mono ${statusStyle.text}`}>
               {confirmedCount}/{members.length} confirmados
             </span>
+            <PaymentProgressBar confirmed={confirmedCount} total={members.length} />
           </div>
-          <p className={`text-xs mt-0.5 ${statusStyle.text} opacity-70`}>{statusStyle.label}</p>
+          <div className="flex items-center gap-3 mt-1">
+            <ProfileComposition members={members} />
+          </div>
         </div>
 
         {/* Expand chevron */}
@@ -368,6 +434,115 @@ function IndividualSection({ individuals }) {
                 </div>
               </div>
             ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Matching Suggestions ─────────────────────────────────────────────────────
+
+function MatchingSuggestions({ individuals, teamsMap, sortedTeamNames, onRefetch }) {
+  const [busy, setBusy] = useState(null)
+
+  const seekingTeam = individuals.filter(i => i.inscription_modality === 'individual_form_team')
+  const incompleteTeams = sortedTeamNames.filter(n => teamsMap[n].length < 6)
+
+  // Build suggestions: which individuals could fill missing profiles
+  const suggestions = useMemo(() => {
+    const result = []
+    for (const teamName of incompleteTeams) {
+      const members = teamsMap[teamName]
+      const existingTypes = new Set(members.map(m => m.occupation_type))
+      const missingTypes = ALL_PROFILES.filter(p => !existingTypes.has(p))
+
+      for (const individual of seekingTeam) {
+        if (missingTypes.includes(individual.occupation_type)) {
+          result.push({ individual, teamName, reason: `Falta ${individual.occupation_type}` })
+        }
+      }
+    }
+    return result
+  }, [incompleteTeams, teamsMap, seekingTeam])
+
+  // Also show remaining seekers without perfect matches
+  const matched = new Set(suggestions.map(s => s.individual.id))
+  const unmatched = seekingTeam.filter(i => !matched.has(i.id))
+
+  if (seekingTeam.length === 0 || incompleteTeams.length === 0) return null
+
+  async function handleAdd(individualId, teamName) {
+    if (!supabase) return
+    setBusy(individualId)
+    const { error } = await supabase
+      .from('registrations')
+      .update({ team_name: teamName, inscription_modality: 'team' })
+      .eq('id', individualId)
+    if (error) alert(`Erro: ${error.message}`)
+    onRefetch()
+    setBusy(null)
+  }
+
+  return (
+    <div className="card-glass rounded-2xl p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-mono uppercase tracking-widest text-electric">
+          Sugestões de matching
+        </h3>
+        <span className="text-xs font-mono text-white/40">
+          {seekingTeam.length} buscando time
+        </span>
+      </div>
+
+      {suggestions.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="text-xs font-mono text-white/30 uppercase">Matches por perfil</h4>
+          {suggestions.slice(0, 10).map(({ individual, teamName, reason }) => (
+            <div
+              key={`${individual.id}-${teamName}`}
+              className="flex items-center gap-3 p-3 rounded-xl bg-electric/5 border border-electric/10"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-display text-white">{individual.full_name}</span>
+                  <span
+                    className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+                    style={{ color: PROFILE_COLORS[individual.occupation_type], background: `${PROFILE_COLORS[individual.occupation_type]}20` }}
+                  >
+                    {individual.occupation_type}
+                  </span>
+                </div>
+                <span className="text-xs text-white/40 font-mono">
+                  → {teamName} ({reason})
+                </span>
+              </div>
+              <button
+                onClick={() => handleAdd(individual.id, teamName)}
+                disabled={busy === individual.id}
+                className="px-3 py-1 rounded-lg text-xs font-medium bg-electric/15 text-electric border border-electric/20 hover:bg-electric/25 disabled:opacity-30 transition-colors whitespace-nowrap"
+              >
+                Adicionar
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {unmatched.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="text-xs font-mono text-white/30 uppercase">Sem match ideal</h4>
+          {unmatched.map(individual => (
+            <div key={individual.id} className="flex items-center gap-3 p-2 rounded-lg bg-white/[0.02]">
+              <span className="text-sm text-white/60 font-display">{individual.full_name}</span>
+              <span
+                className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+                style={{ color: PROFILE_COLORS[individual.occupation_type], background: `${PROFILE_COLORS[individual.occupation_type]}20` }}
+              >
+                {individual.occupation_type}
+              </span>
+              <span className="text-xs text-white/30 font-mono ml-auto">{individual.email}</span>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -555,6 +730,14 @@ export default function AdminTeams() {
 
       {/* Individuals section */}
       <IndividualSection individuals={individuals} />
+
+      {/* Matching suggestions */}
+      <MatchingSuggestions
+        individuals={individuals}
+        teamsMap={teamsMap}
+        sortedTeamNames={sortedTeamNames}
+        onRefetch={fetchData}
+      />
     </div>
   )
 }

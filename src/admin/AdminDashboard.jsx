@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { EVENT_CONFIG } from '../lib/config'
 
@@ -110,6 +110,12 @@ function computeStats(registrations) {
   // Projects
   const withProject = registrations.filter(r => r.has_project).length
 
+  // Stale pending payments (> 3 days old)
+  const threeDaysAgo = new Date(Date.now() - 3 * 86400000).toISOString()
+  const stalePending = pending
+    .filter(r => r.created_at < threeDaysAgo)
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+
   return {
     total,
     confirmedCount: confirmed.length,
@@ -133,6 +139,7 @@ function computeStats(registrations) {
     aiAvg,
     axesSorted,
     withProject,
+    stalePending,
   }
 }
 
@@ -665,32 +672,203 @@ function PCDCard({ pcdCount, pcdTypes, total }) {
   )
 }
 
+// ─── Conversion Funnel ─────────────────────────────────────────────────────
+
+function ConversionFunnel({ total, pending, confirmed, checkedIn }) {
+  const stages = [
+    { label: 'Total inscritos', count: total, color: '#3a86ff' },
+    { label: 'Pendentes', count: pending, color: '#ffbe0b' },
+    { label: 'Confirmados', count: confirmed, color: '#06d6a0' },
+  ]
+  if (checkedIn != null) {
+    stages.push({ label: 'Check-in', count: checkedIn, color: '#8338ec' })
+  }
+
+  if (total === 0) return null
+
+  const svgW = 400
+  const stageH = 48
+  const svgH = stages.length * stageH + 10
+  const maxW = 340
+  const minW = 120
+
+  return (
+    <div className="card-glass rounded-xl p-5 flex flex-col gap-3">
+      <h3 className="text-xs font-mono uppercase tracking-widest text-white/40">
+        Funil de conversão
+      </h3>
+      <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full max-w-md mx-auto" preserveAspectRatio="xMidYMid meet">
+        {stages.map((stage, i) => {
+          const pct = total > 0 ? stage.count / total : 0
+          const nextPct = i < stages.length - 1 && total > 0
+            ? stages[i + 1].count / total
+            : pct * 0.7
+          const w = minW + (maxW - minW) * pct
+          const nextW = minW + (maxW - minW) * nextPct
+          const cx = svgW / 2
+          const y = i * stageH + 5
+
+          return (
+            <g key={stage.label}>
+              {/* Trapezoid */}
+              <path
+                d={`M${cx - w / 2},${y} L${cx + w / 2},${y} L${cx + nextW / 2},${y + stageH - 4} L${cx - nextW / 2},${y + stageH - 4} Z`}
+                fill={stage.color}
+                opacity="0.2"
+                stroke={stage.color}
+                strokeWidth="1"
+                strokeOpacity="0.4"
+              />
+              {/* Label */}
+              <text x={cx} y={y + stageH / 2 - 5} textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize="11" fontFamily="var(--font-display, sans-serif)">
+                {stage.label}
+              </text>
+              <text x={cx} y={y + stageH / 2 + 10} textAnchor="middle" fill={stage.color} fontSize="14" fontWeight="bold" fontFamily="monospace">
+                {stage.count} ({total > 0 ? Math.round((stage.count / total) * 100) : 0}%)
+              </text>
+            </g>
+          )
+        })}
+      </svg>
+    </div>
+  )
+}
+
+// ─── Stale Payment Alerts ──────────────────────────────────────────────────
+
+function AlertsSection({ stalePending, onViewAll, now }) {
+  if (stalePending.length === 0) return null
+
+  return (
+    <div className="card-glass rounded-xl p-5 flex flex-col gap-3 border border-gold/20">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-gold text-lg">⚠</span>
+          <h3 className="text-xs font-mono uppercase tracking-widest text-gold">
+            Pagamentos pendentes há mais de 3 dias
+          </h3>
+        </div>
+        <span className="text-sm font-mono font-bold text-gold px-2 py-0.5 rounded bg-gold/10">
+          {stalePending.length}
+        </span>
+      </div>
+      <ul className="flex flex-col gap-1.5">
+        {stalePending.slice(0, 5).map(r => {
+          const daysAgo = Math.floor((now - new Date(r.created_at)) / 86400000)
+          return (
+            <li key={r.id} className="flex items-center justify-between text-sm">
+              <span className="text-white/70 font-display truncate max-w-[200px]">{r.full_name}</span>
+              <span className="text-white/40 font-mono text-xs">{daysAgo} dias atrás</span>
+            </li>
+          )
+        })}
+      </ul>
+      {stalePending.length > 5 && (
+        <span className="text-white/30 text-xs font-mono">
+          ... e mais {stalePending.length - 5}
+        </span>
+      )}
+      {onViewAll && (
+        <button
+          onClick={onViewAll}
+          className="self-start px-3 py-1.5 rounded-lg text-xs font-medium bg-gold/10 text-gold border border-gold/20 hover:bg-gold/20 transition-colors"
+        >
+          Ver todos pendentes
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ─── Auto-refresh / Live Indicator ─────────────────────────────────────────
+
+function RefreshBar({ lastUpdated, autoRefresh, onToggle, isLive }) {
+  const [elapsed, setElapsed] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - lastUpdated) / 1000))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [lastUpdated])
+
+  const formatElapsed = (s) => {
+    if (s < 60) return `${s}s`
+    return `${Math.floor(s / 60)}m ${s % 60}s`
+  }
+
+  return (
+    <div className="flex items-center justify-end gap-4 text-xs font-mono text-white/40">
+      {isLive && (
+        <span className="flex items-center gap-1.5 text-cyan">
+          <span className="w-2 h-2 rounded-full bg-cyan animate-pulse" />
+          LIVE
+        </span>
+      )}
+      <span>Atualizado há {formatElapsed(elapsed)}</span>
+      <button
+        onClick={onToggle}
+        className={`px-2 py-1 rounded text-xs border transition-colors ${
+          autoRefresh
+            ? 'bg-cyan/10 text-cyan border-cyan/20'
+            : 'bg-white/5 text-white/40 border-white/10'
+        }`}
+      >
+        Auto-refresh {autoRefresh ? 'ON' : 'OFF'}
+      </button>
+    </div>
+  )
+}
+
 // ─── Main Component ─────────────────────────────────────────────────────────
 
 export default function AdminDashboard({ onViewRegistration }) {
   const [registrations, setRegistrations] = useState([])
   const [loading, setLoading] = useState(!supabase ? false : true)
   const [error, setError] = useState(!supabase ? 'Supabase não configurado.' : null)
+  const [autoRefresh, setAutoRefresh] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState(() => Date.now())
+  const [isLive, setIsLive] = useState(false)
 
+  const fetchRegistrations = useCallback(async () => {
+    if (!supabase) return
+    const { data, error: fetchError } = await supabase
+      .from('registrations')
+      .select('id, full_name, email, payment_status, occupation_type, ticket_tier, ticket_price, inscription_modality, created_at, dietary_restrictions, is_pcd, pcd_type, ai_experience_level, economic_axes, has_project, project_name')
+      .order('created_at', { ascending: false })
+
+    if (fetchError) {
+      setError(fetchError.message)
+    } else {
+      setRegistrations(data ?? [])
+    }
+    setLastUpdated(Date.now())
+    setLoading(false)
+  }, [])
+
+  // Initial fetch + realtime subscription
   useEffect(() => {
     if (!supabase) return
+    fetchRegistrations() // eslint-disable-line react-hooks/set-state-in-effect
 
-    async function fetchRegistrations() {
-      const { data, error: fetchError } = await supabase
-        .from('registrations')
-        .select('id, full_name, email, payment_status, occupation_type, ticket_tier, ticket_price, inscription_modality, created_at, dietary_restrictions, is_pcd, pcd_type, ai_experience_level, economic_axes, has_project, project_name')
-        .order('created_at', { ascending: false })
+    const channel = supabase
+      .channel('dashboard-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'registrations' }, () => {
+        fetchRegistrations()
+      })
+      .subscribe((status) => {
+        setIsLive(status === 'SUBSCRIBED')
+      })
 
-      if (fetchError) {
-        setError(fetchError.message)
-      } else {
-        setRegistrations(data ?? [])
-      }
-      setLoading(false)
-    }
+    return () => { channel?.unsubscribe() }
+  }, [fetchRegistrations])
 
-    fetchRegistrations()
-  }, [])
+  // Auto-refresh interval
+  useEffect(() => {
+    if (!autoRefresh || !supabase) return
+    const interval = setInterval(fetchRegistrations, 60000)
+    return () => clearInterval(interval)
+  }, [autoRefresh, fetchRegistrations])
 
   const stats = useMemo(() => computeStats(registrations), [registrations])
 
@@ -714,6 +892,14 @@ export default function AdminDashboard({ onViewRegistration }) {
 
   return (
     <div className="flex flex-col gap-6">
+
+      {/* Refresh bar */}
+      <RefreshBar
+        lastUpdated={lastUpdated}
+        autoRefresh={autoRefresh}
+        onToggle={() => setAutoRefresh(v => !v)}
+        isLive={isLive}
+      />
 
       {/* Countdown & Phase */}
       <CountdownBanner />
@@ -745,6 +931,9 @@ export default function AdminDashboard({ onViewRegistration }) {
           borderColor="rgba(255,0,110,0.3)"
         />
       </div>
+
+      {/* Stale payment alerts */}
+      <AlertsSection stalePending={stats.stalePending} now={lastUpdated} />
 
       {/* Capacity bar */}
       <CapacityBar
@@ -804,6 +993,13 @@ export default function AdminDashboard({ onViewRegistration }) {
           color="#3a86ff"
         />
       </div>
+
+      {/* Conversion Funnel */}
+      <ConversionFunnel
+        total={stats.total}
+        pending={stats.pendingCount}
+        confirmed={stats.confirmedCount}
+      />
 
       {/* Timeline chart */}
       <TimelineChart timeline={stats.timeline} />
