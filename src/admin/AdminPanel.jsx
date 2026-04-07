@@ -66,6 +66,7 @@ export default function AdminPanel({ onLogout }) {
           <AdminRegistrations
             selectedId={selectedRegistrationId}
             onClearSelection={() => setSelectedRegistrationId(null)}
+            onSelect={(id) => setSelectedRegistrationId(id)}
           />
         )}
         {activeTab === 'teams' && <AdminTeams />}
