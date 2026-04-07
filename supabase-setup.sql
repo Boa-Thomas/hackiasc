@@ -46,6 +46,9 @@ CREATE TABLE registrations (
   payment_confirmed_at TIMESTAMPTZ,
   payment_notes TEXT,
 
+  -- Early bird expiration (30 min window)
+  price_expires_at TIMESTAMPTZ,
+
   -- LGPD e declarações adicionais
   accept_lgpd BOOLEAN NOT NULL DEFAULT false,
   accept_code_ip BOOLEAN NOT NULL DEFAULT false
@@ -108,7 +111,7 @@ DECLARE
   v_member_count INTEGER;
 BEGIN
   SELECT id, full_name, email, payment_method, ticket_price, ticket_tier,
-         team_name, inscription_modality, is_team_leader
+         team_name, inscription_modality, is_team_leader, price_expires_at
   INTO v_reg
   FROM registrations
   WHERE LOWER(email) = LOWER(p_email)
@@ -149,7 +152,8 @@ BEGIN
     'ticket_tier', v_reg.ticket_tier,
     'team_name', v_reg.team_name,
     'inscription_modality', v_reg.inscription_modality,
-    'member_count', v_member_count
+    'member_count', v_member_count,
+    'price_expires_at', v_reg.price_expires_at
   );
 END;
 $$;
@@ -163,3 +167,4 @@ GRANT EXECUTE ON FUNCTION recover_pending_registration(TEXT) TO anon;
 -- ALTER TABLE registrations ADD COLUMN accept_code_ip BOOLEAN NOT NULL DEFAULT false;
 -- ALTER TABLE registrations ADD COLUMN cpf TEXT NOT NULL DEFAULT '';
 -- ALTER TABLE registrations ALTER COLUMN linkedin_url DROP NOT NULL;
+-- ALTER TABLE registrations ADD COLUMN price_expires_at TIMESTAMPTZ;

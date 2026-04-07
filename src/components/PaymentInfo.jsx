@@ -1,28 +1,58 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { EVENT_CONFIG } from '../lib/config'
 
-export default function PaymentInfo({ paymentMethod, price, email, totalPrice, memberCount, teamName, fullName, registrationId, ticketPrice }) {
-  const { pixKey, pixKeyType } = EVENT_CONFIG.payment
+const REGULAR_PRICE = 20000
+
+export default function PaymentInfo({ price, email, memberCount, teamName, fullName, registrationId, ticketPrice, priceExpiresAt }) {
   const isTeam = memberCount > 1
-  const displayTotal = isTeam ? totalPrice : price
+
+  // Early bird countdown
+  const [timeLeft, setTimeLeft] = useState(null)
+  const [expired, setExpired] = useState(false)
+
+  useEffect(() => {
+    if (!priceExpiresAt || ticketPrice === REGULAR_PRICE) return
+
+    const expiresAt = new Date(priceExpiresAt).getTime()
+
+    const tick = () => {
+      const remaining = expiresAt - Date.now()
+      if (remaining <= 0) {
+        setExpired(true)
+        setTimeLeft(null)
+      } else {
+        const mins = Math.floor(remaining / 60000)
+        const secs = Math.floor((remaining % 60000) / 1000)
+        setTimeLeft(`${mins}:${secs.toString().padStart(2, '0')}`)
+      }
+    }
+
+    tick()
+    const interval = setInterval(tick, 1000)
+    return () => clearInterval(interval)
+  }, [priceExpiresAt, ticketPrice])
+
+  const effectivePrice = expired ? REGULAR_PRICE : ticketPrice
+  const effectivePriceFormatted = `R$ ${(effectivePrice / 100).toFixed(0)},00`
+  const effectiveTotal = effectivePrice * (isTeam ? memberCount : 1)
+  const effectiveTotalFormatted = `R$ ${(effectiveTotal / 100).toFixed(0)},00`
 
   const [redirecting, setRedirecting] = useState(false)
   const [cardError, setCardError] = useState('')
 
-  const handleCardPayment = async () => {
+  const handlePayment = async () => {
     setRedirecting(true)
     setCardError('')
 
     try {
       if (!supabase) {
-        // Fallback: use generic MP link if Supabase not configured
         window.open(EVENT_CONFIG.payment.cardPaymentUrl, '_blank')
         setRedirecting(false)
         return
       }
 
-      const totalAmountCents = isTeam ? ticketPrice * memberCount : ticketPrice
+      const totalAmountCents = isTeam ? effectivePrice * memberCount : effectivePrice
       const description = isTeam
         ? `Inscrição equipe "${teamName}" — ${memberCount} participantes — AI Venture Hackathon 2026`
         : `Inscrição ${fullName} — AI Venture Hackathon 2026`
@@ -39,15 +69,14 @@ export default function PaymentInfo({ paymentMethod, price, email, totalPrice, m
 
       if (error || !data?.init_point) {
         console.error('Preference error:', error || data)
-        setCardError('Erro ao gerar link de pagamento. Tente novamente ou use PIX.')
+        setCardError('Erro ao gerar link de pagamento. Tente novamente.')
         setRedirecting(false)
         return
       }
 
-      // Redirect to Mercado Pago Checkout Pro
       window.location.href = data.init_point
     } catch (err) {
-      console.error('Card payment error:', err)
+      console.error('Payment error:', err)
       setCardError('Erro ao conectar com o Mercado Pago. Tente novamente.')
       setRedirecting(false)
     }
@@ -71,6 +100,22 @@ export default function PaymentInfo({ paymentMethod, price, email, totalPrice, m
         <span className="w-2 h-2 rounded-full bg-gold animate-pulse" />
         Pagamento Pendente
       </div>
+
+      {/* Early bird countdown */}
+      {priceExpiresAt && ticketPrice !== REGULAR_PRICE && !expired && timeLeft && (
+        <div className="bg-cyan/5 border border-cyan/20 rounded-xl p-4 mb-6 inline-block">
+          <p className="text-xs text-text-muted mb-1">Preço Early Bird garantido por</p>
+          <p className="text-2xl font-bold font-mono text-cyan">{timeLeft}</p>
+          <p className="text-xs text-text-muted mt-1">Após esse tempo, o valor será R$ 200,00</p>
+        </div>
+      )}
+
+      {expired && ticketPrice !== REGULAR_PRICE && (
+        <div className="bg-gold/5 border border-gold/20 rounded-xl p-4 mb-6 inline-block">
+          <p className="text-sm text-gold font-semibold">Período Early Bird expirado</p>
+          <p className="text-xs text-text-muted mt-1">O valor foi atualizado para <strong className="text-white">R$ 200,00</strong> por pessoa.</p>
+        </div>
+      )}
 
       <p className="text-text-muted mb-8">
         {isTeam
@@ -103,140 +148,64 @@ export default function PaymentInfo({ paymentMethod, price, email, totalPrice, m
             </>
           )}
           <div>
-            <span className="text-text-muted">Forma de Pagamento</span>
-            <p className="text-white font-semibold">{paymentMethod === 'pix' ? 'Pix' : 'Cartão'}</p>
-          </div>
-          <div>
             <span className="text-text-muted">Valor Total</span>
             <p className="text-white font-semibold font-mono text-lg">
-              {displayTotal}
-              {isTeam && <span className="text-xs text-text-muted font-normal ml-1">({price} × {memberCount})</span>}
+              {effectiveTotalFormatted}
+              {isTeam && <span className="text-xs text-text-muted font-normal ml-1">({effectivePriceFormatted} × {memberCount})</span>}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Payment instructions */}
+      {/* Payment button */}
       <div className="card-glass rounded-2xl p-8 text-left mb-6">
-        <h3 className="text-sm font-mono text-electric tracking-wider uppercase mb-6">Instruções de Pagamento</h3>
+        <h3 className="text-sm font-mono text-electric tracking-wider uppercase mb-6">Pagamento</h3>
 
-        {paymentMethod === 'pix' ? (
-          <div className="space-y-6">
-            <div>
-              <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 rounded-lg bg-cyan/10 flex items-center justify-center text-cyan text-sm font-mono">P</span>
-                Pagamento via Pix
-              </h4>
+        <div className="bg-electric/5 border border-electric/20 rounded-xl p-4 mb-4 text-center">
+          <p className="text-xs text-text-muted mb-1">Valor total</p>
+          <p className="text-3xl font-bold font-mono text-electric">{effectiveTotalFormatted}</p>
+          {isTeam && <p className="text-xs text-text-muted mt-1">{effectivePriceFormatted} × {memberCount} participantes</p>}
+        </div>
 
-              {/* Value to transfer */}
-              <div className="bg-cyan/5 border border-cyan/20 rounded-xl p-4 mb-4 text-center">
-                <p className="text-xs text-text-muted mb-1">Valor a transferir</p>
-                <p className="text-3xl font-bold font-mono text-cyan">{displayTotal}</p>
-              </div>
+        <button
+          onClick={handlePayment}
+          disabled={redirecting}
+          className="block w-full py-4 px-8 bg-gradient-to-r from-electric to-violet text-white font-bold text-center rounded-xl transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(58,134,255,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+        >
+          {redirecting ? (
+            <span className="inline-flex items-center gap-2">
+              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Redirecionando para o Mercado Pago...
+            </span>
+          ) : (
+            'Pagar com Mercado Pago'
+          )}
+        </button>
 
-              {/* QR Code placeholder */}
-              <div className="bg-white rounded-xl p-6 mx-auto w-fit mb-4">
-                <div className="w-48 h-48 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm text-center font-mono">
-                  QR Code<br />em breve
-                </div>
-              </div>
+        <p className="text-xs text-text-muted mt-3 text-center">
+          Você será redirecionado para o Mercado Pago. Aceita Pix, cartão de crédito e débito.
+        </p>
 
-              {/* Pix key */}
-              <div className="bg-dark rounded-xl p-4">
-                <p className="text-xs text-text-muted mb-2">Chave Pix ({pixKeyType})</p>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 text-sm font-mono text-cyan bg-cyan/5 px-3 py-2 rounded-lg break-all">
-                    {pixKey}
-                  </code>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(pixKey)}
-                    className="px-3 py-2 text-xs bg-cyan/10 text-cyan rounded-lg hover:bg-cyan/20 transition-colors"
-                  >
-                    Copiar
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-gold/5 border border-gold/20 rounded-xl p-4">
-              <p className="text-sm text-gold font-semibold mb-1">Importante</p>
-              <p className="text-xs text-text-muted">
-                {isTeam
-                  ? `Inclua o nome da equipe "${teamName}" na descrição do Pix.`
-                  : `Inclua seu e-mail (${email}) na descrição do Pix.`
-                }
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div>
-              <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 rounded-lg bg-electric/10 flex items-center justify-center text-electric text-sm font-mono">C</span>
-                Pagamento via Cartão
-              </h4>
-
-              {/* Value display */}
-              <div className="bg-electric/5 border border-electric/20 rounded-xl p-4 mb-4 text-center">
-                <p className="text-xs text-text-muted mb-1">Valor total</p>
-                <p className="text-3xl font-bold font-mono text-electric">{displayTotal}</p>
-                {isTeam && <p className="text-xs text-text-muted mt-1">{price} × {memberCount} participantes</p>}
-              </div>
-
-              <button
-                onClick={handleCardPayment}
-                disabled={redirecting}
-                className="block w-full py-4 px-8 bg-gradient-to-r from-electric to-violet text-white font-bold text-center rounded-xl transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(58,134,255,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-              >
-                {redirecting ? (
-                  <span className="inline-flex items-center gap-2">
-                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Redirecionando para o Mercado Pago...
-                  </span>
-                ) : (
-                  'Pagar com Mercado Pago'
-                )}
-              </button>
-
-              <p className="text-xs text-text-muted mt-3 text-center">
-                Você será redirecionado para o Checkout do Mercado Pago com o valor já preenchido.
-              </p>
-
-              {cardError && (
-                <div className="bg-hot/5 border border-hot/20 rounded-xl p-4 mt-4">
-                  <p className="text-sm text-hot">{cardError}</p>
-                </div>
-              )}
-            </div>
-
-            <div className="bg-gold/5 border border-gold/20 rounded-xl p-4">
-              <p className="text-sm text-gold font-semibold mb-1">Importante</p>
-              <p className="text-xs text-text-muted">
-                O pagamento é processado de forma segura pelo Mercado Pago. Após a confirmação, sua inscrição será validada automaticamente.
-              </p>
-            </div>
+        {cardError && (
+          <div className="bg-hot/5 border border-hot/20 rounded-xl p-4 mt-4">
+            <p className="text-sm text-hot">{cardError}</p>
           </div>
         )}
       </div>
 
-      {/* Validation notice */}
+      {/* Confirmation notice */}
       <div className="bg-violet/5 border border-violet/20 rounded-2xl p-6 text-left mb-6">
         <div className="flex items-start gap-3">
           <svg className="w-5 h-5 text-violet flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
           </svg>
           <div>
-            <p className="text-sm font-semibold text-white mb-1">
-              {paymentMethod === 'card' ? 'Confirmação automática' : 'Validação em até 24h corridas'}
-            </p>
+            <p className="text-sm font-semibold text-white mb-1">Confirmação automática</p>
             <p className="text-xs text-text-muted leading-relaxed">
-              {paymentMethod === 'card'
-                ? 'Pagamentos via cartão são confirmados automaticamente pelo Mercado Pago. Você receberá um e-mail de confirmação e será adicionado(a) ao grupo oficial de WhatsApp do evento.'
-                : <>Após a confirmação do pagamento, validaremos sua inscrição em até <strong className="text-white">24 horas corridas</strong>. Você receberá um e-mail de confirmação e será adicionado(a) ao grupo oficial de WhatsApp do evento.</>
-              }
+              O pagamento é confirmado automaticamente pelo Mercado Pago. Você receberá um e-mail de confirmação e será adicionado(a) ao grupo oficial de WhatsApp do evento.
             </p>
           </div>
         </div>
@@ -246,22 +215,13 @@ export default function PaymentInfo({ paymentMethod, price, email, totalPrice, m
       <div className="card-glass rounded-2xl p-6 text-left mb-6">
         <h3 className="text-sm font-bold text-white mb-4">Próximos Passos</h3>
         <ol className="space-y-3">
-          {(paymentMethod === 'card'
-            ? [
-                'Clique em "Pagar com Mercado Pago" acima.',
-                'Complete o pagamento no Checkout do Mercado Pago.',
-                'A confirmação é automática — você receberá um e-mail.',
-                'Será adicionado(a) ao grupo oficial de WhatsApp.',
-                'Dia 22/05, apareça no CIB às 18:30!',
-              ]
-            : [
-                `Realize o pagamento de ${displayTotal} usando as instruções acima.`,
-                'Aguarde a validação da inscrição (até 24h corridas).',
-                'Você receberá um e-mail de confirmação.',
-                'Será adicionado(a) ao grupo oficial de WhatsApp.',
-                'Dia 22/05, apareça no CIB às 18:30!',
-              ]
-          ).map((step, i) => (
+          {[
+            'Clique em "Pagar com Mercado Pago" acima.',
+            'Complete o pagamento (Pix, crédito ou débito).',
+            'A confirmação é automática — você receberá um e-mail.',
+            'Será adicionado(a) ao grupo oficial de WhatsApp.',
+            'Dia 22/05, apareça no CIB às 18:30!',
+          ].map((step, i) => (
             <li key={i} className="flex gap-3 text-sm text-text-muted">
               <span className="flex-shrink-0 w-6 h-6 rounded-full bg-electric/10 text-electric text-xs font-mono flex items-center justify-center">
                 {i + 1}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { supabase } from '../lib/supabase'
 import { useTicketPrice } from '../hooks/useTicketPrice'
@@ -359,7 +359,7 @@ export default function RegistrationForm() {
   const { register, handleSubmit, watch, formState: { errors } } = useForm({
     defaultValues: {
       inscription_modality: 'individual_form_team',
-      payment_method: 'pix',
+      payment_method: 'card',
       has_project: 'no',
       is_pcd: 'no',
     },
@@ -381,7 +381,6 @@ export default function RegistrationForm() {
   const { currentPrice, currentPriceFormatted, earlyBirdAvailable, earlyBirdSpotsLeft, tier, loading } = useTicketPrice()
 
   const inscriptionModality = watch('inscription_modality')
-  const paymentMethod = watch('payment_method')
   const hasProject = watch('has_project')
   const isPcd = watch('is_pcd')
 
@@ -390,6 +389,11 @@ export default function RegistrationForm() {
   const totalPrice = currentPrice * totalPeople
   const totalPriceFormatted = `R$ ${(totalPrice / 100).toFixed(0)},00`
   const isTeamWithMembers = inscriptionModality === 'team' && teamMembers.length > 0
+
+  // Scroll to top when form is submitted
+  useEffect(() => {
+    if (submitted) window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [submitted])
 
   // Team member helpers
   const addMember = () => {
@@ -464,6 +468,7 @@ export default function RegistrationForm() {
         memberCount,
         totalPriceFormatted: totalFormatted,
         priceFormatted: perPersonFormatted,
+        price_expires_at: data.price_expires_at,
       })
       setSubmitted(true)
       setRecovering(false)
@@ -512,6 +517,7 @@ export default function RegistrationForm() {
       payment_method: data.payment_method,
       ticket_tier: tier,
       ticket_price: currentPrice,
+      price_expires_at: tier === 'early_bird' ? new Date(Date.now() + 30 * 60 * 1000).toISOString() : null,
       accept_lgpd: data.accept_lgpd || false,
       accept_code_ip: data.accept_code_ip || false,
     }
@@ -588,6 +594,7 @@ export default function RegistrationForm() {
       memberCount: totalPeople,
       totalPriceFormatted,
       registration_id: leaderId,
+      price_expires_at: leaderBase.price_expires_at,
     })
     setSubmitted(true)
     setSubmitting(false)
@@ -598,15 +605,14 @@ export default function RegistrationForm() {
       <section id="inscricao" className="relative py-24 sm:py-32">
         <div className="max-w-2xl mx-auto px-4 sm:px-6">
           <PaymentInfo
-            paymentMethod={submittedData?.payment_method}
             price={submittedData?.priceFormatted || currentPriceFormatted}
             email={submittedData?.email}
-            totalPrice={submittedData?.totalPriceFormatted}
             memberCount={submittedData?.memberCount}
             fullName={submittedData?.full_name}
             teamName={submittedData?.team_name}
             registrationId={submittedData?.registration_id}
             ticketPrice={submittedData?.ticket_price}
+            priceExpiresAt={submittedData?.price_expires_at}
           />
         </div>
       </section>
@@ -1001,26 +1007,6 @@ export default function RegistrationForm() {
                 </div>
               </div>
             )}
-          </fieldset>
-
-          {/* ===== PAGAMENTO ===== */}
-          <fieldset className="card-glass rounded-2xl p-6 sm:p-8 space-y-5">
-            <legend className="text-sm font-mono text-electric tracking-wider uppercase mb-2">Pagamento</legend>
-            <div>
-              <label className={LBL}>Forma de Pagamento *</label>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { value: 'pix', label: 'Pix', desc: 'Sem taxas' },
-                  { value: 'card', label: 'Cartão', desc: 'Link de pagamento' },
-                ].map(({ value, label, desc }) => (
-                  <label key={value} className={`flex flex-col p-4 rounded-xl border cursor-pointer transition-all ${paymentMethod === value ? 'border-cyan bg-cyan/5 text-white' : 'border-dark-border bg-dark hover:border-text-muted text-text-muted'}`}>
-                    <input type="radio" value={value} {...register('payment_method')} className="sr-only" />
-                    <span className="font-semibold text-sm">{label}</span>
-                    <span className="text-xs mt-1 opacity-70">{desc}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
           </fieldset>
 
           {/* Submit */}

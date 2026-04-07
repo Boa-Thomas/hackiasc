@@ -30,10 +30,10 @@ const STATUS_CONFIG = {
     title: 'Pagamento não aprovado',
     badge: 'Pagamento Recusado',
     badgeColor: 'border-hot/30 bg-hot/5 text-hot',
-    message: 'O pagamento não foi processado. Sua inscrição continua ativa — você pode tentar novamente ou optar por pagamento via Pix.',
+    message: 'O pagamento não foi processado. Sua inscrição continua ativa — volte ao site e tente novamente.',
     steps: [
       'Verifique os dados do cartão e tente novamente.',
-      'Ou realize o pagamento via Pix (chave abaixo).',
+      'Tente novamente pelo site usando "Já se inscreveu?".',
       'Após a confirmação, você será adicionado(a) ao grupo de WhatsApp.',
       'Dúvidas? Entre em contato conosco.',
     ],
@@ -113,27 +113,6 @@ export default function PaymentReturn({ status, onBack }) {
               ))}
             </ol>
           </div>
-
-          {/* Pix fallback for failure */}
-          {status === 'failure' && (
-            <div className="card-glass rounded-2xl p-6 text-left mb-8">
-              <h3 className="text-sm font-mono text-cyan tracking-wider uppercase mb-4">Alternativa: Pix</h3>
-              <div className="bg-dark rounded-xl p-4">
-                <p className="text-xs text-text-muted mb-2">Chave Pix ({EVENT_CONFIG.payment.pixKeyType})</p>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 text-sm font-mono text-cyan bg-cyan/5 px-3 py-2 rounded-lg break-all">
-                    {EVENT_CONFIG.payment.pixKey}
-                  </code>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(EVENT_CONFIG.payment.pixKey)}
-                    className="px-3 py-2 text-xs bg-cyan/10 text-cyan rounded-lg hover:bg-cyan/20 transition-colors"
-                  >
-                    Copiar
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* WhatsApp group */}
           <a

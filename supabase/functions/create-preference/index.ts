@@ -31,7 +31,28 @@ Deno.serve(async (req: Request) => {
 
     const siteUrl = Deno.env.get('SITE_URL') || 'https://hackiasc.com'
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const webhookUrl = `${supabaseUrl}/functions/v1/mp-webhook`
+
+    // Check early bird expiration — if expired, use regular price (R$200)
+    const REGULAR_PRICE = 20000
+    let effectiveAmount = amount
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    const { data: reg } = await supabase
+      .from('registrations')
+      .select('price_expires_at, ticket_price')
+      .eq('id', registration_id)
+      .single()
+
+    if (reg?.price_expires_at && new Date(reg.price_expires_at) < new Date()) {
+      // Early bird expired — update to regular price
+      effectiveAmount = REGULAR_PRICE
+      await supabase
+        .from('registrations')
+        .update({ ticket_price: REGULAR_PRICE, ticket_tier: 'regular' })
+        .eq('id', registration_id)
+    }
 
     // Create Mercado Pago preference
     const preference = {
@@ -41,7 +62,7 @@ Deno.serve(async (req: Request) => {
           title: description || 'Inscrição — AI Venture Hackathon Blumenau 2026',
           currency_id: 'BRL',
           quantity: 1,
-          unit_price: amount / 100, // amount comes in cents, MP expects BRL
+          unit_price: effectiveAmount / 100, // amount in cents, MP expects BRL
         },
       ],
       payer: {
@@ -86,9 +107,6 @@ Deno.serve(async (req: Request) => {
     const mpData = await mpResponse.json()
 
     // Store preference ID in registration for tracking
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
     await supabase
       .from('registrations')
       .update({ payment_notes: `mp_preference:${mpData.id}` })
