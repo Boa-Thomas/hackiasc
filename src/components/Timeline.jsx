@@ -63,11 +63,11 @@ export default function Timeline() {
             <div key={day} className="card-glass rounded-2xl overflow-hidden">
               {/* Day header */}
               <div className={`px-6 py-5 border-b border-dark-border bg-${color}/5`}>
-                <div className="flex items-baseline justify-between">
-                  <h3 className={`text-2xl font-bold text-${color}`}>{day}</h3>
-                  <span className="font-mono text-sm text-text-muted">{date}</span>
+                <div className="flex items-baseline justify-between gap-2">
+                  <h3 className={`text-xl sm:text-2xl font-bold text-${color}`}>{day}</h3>
+                  <span className="font-mono text-xs sm:text-sm text-text-muted">{date}</span>
                 </div>
-                <p className="font-mono text-xs text-text-muted mt-1">{time}</p>
+                <p className="font-mono text-[10px] sm:text-xs text-text-muted mt-1">{time}</p>
               </div>
 
               {/* Events */}

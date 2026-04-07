@@ -126,7 +126,7 @@ export default function PaymentInfo({ price, email, memberCount, teamName, fullN
       {/* Registration summary */}
       <div className="card-glass rounded-2xl p-6 text-left mb-6">
         <h3 className="text-sm font-mono text-electric tracking-wider uppercase mb-4">Resumo da Inscrição</h3>
-        <div className="grid grid-cols-2 gap-3 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
           <div>
             <span className="text-text-muted">Nome</span>
             <p className="text-white font-semibold">{fullName}</p>

@@ -65,33 +65,42 @@ export default function Prizes() {
           ))}
         </div>
 
-        {/* Evaluation criteria — single bar */}
+        {/* Evaluation criteria */}
         <div className="card-glass rounded-2xl p-6 sm:p-8">
           <h3 className="text-lg font-bold text-white mb-5 text-center">Critérios de Avaliação</h3>
 
-          {/* Labels above the bar */}
-          <div className="flex mb-2">
+          {/* Mobile: stacked list */}
+          <div className="sm:hidden space-y-3">
             {CRITERIA.map(({ name, weight, hex }) => (
-              <div key={name} className="text-center" style={{ width: weight }}>
-                <span className="block font-mono text-base sm:text-lg font-bold" style={{ color: hex }}>
-                  {weight}
-                </span>
-                <span className="block text-[10px] sm:text-xs text-text-muted leading-tight">
-                  {name}
-                </span>
+              <div key={name} className="flex items-center gap-3">
+                <div className="w-2 h-8 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />
+                <div className="flex-1">
+                  <span className="text-sm font-semibold text-white">{name}</span>
+                </div>
+                <span className="font-mono text-lg font-bold flex-shrink-0" style={{ color: hex }}>{weight}</span>
               </div>
             ))}
           </div>
 
-          {/* Single segmented bar */}
-          <div className="flex h-3 rounded-full overflow-hidden gap-0.5">
-            {CRITERIA.map(({ name, weight, hex }) => (
-              <div
-                key={name}
-                className="rounded-sm"
-                style={{ width: weight, backgroundColor: hex }}
-              />
-            ))}
+          {/* Desktop: bar chart */}
+          <div className="hidden sm:block">
+            <div className="flex mb-2">
+              {CRITERIA.map(({ name, weight, hex }) => (
+                <div key={name} className="text-center" style={{ width: weight }}>
+                  <span className="block font-mono text-base sm:text-lg font-bold" style={{ color: hex }}>
+                    {weight}
+                  </span>
+                  <span className="block text-[10px] sm:text-xs text-text-muted leading-tight">
+                    {name}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="flex h-3 rounded-full overflow-hidden gap-0.5">
+              {CRITERIA.map(({ name, weight, hex }) => (
+                <div key={name} className="rounded-sm" style={{ width: weight, backgroundColor: hex }} />
+              ))}
+            </div>
           </div>
 
           <p className="text-[10px] sm:text-xs text-text-muted text-center mt-4 font-mono">

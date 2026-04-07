@@ -777,9 +777,9 @@ export default function RegistrationForm() {
             <div>
               <label className={LBL}>Qual seu nível de experiência com IA? *</label>
               <p className="text-xs text-text-muted mb-3">1 = Nenhum/Iniciante — 10 = Avançado/Especialista</p>
-              <div className="flex gap-2 justify-between">
+              <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
                 {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                  <label key={n} className={`flex-1 text-center py-2.5 rounded-lg border cursor-pointer transition-all font-mono text-sm ${parseInt(watch('ai_experience_level')) === n ? 'border-cyan bg-cyan/10 text-cyan font-bold' : 'border-dark-border bg-dark text-text-muted hover:border-text-muted'}`}>
+                  <label key={n} className={`text-center py-2.5 rounded-lg border cursor-pointer transition-all font-mono text-sm ${parseInt(watch('ai_experience_level')) === n ? 'border-cyan bg-cyan/10 text-cyan font-bold' : 'border-dark-border bg-dark text-text-muted hover:border-text-muted'}`}>
                     <input type="radio" value={n} {...register('ai_experience_level', { required: 'Selecione seu nível' })} className="sr-only" />
                     {n}
                   </label>

@@ -50,15 +50,15 @@ export default function Hero() {
         </div>
 
         {/* Stats */}
-        <div className="animate-slide-up mt-16 grid grid-cols-3 gap-4 sm:gap-8 max-w-lg mx-auto" style={{ animationDelay: '500ms' }}>
+        <div className="animate-slide-up mt-16 grid grid-cols-3 gap-3 sm:gap-8 max-w-lg mx-auto" style={{ animationDelay: '500ms' }}>
           {[
             { value: '3', label: 'Dias' },
-            { value: 'R$9k+', label: 'Em Prêmios' },
-            { value: '60-100', label: 'Participantes' },
+            { value: 'R$9k+', label: 'Prêmios' },
+            { value: '60-100', label: 'Pessoas' },
           ].map(({ value, label }) => (
             <div key={label} className="text-center">
-              <div className="text-2xl sm:text-3xl font-bold font-mono text-white">{value}</div>
-              <div className="text-xs sm:text-sm text-text-muted mt-1">{label}</div>
+              <div className="text-xl sm:text-3xl font-bold font-mono text-white">{value}</div>
+              <div className="text-[10px] sm:text-sm text-text-muted mt-1">{label}</div>
             </div>
           ))}
         </div>
