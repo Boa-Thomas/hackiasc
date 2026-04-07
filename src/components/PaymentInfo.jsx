@@ -95,7 +95,23 @@ export default function PaymentInfo({ price, email, memberCount, teamName, fullN
       })
 
       if (error || !data?.init_point) {
-        console.error('Preference error:', error || data)
+        console.error('Preference error:', error?.message || 'No init_point returned')
+        setCardError('Erro ao gerar link de pagamento. Tente novamente.')
+        setRedirecting(false)
+        return
+      }
+
+      const allowedOrigins = ['https://www.mercadopago.com.br', 'https://checkout.mercadopago.com.br', 'https://www.mercadopago.com']
+      try {
+        const redirectUrl = new URL(data.init_point)
+        if (!allowedOrigins.some(origin => redirectUrl.origin === origin)) {
+          console.error('Blocked redirect to untrusted domain')
+          setCardError('Erro ao gerar link de pagamento. Tente novamente.')
+          setRedirecting(false)
+          return
+        }
+      } catch {
+        console.error('Invalid payment URL received')
         setCardError('Erro ao gerar link de pagamento. Tente novamente.')
         setRedirecting(false)
         return
@@ -103,7 +119,7 @@ export default function PaymentInfo({ price, email, memberCount, teamName, fullN
 
       window.location.href = data.init_point
     } catch (err) {
-      console.error('Payment error:', err)
+      console.error('Payment error:', err?.message || 'Unknown error')
       setCardError('Erro ao conectar com o Mercado Pago. Tente novamente.')
       setRedirecting(false)
     }

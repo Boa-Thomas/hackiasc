@@ -119,10 +119,7 @@ BEGIN
   LIMIT 1;
 
   IF NOT FOUND THEN
-    PERFORM 1 FROM registrations WHERE LOWER(email) = LOWER(p_email) LIMIT 1;
-    IF FOUND THEN
-      RETURN json_build_object('status', 'already_processed');
-    END IF;
+    -- Return NULL for both "not found" and "already processed" to prevent email enumeration
     RETURN NULL;
   END IF;
 
@@ -159,6 +156,33 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION recover_pending_registration(TEXT) TO anon;
+
+-- ============================================================
+-- Trigger: Limit team size to 6 members
+-- ============================================================
+CREATE OR REPLACE FUNCTION check_team_size()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_count INTEGER;
+BEGIN
+  IF NEW.team_name IS NOT NULL THEN
+    SELECT COUNT(*) INTO v_count
+    FROM registrations
+    WHERE team_name = NEW.team_name;
+    IF v_count >= 6 THEN
+      RAISE EXCEPTION 'Team size cannot exceed 6 members';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_check_team_size
+  BEFORE INSERT ON registrations
+  FOR EACH ROW
+  EXECUTE FUNCTION check_team_size();
 
 -- ============================================================
 -- MIGRATION: Run on existing databases
