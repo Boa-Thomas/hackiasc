@@ -19,6 +19,7 @@ const EMPTY_MEMBER = {
   phone: '',
   birth_date: '',
   linkedin_url: '',
+  cpf: '',
   occupation_type: '',
   ai_experience_level: '',
   dietary_restrictions: '',
@@ -38,7 +39,7 @@ function validateMember(member) {
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(member.email.trim())) errs.email = 'E-mail inválido'
   if (!member.phone.trim()) errs.phone = 'Telefone obrigatório'
   if (!member.birth_date) errs.birth_date = 'Data obrigatória'
-  if (!member.linkedin_url.trim()) errs.linkedin_url = 'LinkedIn obrigatório'
+  if (!member.cpf.trim()) errs.cpf = 'CPF obrigatório'
   if (!member.occupation_type) errs.occupation_type = 'Selecione um perfil'
   if (!member.ai_experience_level) errs.ai_experience_level = 'Selecione um nível'
   if (!member.dietary_restrictions.trim()) errs.dietary_restrictions = 'Campo obrigatório'
@@ -150,9 +151,21 @@ function MemberCard({ index, member, errors, onChange, onRemove }) {
             </div>
           </div>
 
+          {/* CPF */}
+          <div>
+            <label className={LBL}>CPF *</label>
+            <input
+              value={member.cpf}
+              onChange={e => onChange('cpf', e.target.value)}
+              className={INPUT}
+              placeholder="000.000.000-00"
+            />
+            {errors.cpf && <p className={ERR}>{errors.cpf}</p>}
+          </div>
+
           {/* LinkedIn */}
           <div>
-            <label className={LBL}>LinkedIn *</label>
+            <label className={LBL}>LinkedIn (opcional)</label>
             <input
               type="url"
               value={member.linkedin_url}
@@ -160,7 +173,6 @@ function MemberCard({ index, member, errors, onChange, onRemove }) {
               className={INPUT}
               placeholder="https://linkedin.com/in/..."
             />
-            {errors.linkedin_url && <p className={ERR}>{errors.linkedin_url}</p>}
           </div>
 
           {/* Perfil + Nível IA — compact side-by-side */}
@@ -360,6 +372,12 @@ export default function RegistrationForm() {
   const [teamMembers, setTeamMembers] = useState([])
   const [memberErrors, setMemberErrors] = useState([])
 
+  // Recovery state
+  const [recovering, setRecovering] = useState(false)
+  const [recoveryEmail, setRecoveryEmail] = useState('')
+  const [showRecovery, setShowRecovery] = useState(false)
+  const [recoveryError, setRecoveryError] = useState('')
+
   const { currentPrice, currentPriceFormatted, earlyBirdAvailable, earlyBirdSpotsLeft, tier, loading } = useTicketPrice()
 
   const inscriptionModality = watch('inscription_modality')
@@ -403,6 +421,60 @@ export default function RegistrationForm() {
     }))
   }
 
+  // ─── Recovery helper ──────────────────────────────────────────────────────
+  const recoverRegistration = async (email) => {
+    if (!supabase || !email?.trim()) return { success: false, message: 'Informe um e-mail válido.' }
+    setRecovering(true)
+    setRecoveryError('')
+
+    try {
+      const { data, error } = await supabase.rpc('recover_pending_registration', {
+        p_email: email.trim().toLowerCase(),
+      })
+
+      if (error) {
+        console.error('Recovery RPC error:', error)
+        setRecovering(false)
+        return { success: false, message: 'Erro ao buscar inscrição. Tente novamente.' }
+      }
+
+      if (!data) {
+        setRecovering(false)
+        return { success: false, message: 'Nenhuma inscrição pendente encontrada para esse e-mail.' }
+      }
+
+      if (data.status === 'already_processed') {
+        setRecovering(false)
+        return { success: false, message: 'Essa inscrição já foi confirmada ou cancelada. Em caso de dúvidas, entre em contato.' }
+      }
+
+      const memberCount = data.member_count || 1
+      const ticketPrice = data.ticket_price
+      const perPersonFormatted = `R$ ${(ticketPrice / 100).toFixed(0)},00`
+      const totalFormatted = `R$ ${(ticketPrice * memberCount / 100).toFixed(0)},00`
+
+      setSubmittedData({
+        registration_id: data.id,
+        full_name: data.full_name,
+        email: data.email,
+        payment_method: data.payment_method,
+        ticket_price: ticketPrice,
+        ticket_tier: data.ticket_tier,
+        team_name: data.team_name,
+        memberCount,
+        totalPriceFormatted: totalFormatted,
+        priceFormatted: perPersonFormatted,
+      })
+      setSubmitted(true)
+      setRecovering(false)
+      return { success: true }
+    } catch (err) {
+      console.error('Recovery error:', err)
+      setRecovering(false)
+      return { success: false, message: 'Erro inesperado. Tente novamente.' }
+    }
+  }
+
   const onSubmit = async (data) => {
     setSubmitting(true)
     setSubmitError('')
@@ -426,6 +498,7 @@ export default function RegistrationForm() {
       phone: data.phone.trim(),
       birth_date: data.birth_date,
       linkedin_url: data.linkedin_url?.trim() || null,
+      cpf: data.cpf?.trim() || '',
       occupation_type: data.occupation_type,
       ai_experience_level: parseInt(data.ai_experience_level),
       dietary_restrictions: data.dietary_restrictions?.trim() || '',
@@ -468,6 +541,7 @@ export default function RegistrationForm() {
         phone: m.phone.trim(),
         birth_date: m.birth_date,
         linkedin_url: m.linkedin_url?.trim() || null,
+        cpf: m.cpf?.trim() || '',
         occupation_type: m.occupation_type,
         ai_experience_level: parseInt(m.ai_experience_level),
         dietary_restrictions: m.dietary_restrictions?.trim() || '',
@@ -496,7 +570,10 @@ export default function RegistrationForm() {
 
     if (insertError) {
       if (insertError.code === '23505') {
-        setSubmitError('Um dos e-mails informados já está cadastrado. Verifique os dados e tente novamente.')
+        const result = await recoverRegistration(data.email)
+        if (!result.success) {
+          setSubmitError(result.message)
+        }
       } else {
         setSubmitError('Erro ao enviar inscrição. Tente novamente.')
         console.error(insertError)
@@ -522,7 +599,7 @@ export default function RegistrationForm() {
         <div className="max-w-2xl mx-auto px-4 sm:px-6">
           <PaymentInfo
             paymentMethod={submittedData?.payment_method}
-            price={currentPriceFormatted}
+            price={submittedData?.priceFormatted || currentPriceFormatted}
             email={submittedData?.email}
             totalPrice={submittedData?.totalPriceFormatted}
             memberCount={submittedData?.memberCount}
@@ -576,6 +653,46 @@ export default function RegistrationForm() {
             )}
           </div>
           <p className="text-xs text-text-muted mt-3">Inclui alimentação completa, crachá e kit do participante</p>
+
+          {/* Recovery link */}
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => setShowRecovery(r => !r)}
+              className="text-sm text-electric hover:text-cyan transition-colors underline underline-offset-2"
+            >
+              Já se inscreveu? Clique aqui para finalizar o pagamento
+            </button>
+
+            {showRecovery && (
+              <div className="mt-4 card-glass rounded-2xl p-6 max-w-md mx-auto text-left">
+                <p className="text-sm text-text-muted mb-3">
+                  Digite o e-mail usado na inscrição para recuperar seus dados de pagamento.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={recoveryEmail}
+                    onChange={e => setRecoveryEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                    className={INPUT}
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const result = await recoverRegistration(recoveryEmail)
+                      if (!result.success) setRecoveryError(result.message)
+                    }}
+                    disabled={recovering || !recoveryEmail.trim()}
+                    className="px-4 py-3 bg-electric text-dark font-semibold text-sm rounded-xl hover:bg-cyan transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  >
+                    {recovering ? 'Buscando...' : 'Recuperar'}
+                  </button>
+                </div>
+                {recoveryError && <p className="text-hot text-xs mt-2">{recoveryError}</p>}
+              </div>
+            )}
+          </div>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
@@ -611,9 +728,14 @@ export default function RegistrationForm() {
             </div>
 
             <div>
-              <label className={LBL}>LinkedIn *</label>
-              <input type="url" {...register('linkedin_url', { required: 'LinkedIn obrigatório' })} className={INPUT} placeholder="https://linkedin.com/in/..." />
-              {errors.linkedin_url && <p className={ERR}>{errors.linkedin_url.message}</p>}
+              <label className={LBL}>CPF *</label>
+              <input {...register('cpf', { required: 'CPF obrigatório' })} className={INPUT} placeholder="000.000.000-00" />
+              {errors.cpf && <p className={ERR}>{errors.cpf.message}</p>}
+            </div>
+
+            <div>
+              <label className={LBL}>LinkedIn (opcional)</label>
+              <input type="url" {...register('linkedin_url')} className={INPUT} placeholder="https://linkedin.com/in/..." />
             </div>
           </fieldset>
 

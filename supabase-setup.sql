@@ -13,7 +13,8 @@ CREATE TABLE registrations (
   email TEXT NOT NULL UNIQUE,
   phone TEXT NOT NULL,
   birth_date DATE NOT NULL,
-  linkedin_url TEXT NOT NULL,
+  linkedin_url TEXT,
+  cpf TEXT NOT NULL,
 
   -- Perfil
   occupation_type TEXT NOT NULL CHECK (occupation_type IN ('hacker','hustler','hipster','enthusiast')),
@@ -94,7 +95,71 @@ $$;
 GRANT EXECUTE ON FUNCTION get_confirmed_count() TO anon;
 
 -- ============================================================
--- MIGRATION: Add LGPD consent columns (run on existing databases)
+-- RPC: Recover pending registration for payment retry
+-- ============================================================
+CREATE OR REPLACE FUNCTION recover_pending_registration(p_email TEXT)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+AS $$
+DECLARE
+  v_reg RECORD;
+  v_member_count INTEGER;
+BEGIN
+  SELECT id, full_name, email, payment_method, ticket_price, ticket_tier,
+         team_name, inscription_modality, is_team_leader
+  INTO v_reg
+  FROM registrations
+  WHERE LOWER(email) = LOWER(p_email)
+    AND payment_status = 'pending'
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    PERFORM 1 FROM registrations WHERE LOWER(email) = LOWER(p_email) LIMIT 1;
+    IF FOUND THEN
+      RETURN json_build_object('status', 'already_processed');
+    END IF;
+    RETURN NULL;
+  END IF;
+
+  IF v_reg.inscription_modality = 'team' AND v_reg.team_name IS NOT NULL THEN
+    SELECT COUNT(*)::INTEGER INTO v_member_count
+    FROM registrations
+    WHERE team_name = v_reg.team_name;
+  ELSE
+    v_member_count := 1;
+  END IF;
+
+  IF v_reg.inscription_modality = 'team' AND NOT v_reg.is_team_leader THEN
+    SELECT id INTO v_reg.id
+    FROM registrations
+    WHERE team_name = v_reg.team_name
+      AND is_team_leader = true
+    LIMIT 1;
+  END IF;
+
+  RETURN json_build_object(
+    'status', 'pending',
+    'id', v_reg.id,
+    'full_name', v_reg.full_name,
+    'email', v_reg.email,
+    'payment_method', v_reg.payment_method,
+    'ticket_price', v_reg.ticket_price,
+    'ticket_tier', v_reg.ticket_tier,
+    'team_name', v_reg.team_name,
+    'inscription_modality', v_reg.inscription_modality,
+    'member_count', v_member_count
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION recover_pending_registration(TEXT) TO anon;
+
+-- ============================================================
+-- MIGRATION: Run on existing databases
 -- ============================================================
 -- ALTER TABLE registrations ADD COLUMN accept_lgpd BOOLEAN NOT NULL DEFAULT false;
 -- ALTER TABLE registrations ADD COLUMN accept_code_ip BOOLEAN NOT NULL DEFAULT false;
+-- ALTER TABLE registrations ADD COLUMN cpf TEXT NOT NULL DEFAULT '';
+-- ALTER TABLE registrations ALTER COLUMN linkedin_url DROP NOT NULL;
