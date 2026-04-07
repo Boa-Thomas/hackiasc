@@ -34,7 +34,8 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const webhookUrl = `${supabaseUrl}/functions/v1/mp-webhook`
 
-    // Check early bird expiration — if expired, use regular price (R$200)
+    // Check early bird expiration — re-validate availability before changing price
+    const EARLY_BIRD_LIMIT = 10
     const REGULAR_PRICE = 20000
     let effectiveAmount = amount
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
@@ -46,12 +47,25 @@ Deno.serve(async (req: Request) => {
       .single()
 
     if (reg?.price_expires_at && new Date(reg.price_expires_at) < new Date()) {
-      // Early bird expired — update to regular price
-      effectiveAmount = REGULAR_PRICE
-      await supabase
-        .from('registrations')
-        .update({ ticket_price: REGULAR_PRICE, ticket_tier: 'regular' })
-        .eq('id', registration_id)
+      // Timer expired — check if early bird spots are still available
+      const { data: countData } = await supabase.rpc('get_confirmed_count')
+      const confirmedCount = countData ?? 0
+
+      if (confirmedCount >= EARLY_BIRD_LIMIT) {
+        // Early bird spots exhausted — update to regular price
+        effectiveAmount = REGULAR_PRICE
+        await supabase
+          .from('registrations')
+          .update({ ticket_price: REGULAR_PRICE, ticket_tier: 'regular' })
+          .eq('id', registration_id)
+      } else {
+        // Early bird spots still available — renew the 30-min window
+        const newExpiry = new Date(Date.now() + 30 * 60 * 1000).toISOString()
+        await supabase
+          .from('registrations')
+          .update({ price_expires_at: newExpiry })
+          .eq('id', registration_id)
+      }
     }
 
     // Create Mercado Pago preference

@@ -2,25 +2,52 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { EVENT_CONFIG } from '../lib/config'
 
+const EARLY_BIRD_LIMIT = 10
 const REGULAR_PRICE = 20000
 
 export default function PaymentInfo({ price, email, memberCount, teamName, fullName, registrationId, ticketPrice, priceExpiresAt }) {
   const isTeam = memberCount > 1
 
-  // Early bird countdown
+  // Early bird countdown with re-validation
   const [timeLeft, setTimeLeft] = useState(null)
   const [expired, setExpired] = useState(false)
+  const [currentExpiresAt, setCurrentExpiresAt] = useState(priceExpiresAt)
+  const [checking, setChecking] = useState(false)
 
   useEffect(() => {
-    if (!priceExpiresAt || ticketPrice === REGULAR_PRICE) return
+    if (!currentExpiresAt || ticketPrice === REGULAR_PRICE) return
 
-    const expiresAt = new Date(priceExpiresAt).getTime()
+    const expiresAt = new Date(currentExpiresAt).getTime()
 
-    const tick = () => {
+    const tick = async () => {
       const remaining = expiresAt - Date.now()
       if (remaining <= 0) {
-        setExpired(true)
+        // Timer expired — re-check early bird availability
+        if (checking) return
+        setChecking(true)
         setTimeLeft(null)
+
+        try {
+          if (supabase) {
+            const { data: countData } = await supabase.rpc('get_confirmed_count')
+            const confirmedCount = countData ?? 0
+
+            if (confirmedCount >= EARLY_BIRD_LIMIT) {
+              // No more early bird spots — expire
+              setExpired(true)
+            } else {
+              // Still available — renew 30-min window
+              const newExpiry = new Date(Date.now() + 30 * 60 * 1000).toISOString()
+              setCurrentExpiresAt(newExpiry)
+            }
+          } else {
+            setExpired(true)
+          }
+        } catch {
+          setExpired(true)
+        } finally {
+          setChecking(false)
+        }
       } else {
         const mins = Math.floor(remaining / 60000)
         const secs = Math.floor((remaining % 60000) / 1000)
@@ -31,7 +58,7 @@ export default function PaymentInfo({ price, email, memberCount, teamName, fullN
     tick()
     const interval = setInterval(tick, 1000)
     return () => clearInterval(interval)
-  }, [priceExpiresAt, ticketPrice])
+  }, [currentExpiresAt, ticketPrice, checking])
 
   const effectivePrice = expired ? REGULAR_PRICE : ticketPrice
   const effectivePriceFormatted = `R$ ${(effectivePrice / 100).toFixed(0)},00`
@@ -106,7 +133,7 @@ export default function PaymentInfo({ price, email, memberCount, teamName, fullN
         <div className="bg-cyan/5 border border-cyan/20 rounded-xl p-4 mb-6 inline-block">
           <p className="text-xs text-text-muted mb-1">Preço Early Bird garantido por</p>
           <p className="text-2xl font-bold font-mono text-cyan">{timeLeft}</p>
-          <p className="text-xs text-text-muted mt-1">Após esse tempo, o valor será R$ 200,00</p>
+          <p className="text-xs text-text-muted mt-1">Após esse tempo, o preço será reavaliado conforme disponibilidade</p>
         </div>
       )}
 
