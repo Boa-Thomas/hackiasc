@@ -356,7 +356,7 @@ function MemberCard({ index, member, errors, onChange, onRemove }) {
 // ─── RegistrationForm ────────────────────────────────────────────────────────
 
 export default function RegistrationForm() {
-  const { register, handleSubmit, watch, formState: { errors } } = useForm({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
     defaultValues: {
       inscription_modality: 'individual_form_team',
       payment_method: 'card',
@@ -371,6 +371,8 @@ export default function RegistrationForm() {
   const [submittedData, setSubmittedData] = useState(null)
   const [teamMembers, setTeamMembers] = useState([])
   const [memberErrors, setMemberErrors] = useState([])
+
+  const [termsExpanded, setTermsExpanded] = useState(false)
 
   // Recovery state
   const [recovering, setRecovering] = useState(false)
@@ -784,60 +786,6 @@ export default function RegistrationForm() {
             </div>
           </fieldset>
 
-          {/* ===== DISPONIBILIDADE E ACEITE ===== */}
-          <fieldset className="card-glass rounded-2xl p-6 sm:p-8 space-y-5">
-            <legend className="text-sm font-mono text-electric tracking-wider uppercase mb-2">Disponibilidade e Aceite</legend>
-
-            <div>
-              <label className={LBL}>Disponibilidade de Participação *</label>
-              <div className="space-y-3">
-                <label className={CHK_LABEL}>
-                  <input type="checkbox" {...register('avail_physical', { required: 'Obrigatório' })} className={CHK_INPUT} />
-                  Declaro que terei participação física no Centro de Inovação de Blumenau (CIB) durante a maior parte do evento (Mais de 80% do tempo)
-                </label>
-                <label className={CHK_LABEL}>
-                  <input type="checkbox" {...register('avail_disqualification', { required: 'Obrigatório' })} className={CHK_INPUT} />
-                  Entendo que a desclassificação pode ocorrer se a equipe não aparecer com nenhum membro no horário do cronograma
-                </label>
-              </div>
-              {(errors.avail_physical || errors.avail_disqualification) && <p className={ERR}>Você precisa aceitar ambas as cláusulas.</p>}
-            </div>
-
-            <div>
-              <label className={LBL}>Declaração de Ciência e Aceite *</label>
-              <p className="text-xs text-text-muted mb-3">
-                <a href={EVENT_CONFIG.editalGoogleDocsUrl} target="_blank" rel="noopener noreferrer" className="text-electric underline">Leia o edital completo</a>
-              </p>
-              <div className="space-y-3">
-                <label className={CHK_LABEL}>
-                  <input type="checkbox" {...register('accept_edital', { required: 'Obrigatório' })} className={CHK_INPUT} />
-                  Declaro que li e compreendi o Edital de Participação, incluindo regras sobre composição de equipe, desclassificação, critérios de julgamento, e a natureza do prêmio (Capital Semente)
-                </label>
-                <label className={CHK_LABEL}>
-                  <input type="checkbox" {...register('accept_image', { required: 'Obrigatório' })} className={CHK_INPUT} />
-                  Autorizo, de forma gratuita, o uso da minha imagem e voz captadas durante o evento para fins de divulgação, conforme item 13.1 do Edital
-                </label>
-                <label className={CHK_LABEL}>
-                  <input type="checkbox" {...register('accept_responsibility', { required: 'Obrigatório' })} className={CHK_INPUT} />
-                  Estou ciente que a organização não se responsabiliza por perdas ou danos a equipamentos pessoais e que o uso do crachá é obrigatório
-                </label>
-                <label className={CHK_LABEL}>
-                  <input type="checkbox" {...register('accept_lgpd', { required: 'Obrigatório' })} className={CHK_INPUT} />
-                  <span>
-                    Li e concordo com a{' '}
-                    <a href="#privacidade" className="text-electric underline" target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>Política de Privacidade</a>.
-                    {' '}Autorizo a coleta e o tratamento dos meus dados pessoais pela MORPH3D INOVA SIMPLES (I.S.) para fins de organização do evento.
-                  </span>
-                </label>
-                <label className={CHK_LABEL}>
-                  <input type="checkbox" {...register('accept_code_ip', { required: 'Obrigatório' })} className={CHK_INPUT} />
-                  Declaro que todo código-fonte e material intelectual que eu utilizar durante o evento é de minha autoria ou possuo autorização legal para utilizá-lo.
-                </label>
-              </div>
-              {(errors.accept_edital || errors.accept_image || errors.accept_responsibility || errors.accept_lgpd || errors.accept_code_ip) && <p className={ERR}>Você precisa confirmar todas as declarações.</p>}
-            </div>
-          </fieldset>
-
           {/* ===== NECESSIDADES DO EVENTO ===== */}
           <fieldset className="card-glass rounded-2xl p-6 sm:p-8 space-y-5">
             <legend className="text-sm font-mono text-electric tracking-wider uppercase mb-2">Para o Evento</legend>
@@ -890,28 +838,6 @@ export default function RegistrationForm() {
                 <label className={LBL}>Seu projeto tem um nome? (opcional)</label>
                 <input {...register('project_name')} className={INPUT} placeholder="Nome do projeto" />
               </div>
-            )}
-          </fieldset>
-
-          {/* ===== CRITÉRIOS ELIMINATÓRIOS ===== */}
-          <fieldset className="card-glass rounded-2xl p-6 sm:p-8 space-y-5">
-            <legend className="text-sm font-mono text-electric tracking-wider uppercase mb-2">Compromisso com os Critérios *</legend>
-            <p className="text-xs text-hot mb-3">Todos os itens abaixo são obrigatórios para participar do evento.</p>
-            <div className="space-y-3">
-              {[
-                { name: 'commit_ia', text: 'Nossa solução terá como uso central e obrigatório tecnologias de Inteligência Artificial (IA)' },
-                { name: 'commit_monetizable', text: 'Entendo que produtos não monetizáveis serão desclassificados' },
-                { name: 'commit_sales', text: 'Estou ciente de que evidências de tração comercial (vendas, pré-vendas, LOIs) geram pontuação extra na avaliação' },
-                { name: 'commit_edital', text: 'Eu li o edital completo e concordo com todas as cláusulas' },
-              ].map(({ name, text }) => (
-                <label key={name} className={CHK_LABEL}>
-                  <input type="checkbox" {...register(name, { required: 'Obrigatório' })} className={CHK_INPUT} />
-                  {text}
-                </label>
-              ))}
-            </div>
-            {(errors.commit_ia || errors.commit_monetizable || errors.commit_sales || errors.commit_edital) && (
-              <p className={ERR}>Você precisa concordar com todos os critérios eliminatórios.</p>
             )}
           </fieldset>
 
@@ -1009,6 +935,141 @@ export default function RegistrationForm() {
             )}
           </fieldset>
 
+          {/* ===== TERMOS E CONDIÇÕES ===== */}
+          <fieldset className="card-glass rounded-2xl p-6 sm:p-8 space-y-5">
+            <legend className="text-sm font-mono text-electric tracking-wider uppercase mb-2">Termos e Condições</legend>
+
+            {/* Master checkbox */}
+            <label className={`${CHK_LABEL} ${(errors.accept_edital || errors.avail_physical || errors.commit_ia) ? 'border-hot/40' : 'border-cyan/30'}`}>
+              <input
+                type="checkbox"
+                onChange={e => {
+                  const v = e.target.checked
+                  const fields = [
+                    'avail_physical', 'avail_disqualification',
+                    'accept_edital', 'accept_image', 'accept_responsibility', 'accept_lgpd', 'accept_code_ip',
+                    'commit_ia', 'commit_monetizable', 'commit_sales', 'commit_edital',
+                  ]
+                  fields.forEach(f => setValue(f, v, { shouldValidate: true }))
+                }}
+                className={CHK_INPUT}
+              />
+              <span className="text-white font-semibold">
+                Li e aceito todos os termos, condições e critérios do evento
+              </span>
+            </label>
+
+            {/* Expand/collapse button */}
+            <button
+              type="button"
+              onClick={() => setTermsExpanded(t => !t)}
+              className="flex items-center gap-2 text-sm text-electric hover:text-cyan transition-colors"
+            >
+              <svg className={`w-4 h-4 transition-transform ${termsExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+              {termsExpanded ? 'Ocultar detalhes' : 'Ver todos os termos em detalhes'}
+            </button>
+
+            {/* Expanded terms */}
+            {termsExpanded && (
+              <div className="space-y-4 pt-2">
+                <p className="text-xs text-text-muted">
+                  <a href={EVENT_CONFIG.editalGoogleDocsUrl} target="_blank" rel="noopener noreferrer" className="text-electric underline">Leia o edital completo</a>
+                  {' | '}
+                  <a href="#privacidade" className="text-electric underline">Política de Privacidade</a>
+                </p>
+
+                <div>
+                  <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Disponibilidade</p>
+                  <div className="space-y-2">
+                    <label className={CHK_LABEL}>
+                      <input type="checkbox" {...register('avail_physical', { required: 'Obrigatório' })} className={CHK_INPUT} />
+                      Participação física no CIB durante mais de 80% do evento
+                    </label>
+                    <label className={CHK_LABEL}>
+                      <input type="checkbox" {...register('avail_disqualification', { required: 'Obrigatório' })} className={CHK_INPUT} />
+                      Desclassificação se nenhum membro comparecer no horário do cronograma
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Declarações e Aceites</p>
+                  <div className="space-y-2">
+                    <label className={CHK_LABEL}>
+                      <input type="checkbox" {...register('accept_edital', { required: 'Obrigatório' })} className={CHK_INPUT} />
+                      Li e compreendi o Edital (regras, desclassificação, julgamento, Capital Semente)
+                    </label>
+                    <label className={CHK_LABEL}>
+                      <input type="checkbox" {...register('accept_image', { required: 'Obrigatório' })} className={CHK_INPUT} />
+                      Autorizo uso de imagem e voz para divulgação (item 13.1 do Edital)
+                    </label>
+                    <label className={CHK_LABEL}>
+                      <input type="checkbox" {...register('accept_responsibility', { required: 'Obrigatório' })} className={CHK_INPUT} />
+                      Organização não se responsabiliza por equipamentos pessoais; uso de crachá obrigatório
+                    </label>
+                    <label className={CHK_LABEL}>
+                      <input type="checkbox" {...register('accept_lgpd', { required: 'Obrigatório' })} className={CHK_INPUT} />
+                      <span>
+                        Concordo com a{' '}
+                        <a href="#privacidade" className="text-electric underline" onClick={e => e.stopPropagation()}>Política de Privacidade</a>
+                        {' '}e autorizo tratamento de dados pela MORPH3D INOVA SIMPLES (I.S.)
+                      </span>
+                    </label>
+                    <label className={CHK_LABEL}>
+                      <input type="checkbox" {...register('accept_code_ip', { required: 'Obrigatório' })} className={CHK_INPUT} />
+                      Código e material intelectual são de minha autoria ou possuo autorização
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Critérios do Evento</p>
+                  <div className="space-y-2">
+                    <label className={CHK_LABEL}>
+                      <input type="checkbox" {...register('commit_ia', { required: 'Obrigatório' })} className={CHK_INPUT} />
+                      Solução terá IA como uso central e obrigatório
+                    </label>
+                    <label className={CHK_LABEL}>
+                      <input type="checkbox" {...register('commit_monetizable', { required: 'Obrigatório' })} className={CHK_INPUT} />
+                      Produtos não monetizáveis serão desclassificados
+                    </label>
+                    <label className={CHK_LABEL}>
+                      <input type="checkbox" {...register('commit_sales', { required: 'Obrigatório' })} className={CHK_INPUT} />
+                      Evidências de tração comercial geram pontuação extra
+                    </label>
+                    <label className={CHK_LABEL}>
+                      <input type="checkbox" {...register('commit_edital', { required: 'Obrigatório' })} className={CHK_INPUT} />
+                      Li o edital completo e concordo com todas as cláusulas
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Hidden fields for validation when collapsed */}
+            {!termsExpanded && (
+              <div className="hidden">
+                <input type="checkbox" {...register('avail_physical', { required: 'Obrigatório' })} />
+                <input type="checkbox" {...register('avail_disqualification', { required: 'Obrigatório' })} />
+                <input type="checkbox" {...register('accept_edital', { required: 'Obrigatório' })} />
+                <input type="checkbox" {...register('accept_image', { required: 'Obrigatório' })} />
+                <input type="checkbox" {...register('accept_responsibility', { required: 'Obrigatório' })} />
+                <input type="checkbox" {...register('accept_lgpd', { required: 'Obrigatório' })} />
+                <input type="checkbox" {...register('accept_code_ip', { required: 'Obrigatório' })} />
+                <input type="checkbox" {...register('commit_ia', { required: 'Obrigatório' })} />
+                <input type="checkbox" {...register('commit_monetizable', { required: 'Obrigatório' })} />
+                <input type="checkbox" {...register('commit_sales', { required: 'Obrigatório' })} />
+                <input type="checkbox" {...register('commit_edital', { required: 'Obrigatório' })} />
+              </div>
+            )}
+
+            {(errors.avail_physical || errors.accept_edital || errors.commit_ia) && (
+              <p className={ERR}>Você precisa aceitar todos os termos para prosseguir ao checkout.</p>
+            )}
+          </fieldset>
+
           {/* Submit */}
           {submitError && (
             <div className="p-4 rounded-xl bg-hot/10 border border-hot/20 text-hot text-sm">{submitError}</div>
@@ -1017,21 +1078,18 @@ export default function RegistrationForm() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full py-4 px-8 bg-gradient-to-r from-cyan to-electric text-dark font-bold text-lg rounded-xl transition-all hover:scale-[1.02] hover:shadow-[0_0_40px_rgba(6,214,160,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            className="w-full py-4 px-8 bg-gradient-to-r from-electric to-violet text-white font-bold text-lg rounded-xl transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(58,134,255,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
             {submitting
               ? 'Enviando...'
               : isTeamWithMembers
-                ? `Finalizar Inscrição — ${totalPriceFormatted} (${totalPeople} pessoas)`
-                : `Finalizar Inscrição — ${currentPriceFormatted}`
+                ? `Ir para o Checkout — ${totalPriceFormatted} (${totalPeople} pessoas)`
+                : `Ir para o Checkout — ${currentPriceFormatted}`
             }
           </button>
 
           <p className="text-xs text-text-muted text-center">
-            Ao se inscrever, você concorda com o{' '}
-            <a href={EVENT_CONFIG.editalUrl} target="_blank" className="text-electric underline underline-offset-2">edital do evento</a>
-            {' '}e com a{' '}
-            <a href="#privacidade" className="text-electric underline underline-offset-2">Política de Privacidade</a>.
+            Pagamento seguro via Mercado Pago. Aceita Pix, cartão de crédito e débito.
           </p>
         </form>
       </div>
