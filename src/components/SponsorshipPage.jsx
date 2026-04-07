@@ -19,7 +19,7 @@ const SPONSOR_TIERS = [
       { title: 'Prêmio Próprio', desc: 'Possibilidade de ofertar premiação adicional com sua marca.' },
       { title: 'Stand Físico', desc: 'Espaço dedicado para ativação presencial da sua marca.' },
     ],
-    idealFor: 'Empresas de tecnologia, cloud, IA, fintech, software houses',
+
   },
   {
     name: 'Co-Host',
@@ -37,40 +37,24 @@ const SPONSOR_TIERS = [
       { title: 'API / Ferramenta', desc: 'Inserir sua API ou ferramenta para uso pelos times durante o evento.' },
       { title: 'Stand / Ativação', desc: 'Espaço físico para ativação presencial.' },
     ],
-    idealFor: 'Empresa local forte, software house relevante, posicionamento de ecossistema',
+
   },
   {
-    name: 'Innovation Partner',
-    subtitle: 'Parceiro de Inovação',
-    price: 'R$ 4.500 – 5.500',
-    slots: '2 vagas',
+    name: 'Tech & Innovation',
+    subtitle: 'Parceiro de Tecnologia e Inovação',
+    price: 'R$ 4.000 – 6.000',
+    slots: '4 vagas',
     tag: 'Mais procurada',
     benefits: [
-      { title: 'Destaque Intermediário', desc: 'Logo com destaque intermediário em todos os materiais. Reels fixado no perfil do Instagram do evento.' },
+      { title: 'Destaque Intermediário', desc: 'Logo com destaque intermediário no site e materiais do evento. Reels fixado no perfil do Instagram do evento.' },
       { title: '2 Ingressos', desc: 'Dois ingressos de participação inclusos.' },
+      { title: 'API / Créditos', desc: 'Inserir sua API, ferramenta ou créditos para uso pelos times durante o evento.' },
       { title: 'Desafio Técnico', desc: 'Possibilidade de propor desafio técnico para os times.' },
-      { title: 'API / Ferramenta', desc: 'Inserir sua API ou ferramenta para uso durante o evento.' },
       { title: 'Fala Curta / Painel', desc: 'Presença institucional com fala de 2 min ou painel.' },
       { title: 'Mentoria', desc: 'Indicação de mentor técnico da empresa.' },
-      { title: 'Banco de Talentos', desc: 'Acesso ao banco de talentos pós-evento.' },
-    ],
-    idealFor: 'Startups maduras, SaaS, empresas de IA, fintechs',
-  },
-  {
-    name: 'Tech Partner',
-    subtitle: 'Parceiro Tecnológico',
-    price: 'R$ 4.000 – 6.000',
-    slots: '2 vagas',
-    tag: 'Empresas de tech',
-    benefits: [
-      { title: 'Branding Médio', desc: 'Presença no site e materiais do evento. Reels no Instagram do evento.' },
-      { title: '2 Ingressos', desc: 'Dois ingressos de participação inclusos.' },
-      { title: 'API / Créditos', desc: 'Forneça API ou créditos para os participantes usarem.' },
-      { title: 'Mentores', desc: 'Mentores indicados pela empresa.' },
       { title: 'Networking', desc: 'Acesso a participantes com networking direcionado.' },
       { title: 'Banco de Talentos', desc: 'Acesso ao banco de talentos pós-evento.' },
     ],
-    idealFor: 'Empresas de tecnologia que amam hackathons',
   },
   {
     name: 'Startup Builder',
@@ -84,7 +68,7 @@ const SPONSOR_TIERS = [
       { title: '1 Ingresso', desc: 'Um ingresso de participação incluso.' },
       { title: 'Presença no Evento', desc: 'Acesso ao evento e networking informal com participantes.' },
     ],
-    idealFor: 'Contabilidade, jurídico, consultorias, empresas de serviços',
+
   },
   {
     name: 'Apoio',
@@ -98,7 +82,7 @@ const SPONSOR_TIERS = [
       { title: 'Citação', desc: 'Menção como apoiador nas comunicações.' },
       { title: 'Ativação Pontual', desc: 'Possível ativação como coffee, pizza, brindes.' },
     ],
-    idealFor: 'Redução de custo direto: alimentação, brindes, infraestrutura',
+
   },
 ]
 
@@ -169,7 +153,6 @@ function TierCard({ tier, index }) {
     'bg-gradient-to-r from-cyan/20 to-electric/20 border-b border-cyan/30',
     'bg-electric/15 border-b border-electric/20',
     'bg-violet/15 border-b border-violet/20',
-    'bg-cyan/10 border-b border-cyan/15',
     'bg-surface border-b border-dark-border',
     'bg-dark-card border-b border-dark-border',
   ]
@@ -178,7 +161,6 @@ function TierCard({ tier, index }) {
     'text-cyan',
     'text-electric',
     'text-violet',
-    'text-cyan',
     'text-text-muted',
     'text-text-muted',
   ]
@@ -187,7 +169,6 @@ function TierCard({ tier, index }) {
     'bg-cyan',
     'bg-electric',
     'bg-violet',
-    'bg-cyan',
     'bg-electric',
     'bg-text-muted',
   ]
@@ -230,10 +211,6 @@ function TierCard({ tier, index }) {
           ))}
         </div>
 
-        <div className="border-t border-dark-border pt-4">
-          <span className="text-xs font-mono text-text-muted uppercase tracking-wider">Perfil ideal: </span>
-          <span className="text-xs text-white/80">{tier.idealFor}</span>
-        </div>
       </div>
     </div>
   )
