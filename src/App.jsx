@@ -19,7 +19,7 @@ const ADMIN_HASHES = ['#admin', '#admin-login']
 
 export default function App() {
   const [page, setPage] = useState(window.location.hash)
-  const { isAuthenticated, loading: authLoading, error: authError, login, logout } = useAdminAuth()
+  const { isAuthenticated, role, loading: authLoading, error: authError, login, logout } = useAdminAuth()
 
   useEffect(() => {
     const onHashChange = () => setPage(window.location.hash)
@@ -52,7 +52,7 @@ export default function App() {
       return <AdminLogin onLogin={login} error={authError} />
     }
 
-    return <AdminPanel onLogout={logout} />
+    return <AdminPanel onLogout={logout} role={role} />
   }
 
   if (page === '#privacidade') {

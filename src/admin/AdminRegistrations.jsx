@@ -269,12 +269,13 @@ function OccupationBadge({ type }) {
 
 // ─── Inline editable field ────────────────────────────────────────────────────
 
-function EditableField({ label, value, onSave, type = 'text', options = null }) {
+function EditableField({ label, value, onSave, type = 'text', options = null, readOnly = false }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(value ?? '')
   const [saving, setSaving] = useState(false)
 
   function startEdit() {
+    if (readOnly) return
     setDraft(value ?? '')
     setEditing(true)
   }
@@ -340,13 +341,15 @@ function EditableField({ label, value, onSave, type = 'text', options = null }) 
           <span className="text-sm text-white">
             {value == null || value === '' ? <span className="text-white/30 italic">—</span> : String(value)}
           </span>
-          <button
-            onClick={startEdit}
-            className="opacity-0 group-hover:opacity-100 transition-opacity text-white/40 hover:text-electric text-xs"
-            title="Editar"
-          >
-            ✏
-          </button>
+          {!readOnly && (
+            <button
+              onClick={startEdit}
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-white/40 hover:text-electric text-xs"
+              title="Editar"
+            >
+              ✏
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -381,7 +384,7 @@ function Section({ title, children }) {
 
 // ─── Detail View ──────────────────────────────────────────────────────────────
 
-function DetailView({ registration, onBack, onRefetch }) {
+function DetailView({ registration, onBack, onRefetch, readOnly }) {
   const [r, setR] = useState(registration)
 
   // Keep local state in sync when parent refetches
@@ -423,24 +426,26 @@ function DetailView({ registration, onBack, onRefetch }) {
         >
           ← Voltar para lista
         </button>
-        <div className="flex items-center gap-2 flex-wrap">
-          {r.payment_status === 'pending' && (
-            <button
-              onClick={confirmPayment}
-              className="px-4 py-2 rounded-lg text-sm bg-cyan/20 text-cyan border border-cyan/30 hover:bg-cyan/30 transition-colors font-display"
-            >
-              Confirmar Pagamento
-            </button>
-          )}
-          {r.payment_status !== 'cancelled' && (
-            <button
-              onClick={cancelRegistration}
-              className="px-4 py-2 rounded-lg text-sm bg-hot/10 text-hot border border-hot/30 hover:bg-hot/20 transition-colors font-display"
-            >
-              Cancelar Inscrição
-            </button>
-          )}
-        </div>
+        {!readOnly && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {r.payment_status === 'pending' && (
+              <button
+                onClick={confirmPayment}
+                className="px-4 py-2 rounded-lg text-sm bg-cyan/20 text-cyan border border-cyan/30 hover:bg-cyan/30 transition-colors font-display"
+              >
+                Confirmar Pagamento
+              </button>
+            )}
+            {r.payment_status !== 'cancelled' && (
+              <button
+                onClick={cancelRegistration}
+                className="px-4 py-2 rounded-lg text-sm bg-hot/10 text-hot border border-hot/30 hover:bg-hot/20 transition-colors font-display"
+              >
+                Cancelar Inscrição
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Title */}
@@ -457,18 +462,18 @@ function DetailView({ registration, onBack, onRefetch }) {
 
       {/* Dados Pessoais */}
       <Section title="Dados Pessoais">
-        <EditableField
+        <EditableField readOnly={readOnly}
           label="Nome completo"
           value={r.full_name}
           onSave={v => updateField('full_name', v)}
         />
-        <EditableField
+        <EditableField readOnly={readOnly}
           label="Email"
           value={r.email}
           type="email"
           onSave={v => updateField('email', v)}
         />
-        <EditableField
+        <EditableField readOnly={readOnly}
           label="Telefone"
           value={r.phone}
           onSave={v => updateField('phone', v)}
@@ -486,7 +491,7 @@ function DetailView({ registration, onBack, onRefetch }) {
 
       {/* Perfil */}
       <Section title="Perfil">
-        <EditableField
+        <EditableField readOnly={readOnly}
           label="Tipo de ocupação"
           value={r.occupation_type}
           options={[
@@ -497,7 +502,7 @@ function DetailView({ registration, onBack, onRefetch }) {
           ]}
           onSave={v => updateField('occupation_type', v)}
         />
-        <EditableField
+        <EditableField readOnly={readOnly}
           label="Experiência em IA (1-10)"
           value={r.ai_experience_level}
           type="number"
@@ -520,12 +525,12 @@ function DetailView({ registration, onBack, onRefetch }) {
 
       {/* Evento */}
       <Section title="Evento">
-        <EditableField
+        <EditableField readOnly={readOnly}
           label="Restrições alimentares"
           value={r.dietary_restrictions}
           onSave={v => updateField('dietary_restrictions', v)}
         />
-        <EditableField
+        <EditableField readOnly={readOnly}
           label="PCD"
           value={r.is_pcd ? 'Sim' : 'Não'}
           options={[
@@ -534,7 +539,7 @@ function DetailView({ registration, onBack, onRefetch }) {
           ]}
           onSave={v => updateField('is_pcd', v === 'true')}
         />
-        <EditableField
+        <EditableField readOnly={readOnly}
           label="Tipo de PCD"
           value={r.pcd_type}
           onSave={v => updateField('pcd_type', v)}
@@ -552,7 +557,7 @@ function DetailView({ registration, onBack, onRefetch }) {
       {/* Inscrição */}
       <Section title="Inscrição">
         <ReadField label="Modalidade">{MODALITY_LABELS[r.inscription_modality] ?? r.inscription_modality}</ReadField>
-        <EditableField
+        <EditableField readOnly={readOnly}
           label="Nome do time"
           value={r.team_name}
           onSave={v => updateField('team_name', v)}
@@ -568,7 +573,7 @@ function DetailView({ registration, onBack, onRefetch }) {
         <ReadField label="Método de pagamento">{METHOD_LABELS[r.payment_method] ?? r.payment_method}</ReadField>
         <ReadField label="Tier">{TIER_LABELS[r.ticket_tier] ?? r.ticket_tier}</ReadField>
         <ReadField label="Valor">{formatBRL(r.ticket_price)}</ReadField>
-        <EditableField
+        <EditableField readOnly={readOnly}
           label="Status"
           value={r.payment_status}
           options={[
@@ -581,7 +586,7 @@ function DetailView({ registration, onBack, onRefetch }) {
         <ReadField label="Confirmado em">{formatDateTime(r.payment_confirmed_at)}</ReadField>
         <ReadField label="Preço expira em">{formatDateTime(r.price_expires_at)}</ReadField>
         <div className="sm:col-span-2">
-          <EditableField
+          <EditableField readOnly={readOnly}
             label="Notas de pagamento"
             value={r.payment_notes}
             onSave={v => updateField('payment_notes', v)}
@@ -604,7 +609,7 @@ function isStalePayment(r) {
   return r.payment_status === 'pending' && r.created_at && (new Date() - new Date(r.created_at)) > 3 * 86400000
 }
 
-function ListView({ registrations, onSelect, onRefetch, loading }) {
+function ListView({ registrations, onSelect, onRefetch, loading, readOnly }) {
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [filterOccupation, setFilterOccupation] = useState('')
@@ -774,7 +779,7 @@ function ListView({ registrations, onSelect, onRefetch, loading }) {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
-                        {r.payment_status === 'pending' && (
+                        {!readOnly && r.payment_status === 'pending' && (
                           <button
                             onClick={() => handleConfirm(r)}
                             className="px-2 py-1 rounded text-xs bg-cyan/10 text-cyan border border-cyan/20 hover:bg-cyan/20 transition-colors whitespace-nowrap"
@@ -782,7 +787,7 @@ function ListView({ registrations, onSelect, onRefetch, loading }) {
                             Confirmar
                           </button>
                         )}
-                        {r.payment_status !== 'cancelled' && (
+                        {!readOnly && r.payment_status !== 'cancelled' && (
                           <button
                             onClick={() => handleCancel(r)}
                             className="px-2 py-1 rounded text-xs bg-hot/10 text-hot border border-hot/20 hover:bg-hot/20 transition-colors"
@@ -836,7 +841,7 @@ function ListView({ registrations, onSelect, onRefetch, loading }) {
 
 // ─── Root component ───────────────────────────────────────────────────────────
 
-export default function AdminRegistrations({ selectedId, onClearSelection, onSelect }) {
+export default function AdminRegistrations({ selectedId, onClearSelection, onSelect, readOnly }) {
   const [registrations, setRegistrations] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -921,6 +926,7 @@ export default function AdminRegistrations({ selectedId, onClearSelection, onSel
         registration={selectedRegistration}
         onBack={onClearSelection}
         onRefetch={fetchRegistrations}
+        readOnly={readOnly}
       />
     )
   }
@@ -932,6 +938,7 @@ export default function AdminRegistrations({ selectedId, onClearSelection, onSel
       loading={loading}
       onSelect={id => onSelect?.(id)}
       onRefetch={fetchRegistrations}
+      readOnly={readOnly}
     />
   )
 }

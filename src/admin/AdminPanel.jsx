@@ -4,14 +4,16 @@ import AdminRegistrations from './AdminRegistrations'
 import AdminTeams from './AdminTeams'
 import AdminCheckin from './AdminCheckin'
 
-const TABS = [
+const ALL_TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'registrations', label: 'Inscrições', icon: '📋' },
   { id: 'teams', label: 'Times', icon: '👥' },
-  { id: 'checkin', label: 'Check-in', icon: '✅' },
+  { id: 'checkin', label: 'Check-in', icon: '✅', adminOnly: true },
 ]
 
-export default function AdminPanel({ onLogout }) {
+export default function AdminPanel({ onLogout, role = 'admin' }) {
+  const readOnly = role === 'viewer'
+  const TABS = readOnly ? ALL_TABS.filter(t => !t.adminOnly) : ALL_TABS
   const [activeTab, setActiveTab] = useState('dashboard')
   const [selectedRegistrationId, setSelectedRegistrationId] = useState(null)
 
@@ -27,6 +29,7 @@ export default function AdminPanel({ onLogout }) {
         <div className="flex items-center gap-4">
           <h1 className="text-lg font-bold text-gradient-cyan font-display">
             HackIA Admin
+            {readOnly && <span className="ml-2 text-xs font-mono text-electric/60 border border-electric/20 px-2 py-0.5 rounded-full">visualização</span>}
           </h1>
           <nav className="flex gap-1 ml-6">
             {TABS.map((tab) => (
@@ -60,17 +63,18 @@ export default function AdminPanel({ onLogout }) {
       {/* Content */}
       <main className="p-6 max-w-[1400px] mx-auto">
         {activeTab === 'dashboard' && (
-          <AdminDashboard onViewRegistration={handleViewRegistration} />
+          <AdminDashboard onViewRegistration={handleViewRegistration} readOnly={readOnly} />
         )}
         {activeTab === 'registrations' && (
           <AdminRegistrations
             selectedId={selectedRegistrationId}
             onClearSelection={() => setSelectedRegistrationId(null)}
             onSelect={(id) => setSelectedRegistrationId(id)}
+            readOnly={readOnly}
           />
         )}
-        {activeTab === 'teams' && <AdminTeams />}
-        {activeTab === 'checkin' && <AdminCheckin />}
+        {activeTab === 'teams' && <AdminTeams readOnly={readOnly} />}
+        {!readOnly && activeTab === 'checkin' && <AdminCheckin />}
       </main>
     </div>
   )

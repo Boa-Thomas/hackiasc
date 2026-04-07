@@ -147,7 +147,7 @@ function MoveModal({ member, teams, onConfirm, onCancel }) {
 
 // ─── MemberRow ───────────────────────────────────────────────────────────────
 
-function MemberRow({ member, allTeamNames, onMove, onRemove }) {
+function MemberRow({ member, allTeamNames, onMove, onRemove, readOnly }) {
   const [showMove, setShowMove] = useState(false)
 
   async function handleMove(newTeamName) {
@@ -196,7 +196,7 @@ function MemberRow({ member, allTeamNames, onMove, onRemove }) {
         </div>
 
         {/* Actions (non-leader only) */}
-        {!member.is_team_leader && (
+        {!readOnly && !member.is_team_leader && (
           <div className="flex gap-1.5 flex-shrink-0">
             <button
               onClick={() => setShowMove(true)}
@@ -291,7 +291,7 @@ function PaymentProgressBar({ confirmed, total }) {
 
 // ─── TeamCard ─────────────────────────────────────────────────────────────────
 
-function TeamCard({ team, allTeamNames, expanded, onToggle, onRefetch }) {
+function TeamCard({ team, allTeamNames, expanded, onToggle, onRefetch, readOnly }) {
   const { name, members } = team
   const status = getTeamStatus(members)
   const confirmedCount = members.filter(m => m.payment_status === 'confirmed').length
@@ -379,6 +379,7 @@ function TeamCard({ team, allTeamNames, expanded, onToggle, onRefetch }) {
               allTeamNames={allTeamNames}
               onMove={handleMove}
               onRemove={handleRemove}
+              readOnly={readOnly}
             />
           ))}
         </div>
@@ -551,7 +552,7 @@ function MatchingSuggestions({ individuals, teamsMap, sortedTeamNames, onRefetch
 
 // ─── AdminTeams ───────────────────────────────────────────────────────────────
 
-export default function AdminTeams() {
+export default function AdminTeams({ readOnly }) {
   const [registrations, setRegistrations] = useState([])
   const [loading, setLoading]             = useState(true)
   const [error, setError]                 = useState(null)
@@ -723,6 +724,7 @@ export default function AdminTeams() {
               expanded={expandedTeam === name}
               onToggle={() => toggleTeam(name)}
               onRefetch={fetchData}
+              readOnly={readOnly}
             />
           ))}
         </div>
