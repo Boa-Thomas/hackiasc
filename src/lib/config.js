@@ -41,4 +41,12 @@ export const EVENT_CONFIG = {
   // Links — edital em modo visualização até a divulgação oficial
   editalUrl: 'https://docs.google.com/document/d/1eLAACRgfNIMVNr2D8HkmU-5t2Sznhj4zS2d0cqBXpgA/preview',
   editalGoogleDocsUrl: 'https://docs.google.com/document/d/1eLAACRgfNIMVNr2D8HkmU-5t2Sznhj4zS2d0cqBXpgA/preview',
+
+  // Patrocínio
+  sponsorship: {
+    coordinator: 'Vinicius Adilson da Costa',
+    role: 'Coordenador Geral',
+    whatsapp: '+55 47 9 9170-8404',
+    whatsappUrl: 'https://wa.me/5547991708404',
+  },
 }
