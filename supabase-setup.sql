@@ -43,7 +43,11 @@ CREATE TABLE registrations (
   ticket_price INTEGER NOT NULL,
   payment_status TEXT DEFAULT 'pending' CHECK (payment_status IN ('pending','confirmed','cancelled')),
   payment_confirmed_at TIMESTAMPTZ,
-  payment_notes TEXT
+  payment_notes TEXT,
+
+  -- LGPD e declarações adicionais
+  accept_lgpd BOOLEAN NOT NULL DEFAULT false,
+  accept_code_ip BOOLEAN NOT NULL DEFAULT false
 );
 
 -- 2. Index para queries de status de pagamento
@@ -88,3 +92,9 @@ $$;
 
 -- Permitir que anon chame essa função
 GRANT EXECUTE ON FUNCTION get_confirmed_count() TO anon;
+
+-- ============================================================
+-- MIGRATION: Add LGPD consent columns (run on existing databases)
+-- ============================================================
+-- ALTER TABLE registrations ADD COLUMN accept_lgpd BOOLEAN NOT NULL DEFAULT false;
+-- ALTER TABLE registrations ADD COLUMN accept_code_ip BOOLEAN NOT NULL DEFAULT false;

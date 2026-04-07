@@ -1,9 +1,57 @@
+import { useState } from 'react'
+import { supabase } from '../lib/supabase'
 import { EVENT_CONFIG } from '../lib/config'
 
-export default function PaymentInfo({ paymentMethod, price, email, totalPrice, memberCount, teamName, fullName }) {
-  const { pixKey, pixKeyType, cardPaymentUrl } = EVENT_CONFIG.payment
+export default function PaymentInfo({ paymentMethod, price, email, totalPrice, memberCount, teamName, fullName, registrationId, ticketPrice }) {
+  const { pixKey, pixKeyType } = EVENT_CONFIG.payment
   const isTeam = memberCount > 1
   const displayTotal = isTeam ? totalPrice : price
+
+  const [redirecting, setRedirecting] = useState(false)
+  const [cardError, setCardError] = useState('')
+
+  const handleCardPayment = async () => {
+    setRedirecting(true)
+    setCardError('')
+
+    try {
+      if (!supabase) {
+        // Fallback: use generic MP link if Supabase not configured
+        window.open(EVENT_CONFIG.payment.cardPaymentUrl, '_blank')
+        setRedirecting(false)
+        return
+      }
+
+      const totalAmountCents = isTeam ? ticketPrice * memberCount : ticketPrice
+      const description = isTeam
+        ? `Inscrição equipe "${teamName}" — ${memberCount} participantes — AI Venture Hackathon 2026`
+        : `Inscrição ${fullName} — AI Venture Hackathon 2026`
+
+      const { data, error } = await supabase.functions.invoke('create-preference', {
+        body: {
+          registration_id: registrationId,
+          email,
+          full_name: fullName,
+          amount: totalAmountCents,
+          description,
+        },
+      })
+
+      if (error || !data?.init_point) {
+        console.error('Preference error:', error || data)
+        setCardError('Erro ao gerar link de pagamento. Tente novamente ou use PIX.')
+        setRedirecting(false)
+        return
+      }
+
+      // Redirect to Mercado Pago Checkout Pro
+      window.location.href = data.init_point
+    } catch (err) {
+      console.error('Card payment error:', err)
+      setCardError('Erro ao conectar com o Mercado Pago. Tente novamente.')
+      setRedirecting(false)
+    }
+  }
 
   return (
     <div className="text-center">
@@ -128,38 +176,46 @@ export default function PaymentInfo({ paymentMethod, price, email, totalPrice, m
                 Pagamento via Cartão
               </h4>
 
-              {/* Value with copy button */}
+              {/* Value display */}
               <div className="bg-electric/5 border border-electric/20 rounded-xl p-4 mb-4 text-center">
-                <p className="text-xs text-text-muted mb-1">Digite este valor no Mercado Pago</p>
-                <div className="flex items-center justify-center gap-3">
-                  <p className="text-3xl font-bold font-mono text-electric">{displayTotal}</p>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(displayTotal.replace('R$ ', '').replace('.', '').replace(',', '.'))}
-                    className="px-3 py-1.5 text-xs bg-electric/10 text-electric rounded-lg hover:bg-electric/20 transition-colors"
-                  >
-                    Copiar valor
-                  </button>
-                </div>
+                <p className="text-xs text-text-muted mb-1">Valor total</p>
+                <p className="text-3xl font-bold font-mono text-electric">{displayTotal}</p>
+                {isTeam && <p className="text-xs text-text-muted mt-1">{price} × {memberCount} participantes</p>}
               </div>
 
-              <a
-                href={cardPaymentUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full py-4 px-8 bg-gradient-to-r from-electric to-violet text-white font-bold text-center rounded-xl transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(58,134,255,0.3)]"
+              <button
+                onClick={handleCardPayment}
+                disabled={redirecting}
+                className="block w-full py-4 px-8 bg-gradient-to-r from-electric to-violet text-white font-bold text-center rounded-xl transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(58,134,255,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
-                Pagar com Mercado Pago
-              </a>
+                {redirecting ? (
+                  <span className="inline-flex items-center gap-2">
+                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Redirecionando para o Mercado Pago...
+                  </span>
+                ) : (
+                  'Pagar com Mercado Pago'
+                )}
+              </button>
 
               <p className="text-xs text-text-muted mt-3 text-center">
-                Você será redirecionado para o Mercado Pago. Insira o valor {displayTotal} manualmente.
+                Você será redirecionado para o Checkout do Mercado Pago com o valor já preenchido.
               </p>
+
+              {cardError && (
+                <div className="bg-hot/5 border border-hot/20 rounded-xl p-4 mt-4">
+                  <p className="text-sm text-hot">{cardError}</p>
+                </div>
+              )}
             </div>
 
             <div className="bg-gold/5 border border-gold/20 rounded-xl p-4">
               <p className="text-sm text-gold font-semibold mb-1">Importante</p>
               <p className="text-xs text-text-muted">
-                Utilize o mesmo e-mail ({email}) no pagamento para facilitar a identificação.
+                O pagamento é processado de forma segura pelo Mercado Pago. Após a confirmação, sua inscrição será validada automaticamente.
               </p>
             </div>
           </div>
@@ -173,10 +229,14 @@ export default function PaymentInfo({ paymentMethod, price, email, totalPrice, m
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
           </svg>
           <div>
-            <p className="text-sm font-semibold text-white mb-1">Validação em até 24h corridas</p>
+            <p className="text-sm font-semibold text-white mb-1">
+              {paymentMethod === 'card' ? 'Confirmação automática' : 'Validação em até 24h corridas'}
+            </p>
             <p className="text-xs text-text-muted leading-relaxed">
-              Após a confirmação do pagamento, validaremos sua inscrição em até <strong className="text-white">24 horas corridas</strong>.
-              Você receberá um e-mail de confirmação e será adicionado(a) ao grupo oficial de WhatsApp do evento.
+              {paymentMethod === 'card'
+                ? 'Pagamentos via cartão são confirmados automaticamente pelo Mercado Pago. Você receberá um e-mail de confirmação e será adicionado(a) ao grupo oficial de WhatsApp do evento.'
+                : <>Após a confirmação do pagamento, validaremos sua inscrição em até <strong className="text-white">24 horas corridas</strong>. Você receberá um e-mail de confirmação e será adicionado(a) ao grupo oficial de WhatsApp do evento.</>
+              }
             </p>
           </div>
         </div>
@@ -186,13 +246,22 @@ export default function PaymentInfo({ paymentMethod, price, email, totalPrice, m
       <div className="card-glass rounded-2xl p-6 text-left mb-6">
         <h3 className="text-sm font-bold text-white mb-4">Próximos Passos</h3>
         <ol className="space-y-3">
-          {[
-            `Realize o pagamento de ${displayTotal} usando as instruções acima.`,
-            'Aguarde a validação da inscrição (até 24h corridas).',
-            'Você receberá um e-mail de confirmação.',
-            'Será adicionado(a) ao grupo oficial de WhatsApp.',
-            'Dia 22/05, apareça no CIB às 18:30!',
-          ].map((step, i) => (
+          {(paymentMethod === 'card'
+            ? [
+                'Clique em "Pagar com Mercado Pago" acima.',
+                'Complete o pagamento no Checkout do Mercado Pago.',
+                'A confirmação é automática — você receberá um e-mail.',
+                'Será adicionado(a) ao grupo oficial de WhatsApp.',
+                'Dia 22/05, apareça no CIB às 18:30!',
+              ]
+            : [
+                `Realize o pagamento de ${displayTotal} usando as instruções acima.`,
+                'Aguarde a validação da inscrição (até 24h corridas).',
+                'Você receberá um e-mail de confirmação.',
+                'Será adicionado(a) ao grupo oficial de WhatsApp.',
+                'Dia 22/05, apareça no CIB às 18:30!',
+              ]
+          ).map((step, i) => (
             <li key={i} className="flex gap-3 text-sm text-text-muted">
               <span className="flex-shrink-0 w-6 h-6 rounded-full bg-electric/10 text-electric text-xs font-mono flex items-center justify-center">
                 {i + 1}
@@ -219,6 +288,9 @@ export default function PaymentInfo({ paymentMethod, price, email, totalPrice, m
         <a href={`mailto:${EVENT_CONFIG.organizer.email}`} className="text-electric underline">
           {EVENT_CONFIG.organizer.email}
         </a>
+      </p>
+      <p className="text-xs text-text-muted mt-4">
+        Pagamentos processados por {EVENT_CONFIG.organizer.company} — CNPJ {EVENT_CONFIG.organizer.cnpj}
       </p>
     </div>
   )

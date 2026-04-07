@@ -47,6 +47,11 @@ export default function Footer() {
                   Edital Completo
                 </a>
               </li>
+              <li>
+                <a href="#privacidade" className="text-sm text-text-muted hover:text-white transition-colors">
+                  Política de Privacidade
+                </a>
+              </li>
             </ul>
           </div>
 
@@ -91,9 +96,10 @@ export default function Footer() {
 
         {/* Divider */}
         <div className="border-t border-dark-border pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-text-muted">
-            &copy; 2026 HackIA SC. Uma iniciativa independente para o ecossistema de Santa Catarina.
-          </p>
+          <div className="text-xs text-text-muted">
+            <p>&copy; 2026 HackIA SC. Uma iniciativa independente para o ecossistema de Santa Catarina.</p>
+            <p className="mt-1">Realização: {EVENT_CONFIG.organizer.company} — CNPJ {EVENT_CONFIG.organizer.cnpj}</p>
+          </div>
           <p className="text-xs text-text-muted font-mono">
             <span className="text-cyan">@</span> Centro de Inovação de Blumenau
           </p>

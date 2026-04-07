@@ -27,6 +27,8 @@ const EMPTY_MEMBER = {
   accept_edital: false,
   accept_image: false,
   accept_responsibility: false,
+  accept_lgpd: false,
+  accept_code_ip: false,
 }
 
 function validateMember(member) {
@@ -43,6 +45,8 @@ function validateMember(member) {
   if (!member.accept_edital) errs.accept_edital = 'Obrigatório'
   if (!member.accept_image) errs.accept_image = 'Obrigatório'
   if (!member.accept_responsibility) errs.accept_responsibility = 'Obrigatório'
+  if (!member.accept_lgpd) errs.accept_lgpd = 'Obrigatório'
+  if (!member.accept_code_ip) errs.accept_code_ip = 'Obrigatório'
   return errs
 }
 
@@ -303,8 +307,30 @@ function MemberCard({ index, member, errors, onChange, onRemove }) {
                 />
                 Estou ciente que a organização não se responsabiliza por perdas de equipamentos pessoais
               </label>
+              <label className={`${CHK_LABEL} ${errors.accept_lgpd ? 'border-hot/40' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={member.accept_lgpd}
+                  onChange={e => onChange('accept_lgpd', e.target.checked)}
+                  className={CHK_INPUT}
+                />
+                <span>
+                  Li e concordo com a{' '}
+                  <a href="#privacidade" className="text-electric underline" onClick={e => e.stopPropagation()}>Política de Privacidade</a>.
+                  {' '}Autorizo a coleta e o tratamento dos meus dados pessoais pela MORPH3D INOVA SIMPLES (I.S.) para fins de organização do evento.
+                </span>
+              </label>
+              <label className={`${CHK_LABEL} ${errors.accept_code_ip ? 'border-hot/40' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={member.accept_code_ip}
+                  onChange={e => onChange('accept_code_ip', e.target.checked)}
+                  className={CHK_INPUT}
+                />
+                Declaro que todo código-fonte e material intelectual que eu utilizar durante o evento é de minha autoria ou possuo autorização legal para utilizá-lo.
+              </label>
             </div>
-            {(errors.accept_edital || errors.accept_image || errors.accept_responsibility) && (
+            {(errors.accept_edital || errors.accept_image || errors.accept_responsibility || errors.accept_lgpd || errors.accept_code_ip) && (
               <p className={ERR}>Você precisa confirmar todas as declarações.</p>
             )}
           </div>
@@ -366,10 +392,12 @@ export default function RegistrationForm() {
       const next = { ...e }
       delete next[field]
       // Clear all accept errors together since they share one error message
-      if (field === 'accept_edital' || field === 'accept_image' || field === 'accept_responsibility') {
+      if (field === 'accept_edital' || field === 'accept_image' || field === 'accept_responsibility' || field === 'accept_lgpd' || field === 'accept_code_ip') {
         delete next.accept_edital
         delete next.accept_image
         delete next.accept_responsibility
+        delete next.accept_lgpd
+        delete next.accept_code_ip
       }
       return next
     }))
@@ -411,6 +439,8 @@ export default function RegistrationForm() {
       payment_method: data.payment_method,
       ticket_tier: tier,
       ticket_price: currentPrice,
+      accept_lgpd: data.accept_lgpd || false,
+      accept_code_ip: data.accept_code_ip || false,
     }
 
     if (!supabase) {
@@ -427,10 +457,12 @@ export default function RegistrationForm() {
     }
 
     let insertError = null
+    const leaderId = crypto.randomUUID()
 
     if (data.inscription_modality === 'team') {
-      const leaderRow = { ...leaderBase, is_team_leader: true }
+      const leaderRow = { id: leaderId, ...leaderBase, is_team_leader: true }
       const memberRows = teamMembers.map(m => ({
+        id: crypto.randomUUID(),
         full_name: m.full_name.trim(),
         email: m.email.trim().toLowerCase(),
         phone: m.phone.trim(),
@@ -451,12 +483,14 @@ export default function RegistrationForm() {
         ticket_tier: tier,
         ticket_price: currentPrice,
         is_team_leader: false,
+        accept_lgpd: m.accept_lgpd || false,
+        accept_code_ip: m.accept_code_ip || false,
       }))
 
       const { error } = await supabase.from('registrations').insert([leaderRow, ...memberRows])
       insertError = error
     } else {
-      const { error } = await supabase.from('registrations').insert({ ...leaderBase, is_team_leader: false })
+      const { error } = await supabase.from('registrations').insert({ id: leaderId, ...leaderBase, is_team_leader: false })
       insertError = error
     }
 
@@ -476,6 +510,7 @@ export default function RegistrationForm() {
       payment_method: data.payment_method,
       memberCount: totalPeople,
       totalPriceFormatted,
+      registration_id: leaderId,
     })
     setSubmitted(true)
     setSubmitting(false)
@@ -493,6 +528,8 @@ export default function RegistrationForm() {
             memberCount={submittedData?.memberCount}
             fullName={submittedData?.full_name}
             teamName={submittedData?.team_name}
+            registrationId={submittedData?.registration_id}
+            ticketPrice={submittedData?.ticket_price}
           />
         </div>
       </section>
@@ -656,8 +693,20 @@ export default function RegistrationForm() {
                   <input type="checkbox" {...register('accept_responsibility', { required: 'Obrigatório' })} className={CHK_INPUT} />
                   Estou ciente que a organização não se responsabiliza por perdas ou danos a equipamentos pessoais e que o uso do crachá é obrigatório
                 </label>
+                <label className={CHK_LABEL}>
+                  <input type="checkbox" {...register('accept_lgpd', { required: 'Obrigatório' })} className={CHK_INPUT} />
+                  <span>
+                    Li e concordo com a{' '}
+                    <a href="#privacidade" className="text-electric underline" target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>Política de Privacidade</a>.
+                    {' '}Autorizo a coleta e o tratamento dos meus dados pessoais pela MORPH3D INOVA SIMPLES (I.S.) para fins de organização do evento.
+                  </span>
+                </label>
+                <label className={CHK_LABEL}>
+                  <input type="checkbox" {...register('accept_code_ip', { required: 'Obrigatório' })} className={CHK_INPUT} />
+                  Declaro que todo código-fonte e material intelectual que eu utilizar durante o evento é de minha autoria ou possuo autorização legal para utilizá-lo.
+                </label>
               </div>
-              {(errors.accept_edital || errors.accept_image || errors.accept_responsibility) && <p className={ERR}>Você precisa confirmar todas as declarações.</p>}
+              {(errors.accept_edital || errors.accept_image || errors.accept_responsibility || errors.accept_lgpd || errors.accept_code_ip) && <p className={ERR}>Você precisa confirmar todas as declarações.</p>}
             </div>
           </fieldset>
 
@@ -872,7 +921,9 @@ export default function RegistrationForm() {
 
           <p className="text-xs text-text-muted text-center">
             Ao se inscrever, você concorda com o{' '}
-            <a href={EVENT_CONFIG.editalUrl} target="_blank" className="text-electric underline underline-offset-2">edital do evento</a>.
+            <a href={EVENT_CONFIG.editalUrl} target="_blank" className="text-electric underline underline-offset-2">edital do evento</a>
+            {' '}e com a{' '}
+            <a href="#privacidade" className="text-electric underline underline-offset-2">Política de Privacidade</a>.
           </p>
         </form>
       </div>
