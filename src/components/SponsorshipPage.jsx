@@ -410,7 +410,7 @@ export default function SponsorshipPage({ onBack }) {
                 </div>
                 <div className="text-sm text-text-muted">Comercial &amp; Parcerias</div>
                 <a href="https://wa.me/5547988895675" target="_blank" rel="noopener noreferrer" className="text-sm text-white/60 hover:text-violet transition-colors">
-                  +55 47 8889-5675
+                  +55 47 9 8889-5675
                 </a>
               </div>
 
