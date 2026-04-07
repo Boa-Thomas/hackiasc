@@ -25,7 +25,7 @@ const SPONSOR_TIERS = [
     name: 'Co-Host',
     subtitle: 'Main Partner',
     price: 'R$ 6.000 – 8.000',
-    slots: '1 vaga',
+    slots: '2 vagas',
     tag: 'Protagonismo',
     benefits: [
       { title: 'Presented By', desc: 'Logo em destaque junto ao naming em todas as comunicações. Reels fixado no perfil do Instagram do evento.' },
