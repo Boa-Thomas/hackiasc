@@ -13,7 +13,7 @@ const SPONSOR_TIERS = [
       { title: 'Naming Rights', desc: 'O evento carrega o nome da sua empresa em todas as comunicações.' },
       { title: 'Abertura Oficial', desc: 'Fala institucional de 5 minutos na abertura do evento.' },
       { title: '5 Ingressos', desc: 'Cinco ingressos de participação inclusos para sua equipe.' },
-      { title: 'Visibilidade Total', desc: 'Logo em destaque máximo no site, telões e todos os materiais.' },
+      { title: 'Visibilidade Total', desc: 'Logo em destaque máximo no site, telões e todos os materiais. Reels fixado + posts no feed + Stories no Instagram do evento.' },
       { title: 'Comitê de Governança', desc: 'Participação no comitê de governança do evento.' },
       { title: 'Banco de Talentos', desc: 'Primeiro acesso à lista completa de participantes pós-evento.' },
       { title: 'Prêmio Próprio', desc: 'Possibilidade de ofertar premiação adicional com sua marca.' },
@@ -28,12 +28,13 @@ const SPONSOR_TIERS = [
     slots: '1 vaga',
     tag: 'Protagonismo',
     benefits: [
-      { title: 'Presented By', desc: 'Logo em destaque junto ao naming em todas as comunicações.' },
+      { title: 'Presented By', desc: 'Logo em destaque junto ao naming em todas as comunicações. Reels fixado no perfil do Instagram do evento.' },
       { title: 'Fala Institucional', desc: 'Pitch de 3–5 min na abertura ou encerramento.' },
       { title: '3 Ingressos', desc: 'Três ingressos de participação inclusos.' },
       { title: 'Prêmio Adicional', desc: 'Possibilidade de lançar premiação própria.' },
       { title: 'Indicação de Mentores', desc: 'Indique mentores técnicos da sua empresa.' },
       { title: 'Banco de Talentos', desc: 'Acesso ao banco de talentos pós-evento.' },
+      { title: 'API / Ferramenta', desc: 'Inserir sua API ou ferramenta para uso pelos times durante o evento.' },
       { title: 'Stand / Ativação', desc: 'Espaço físico para ativação presencial.' },
     ],
     idealFor: 'Empresa local forte, software house relevante, posicionamento de ecossistema',
@@ -45,7 +46,7 @@ const SPONSOR_TIERS = [
     slots: '2 vagas',
     tag: 'Mais procurada',
     benefits: [
-      { title: 'Destaque Intermediário', desc: 'Logo com destaque intermediário em todos os materiais.' },
+      { title: 'Destaque Intermediário', desc: 'Logo com destaque intermediário em todos os materiais. Reels fixado no perfil do Instagram do evento.' },
       { title: '2 Ingressos', desc: 'Dois ingressos de participação inclusos.' },
       { title: 'Desafio Técnico', desc: 'Possibilidade de propor desafio técnico para os times.' },
       { title: 'API / Ferramenta', desc: 'Inserir sua API ou ferramenta para uso durante o evento.' },
@@ -62,7 +63,7 @@ const SPONSOR_TIERS = [
     slots: '2 vagas',
     tag: 'Empresas de tech',
     benefits: [
-      { title: 'Branding Médio', desc: 'Presença no site e materiais do evento.' },
+      { title: 'Branding Médio', desc: 'Presença no site e materiais do evento. Reels no Instagram do evento.' },
       { title: '2 Ingressos', desc: 'Dois ingressos de participação inclusos.' },
       { title: 'API / Créditos', desc: 'Forneça API ou créditos para os participantes usarem.' },
       { title: 'Mentores', desc: 'Mentores indicados pela empresa.' },
@@ -79,7 +80,7 @@ const SPONSOR_TIERS = [
     tag: 'Entrada estratégica',
     benefits: [
       { title: 'Logo nos Materiais', desc: 'Presença visual em materiais e divulgação.' },
-      { title: 'Divulgação', desc: 'Exposição nas redes sociais do evento.' },
+      { title: 'Divulgação', desc: 'Post no feed do Instagram do evento.' },
       { title: '1 Ingresso', desc: 'Um ingresso de participação incluso.' },
       { title: 'Presença no Evento', desc: 'Acesso ao evento e networking informal com participantes.' },
     ],
@@ -135,7 +136,7 @@ const EXPERIENCES = [
   },
   {
     title: 'Copos Reutilizáveis',
-    price: '48h de exposição contínua',
+    price: '3 dias de exposição contínua',
     desc: 'Sua logo nos copos oficiais presentes nas mesas — e levados pelos participantes ao final.',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
@@ -274,14 +275,14 @@ export default function SponsorshipPage({ onBack }) {
           </h1>
 
           <p className="text-lg sm:text-xl text-text-muted font-light max-w-2xl mb-8 leading-relaxed">
-            Isso não é evento de branding. É um pipeline direto de inovação, recrutamento e validação técnica. 48 horas, código real, startups nascendo.
+            Isso não é evento de branding. É um pipeline direto de inovação, recrutamento e validação técnica. 3 dias, código real, startups nascendo.
           </p>
 
           <div className="flex flex-wrap gap-6">
             {[
-              { text: '22–24 de Maio de 2026' },
+              { text: '29–31 de Maio de 2026' },
               { text: 'Centro de Inovação de Blumenau' },
-              { text: '48 horas de imersão' },
+              { text: '3 dias de imersão' },
             ].map((badge, i) => (
               <div key={i} className="flex items-center gap-2 text-xs sm:text-sm font-medium uppercase tracking-widest text-white/70">
                 <div className="w-1.5 h-1.5 rounded-full bg-cyan" />
@@ -301,7 +302,7 @@ export default function SponsorshipPage({ onBack }) {
             <span className="text-gradient-cyan">INOVAÇÃO E TALENTO</span>
           </h2>
           <p className="text-text-muted text-base sm:text-lg font-light max-w-2xl mb-10 leading-relaxed">
-            Durante 48 horas, os melhores desenvolvedores, designers e gestores da região estarão criando soluções reais baseadas em IA. Ao patrocinar, sua empresa se posiciona no centro do ecossistema de tecnologia regional.
+            Durante 3 dias, os melhores desenvolvedores, designers e gestores da região estarão criando soluções reais baseadas em IA. Ao patrocinar, sua empresa se posiciona no centro do ecossistema de tecnologia regional.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
