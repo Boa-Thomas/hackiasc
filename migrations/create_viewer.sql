@@ -1,5 +1,10 @@
 -- Create viewer user via auth.users direct insert
--- Password: same viewer password but now only in Supabase Auth, not in JS bundle
+-- SECURITY: Do NOT hardcode passwords here. Create the viewer user via Supabase Dashboard instead.
+-- Steps: Authentication > Users > Add User > email: viewer@hackiasc.com, set a strong password
+-- Then set app_metadata: {"role": "viewer"} via SQL Editor:
+--   UPDATE auth.users SET raw_app_meta_data = '{"role": "viewer"}'::jsonb WHERE email = 'viewer@hackiasc.com';
+--
+-- The original INSERT is kept as a template but with placeholder password:
 INSERT INTO auth.users (
   instance_id, id, aud, role, email, encrypted_password,
   email_confirmed_at, raw_user_meta_data, raw_app_meta_data,
@@ -11,7 +16,7 @@ SELECT
   'authenticated',
   'authenticated',
   'viewer@hackiasc.com',
-  crypt('4AXu22Rg7Q8L', gen_salt('bf')),
+  crypt(current_setting('app.viewer_password', true), gen_salt('bf')),
   now(),
   '{"email_verified": true}'::jsonb,
   '{"role": "viewer"}'::jsonb,

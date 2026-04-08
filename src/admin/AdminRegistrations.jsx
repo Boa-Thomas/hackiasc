@@ -33,7 +33,7 @@ const METHOD_LABELS = {
 
 function escapeHtml(str) {
   if (!str) return ''
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
 
 function formatBRL(cents) {
@@ -74,8 +74,9 @@ function exportCSV(data) {
 function openPrintWindow(title, bodyHtml) {
   const win = window.open('', '_blank')
   if (!win) return
+  const safeTitle = escapeHtml(title)
   win.document.write(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>${title}</title>
+<html><head><meta charset="utf-8"><title>${safeTitle}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Segoe UI', Arial, sans-serif; color: #111; padding: 20px; }
