@@ -410,12 +410,19 @@ export default function RegistrationForm() {
   const totalPriceFormatted = `R$ ${(totalPrice / 100).toFixed(0)},00`
   const isTeamWithMembers = inscriptionModality === 'team' && teamMembers.length > 0
 
+  // Early access — check URL param ?early=CODE
+  const urlParams = new URLSearchParams(window.location.search)
+  const earlyCode = urlParams.get('early')
+  const hasEarlyAccess = earlyCode === EVENT_CONFIG.earlyAccessCode
+
   // Registration window — fallback to open if config fields not yet set
   const now = new Date()
   const regStart = EVENT_CONFIG.registrationStart ? new Date(EVENT_CONFIG.registrationStart) : null
+  const earlyStart = hasEarlyAccess && EVENT_CONFIG.earlyAccessStart ? new Date(EVENT_CONFIG.earlyAccessStart) : null
+  const effectiveStart = earlyStart || regStart
   const regEnd = EVENT_CONFIG.registrationEnd ? new Date(EVENT_CONFIG.registrationEnd) : null
-  const registrationOpen = (!regStart || !regEnd) ? true : (now >= regStart && now <= regEnd)
-  const registrationNotStarted = regStart && now < regStart
+  const registrationOpen = (!effectiveStart || !regEnd) ? true : (now >= effectiveStart && now <= regEnd)
+  const registrationNotStarted = effectiveStart && now < effectiveStart
   const registrationEnded = regEnd && now > regEnd
 
   // Scroll to top when form is submitted
@@ -685,7 +692,9 @@ export default function RegistrationForm() {
             <span className="font-mono text-sm text-cyan tracking-wider uppercase">Inscrição</span>
             {registrationNotStarted ? (
               <p className="mt-6 text-lg text-white font-semibold">
-                Inscrições abrem em 08 de abril às 12h. Fique ligado!
+                {hasEarlyAccess
+                  ? 'Acesso antecipado — inscrições abrem às 11:30. Fique ligado!'
+                  : 'Inscrições abrem em 08 de abril às 12h. Fique ligado!'}
               </p>
             ) : registrationEnded ? (
               <p className="mt-6 text-lg text-white font-semibold">
@@ -813,6 +822,11 @@ export default function RegistrationForm() {
 
       <div className="relative z-10 max-w-2xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-12">
+          {hasEarlyAccess && (
+            <div className="inline-flex items-center gap-2 px-4 py-2 mb-4 rounded-full border border-cyan/30 bg-cyan/10 text-cyan text-sm font-mono">
+              <span>&#9889;</span> Acesso antecipado — Comunidade WhatsApp
+            </div>
+          )}
           <span className="font-mono text-sm text-cyan tracking-wider uppercase">Inscrição</span>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mt-4 mb-4">
             Garanta sua <span className="text-gradient-cyan">vaga</span>
