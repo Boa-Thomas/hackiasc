@@ -118,6 +118,15 @@ Deno.serve(async (req: Request) => {
       )
     }
 
+    // Verify admin role (uses app_metadata which cannot be self-modified by users)
+    const userRole = user.app_metadata?.role
+    if (userRole !== 'admin') {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden — admin role required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const { registration_id, dry_run } = await req.json()
 
     if (!registration_id) {

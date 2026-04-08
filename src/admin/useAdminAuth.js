@@ -63,7 +63,7 @@ export function useAdminAuth() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        const userRole = session.user.user_metadata?.role ?? null
+        const userRole = session.user.app_metadata?.role ?? null
         if (userRole === 'admin' || userRole === 'viewer') {
           setRole(userRole)
           setIsAuthenticated(true)
@@ -138,7 +138,7 @@ export function useAdminAuth() {
       failedAttemptsRef.current = 0
       lockoutUntilRef.current = null
 
-      const userRole = data.user?.user_metadata?.role ?? null
+      const userRole = data.user?.app_metadata?.role ?? null
       if (userRole !== 'admin' && userRole !== 'viewer') {
         await supabase.auth.signOut()
         setError('Acesso restrito a administradores.')

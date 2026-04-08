@@ -12,8 +12,12 @@
 -- ============================================================
 
 -- 1. Helper functions for role checks in RLS policies
--- These read the 'role' field from the JWT user_metadata claim,
--- which is set via raw_user_meta_data in auth.users.
+-- These read the 'role' field from the JWT app_metadata claim,
+-- which is set via raw_app_meta_data in auth.users.
+-- IMPORTANT: We use app_metadata (not user_metadata) because users
+-- can self-modify user_metadata via supabase.auth.updateUser(),
+-- which would allow privilege escalation. app_metadata can only be
+-- set by the service role or Supabase dashboard.
 
 CREATE OR REPLACE FUNCTION is_admin_or_viewer()
 RETURNS BOOLEAN
@@ -22,7 +26,7 @@ STABLE
 SECURITY DEFINER
 AS $$
   SELECT COALESCE(
-    (auth.jwt() -> 'user_metadata' ->> 'role') IN ('admin', 'viewer'),
+    (auth.jwt() -> 'app_metadata' ->> 'role') IN ('admin', 'viewer'),
     false
   );
 $$;
@@ -34,7 +38,7 @@ STABLE
 SECURITY DEFINER
 AS $$
   SELECT COALESCE(
-    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin',
+    (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin',
     false
   );
 $$;
@@ -98,7 +102,7 @@ DECLARE
   v_caller_role TEXT;
 BEGIN
   -- Only allow admins to anonymize data
-  v_caller_role := (auth.jwt() -> 'user_metadata' ->> 'role');
+  v_caller_role := (auth.jwt() -> 'app_metadata' ->> 'role');
   IF v_caller_role IS DISTINCT FROM 'admin' THEN
     RAISE EXCEPTION 'Access denied: admin role required';
   END IF;
@@ -126,3 +130,14 @@ BEGIN
   RETURN TRUE;
 END;
 $$;
+
+-- 5. Migrate admin roles from user_metadata to app_metadata
+-- app_metadata cannot be self-modified by users (only service_role/dashboard can set it)
+
+UPDATE auth.users
+SET raw_app_meta_data = COALESCE(raw_app_meta_data, '{}'::jsonb) || '{"role": "admin"}'::jsonb
+WHERE email IN ('admin@hackiasc.com', 'thotop100@gmail.com');
+
+UPDATE auth.users
+SET raw_app_meta_data = COALESCE(raw_app_meta_data, '{}'::jsonb) || '{"role": "viewer"}'::jsonb
+WHERE email = 'viewer@hackiasc.com';

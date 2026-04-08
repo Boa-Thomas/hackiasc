@@ -67,12 +67,13 @@ CREATE INDEX idx_reg_payment_status ON registrations(payment_status);
 ALTER TABLE registrations ENABLE ROW LEVEL SECURITY;
 
 -- 3a. Helper functions for role-based RLS checks
+-- Uses app_metadata (not user_metadata) because users can self-modify user_metadata
 CREATE OR REPLACE FUNCTION is_admin_or_viewer()
 RETURNS BOOLEAN
 LANGUAGE sql STABLE SECURITY DEFINER
 AS $$
   SELECT COALESCE(
-    (auth.jwt() -> 'user_metadata' ->> 'role') IN ('admin', 'viewer'),
+    (auth.jwt() -> 'app_metadata' ->> 'role') IN ('admin', 'viewer'),
     false
   );
 $$;
@@ -82,7 +83,7 @@ RETURNS BOOLEAN
 LANGUAGE sql STABLE SECURITY DEFINER
 AS $$
   SELECT COALESCE(
-    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin',
+    (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin',
     false
   );
 $$;
