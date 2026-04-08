@@ -127,8 +127,11 @@ export default function AdminAuditLog() {
     if (filterAction) query = query.like('action', `${filterAction}%`)
     if (filterActor) query = query.eq('actor_type', filterActor)
     if (search.trim()) {
-      const q = search.trim().toLowerCase()
-      query = query.or(`target_email.ilike.%${q}%,actor_email.ilike.%${q}%`)
+      // Sanitize: remove PostgREST operators (.,%) to prevent filter injection
+      const q = search.trim().toLowerCase().replace(/[.,%]/g, '')
+      if (q) {
+        query = query.or(`target_email.ilike.%${q}%,actor_email.ilike.%${q}%`)
+      }
     }
 
     query = query.range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1)
