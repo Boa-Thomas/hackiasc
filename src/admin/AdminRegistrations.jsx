@@ -900,7 +900,7 @@ function ListView({ registrations, onSelect, onRefetch, loading, readOnly }) {
   return (
     <div className="flex flex-col gap-4">
       {/* Toolbar */}
-      <div className="card-glass rounded-xl p-4 flex flex-wrap gap-3 items-center overflow-visible">
+      <div className="card-glass rounded-xl p-4 flex flex-wrap gap-3 items-center overflow-visible relative z-10">
         <input
           type="search"
           placeholder="Buscar por nome ou email..."
