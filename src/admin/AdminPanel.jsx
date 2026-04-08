@@ -10,7 +10,7 @@ const ALL_TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'registrations', label: 'Inscrições', icon: '📋' },
   { id: 'teams', label: 'Times', icon: '👥' },
-  { id: 'financeiro', label: 'Financeiro', icon: '💰', adminOnly: true },
+  { id: 'financeiro', label: 'Financeiro', icon: '💰' },
   { id: 'checkin', label: 'Check-in', icon: '✅', adminOnly: true },
   { id: 'logs', label: 'Logs', icon: '📜', adminOnly: true },
 ]
@@ -78,7 +78,7 @@ export default function AdminPanel({ onLogout, role = 'viewer' }) {
           />
         )}
         {activeTab === 'teams' && <AdminTeams readOnly={readOnly} />}
-        {!readOnly && activeTab === 'financeiro' && <AdminFinanceiro />}
+        {activeTab === 'financeiro' && <AdminFinanceiro readOnly={readOnly} />}
         {!readOnly && activeTab === 'checkin' && <AdminCheckin />}
         {!readOnly && activeTab === 'logs' && <AdminAuditLog />}
       </main>
