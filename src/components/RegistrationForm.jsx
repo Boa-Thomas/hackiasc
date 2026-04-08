@@ -1100,6 +1100,11 @@ export default function RegistrationForm() {
                     maxLength={120}
                     {...register('team_name', {
                       validate: v => inscriptionModality !== 'team' || (!!v && v.trim().length > 0) || 'Nome da equipe obrigatório',
+                      maxLength: { value: 120, message: 'Máximo 120 caracteres' },
+                      pattern: {
+                        value: /^[a-zA-Z0-9\s\-_.áéíóúàâêôãõçüñÁÉÍÓÚÀÂÊÔÃÕÇÜÑ()&!]+$/,
+                        message: 'Nome contém caracteres não permitidos'
+                      }
                     })}
                     className={INPUT}
                     placeholder="Nome da sua equipe"
