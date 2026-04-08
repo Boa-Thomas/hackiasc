@@ -126,6 +126,7 @@ function MemberCard({ index, member, errors, onChange, onRemove }) {
             <div>
               <label className={LBL}>Nome Completo *</label>
               <input
+                maxLength={120}
                 value={member.full_name}
                 onChange={e => onChange('full_name', e.target.value)}
                 className={INPUT}
@@ -152,6 +153,7 @@ function MemberCard({ index, member, errors, onChange, onRemove }) {
               <label className={LBL}>Telefone WhatsApp *</label>
               <input
                 type="tel"
+                maxLength={20}
                 value={member.phone}
                 onChange={e => onChange('phone', e.target.value)}
                 className={INPUT}
@@ -175,6 +177,7 @@ function MemberCard({ index, member, errors, onChange, onRemove }) {
           <div>
             <label className={LBL}>CPF *</label>
             <input
+              maxLength={14}
               value={member.cpf}
               onChange={e => onChange('cpf', e.target.value)}
               className={INPUT}
@@ -188,6 +191,7 @@ function MemberCard({ index, member, errors, onChange, onRemove }) {
             <label className={LBL}>LinkedIn (opcional)</label>
             <input
               type="url"
+              maxLength={200}
               value={member.linkedin_url}
               onChange={e => onChange('linkedin_url', e.target.value)}
               className={INPUT}
@@ -493,7 +497,6 @@ export default function RegistrationForm() {
       })
 
       if (error) {
-        console.error('Recovery RPC error:', error?.message)
         setRecovering(false)
         return { success: false, message: 'Erro ao buscar inscrição. Tente novamente.' }
       }
@@ -540,7 +543,6 @@ export default function RegistrationForm() {
       setRecovering(false)
       return { success: true }
     } catch (err) {
-      console.error('Recovery error:', err?.message)
       setRecovering(false)
       return { success: false, message: 'Erro inesperado. Tente novamente.' }
     }
@@ -606,7 +608,6 @@ export default function RegistrationForm() {
     }
 
     if (!supabase) {
-      console.warn('Supabase not configured — registration submitted in offline mode')
       setSubmittedData({
         ...leaderBase,
         payment_method: data.payment_method,
@@ -666,7 +667,6 @@ export default function RegistrationForm() {
         }
       } else {
         setSubmitError('Erro ao enviar inscrição. Tente novamente.')
-        console.error('Registration insert failed:', insertError?.message || 'Unknown error')
       }
       setSubmitting(false)
       return
@@ -929,7 +929,7 @@ export default function RegistrationForm() {
 
             <div>
               <label className={LBL}>Nome Completo *</label>
-              <input {...register('full_name', { required: 'Nome obrigatório' })} className={INPUT} placeholder="Seu nome completo" />
+              <input maxLength={120} {...register('full_name', { required: 'Nome obrigatório' })} className={INPUT} placeholder="Seu nome completo" />
               {errors.full_name && <p className={ERR}>{errors.full_name.message}</p>}
             </div>
 
@@ -943,7 +943,7 @@ export default function RegistrationForm() {
             <div className="grid sm:grid-cols-2 gap-5">
               <div>
                 <label className={LBL}>Número de Telefone para Contato *</label>
-                <input type="tel" {...register('phone', { required: 'Telefone obrigatório' })} className={INPUT} placeholder="(47) 99999-9999" />
+                <input type="tel" maxLength={20} {...register('phone', { required: 'Telefone obrigatório', pattern: { value: /^[\d\s()+-]{8,20}$/, message: 'Telefone inválido' } })} className={INPUT} placeholder="(47) 99999-9999" />
                 {errors.phone && <p className={ERR}>{errors.phone.message}</p>}
               </div>
               <div>
@@ -955,13 +955,13 @@ export default function RegistrationForm() {
 
             <div>
               <label className={LBL}>CPF *</label>
-              <input {...register('cpf', { validate: v => validateCPF(v) || 'CPF inválido' })} className={INPUT} placeholder="000.000.000-00" />
+              <input maxLength={14} {...register('cpf', { validate: v => validateCPF(v) || 'CPF inválido' })} className={INPUT} placeholder="000.000.000-00" />
               {errors.cpf && <p className={ERR}>{errors.cpf.message}</p>}
             </div>
 
             <div>
               <label className={LBL}>LinkedIn (opcional)</label>
-              <input type="url" {...register('linkedin_url')} className={INPUT} placeholder="https://linkedin.com/in/..." />
+              <input type="url" maxLength={200} {...register('linkedin_url', { validate: v => !v || /^https?:\/\/(www\.)?linkedin\.com\//.test(v) || 'URL LinkedIn inválida' })} className={INPUT} placeholder="https://linkedin.com/in/..." />
             </div>
           </fieldset>
 
@@ -1010,7 +1010,7 @@ export default function RegistrationForm() {
 
             <div>
               <label className={LBL}>Você tem alguma restrição alimentar? Se sim, qual? *</label>
-              <input {...register('dietary_restrictions', { required: 'Campo obrigatório' })} className={INPUT} placeholder="Ex: Vegetariano, vegano, alergias... ou 'Não'" />
+              <input maxLength={200} {...register('dietary_restrictions', { required: 'Campo obrigatório' })} className={INPUT} placeholder="Ex: Vegetariano, vegano, alergias... ou 'Não'" />
               {errors.dietary_restrictions && <p className={ERR}>{errors.dietary_restrictions.message}</p>}
             </div>
 
@@ -1030,7 +1030,7 @@ export default function RegistrationForm() {
             {isPcd === 'yes' && (
               <div>
                 <label className={LBL}>Se sim, por favor, indique o tipo (opcional):</label>
-                <input {...register('pcd_type')} className={INPUT} placeholder="Tipo de deficiência" />
+                <input maxLength={200} {...register('pcd_type')} className={INPUT} placeholder="Tipo de deficiência" />
               </div>
             )}
           </fieldset>
@@ -1054,7 +1054,7 @@ export default function RegistrationForm() {
             {hasProject === 'yes' && (
               <div>
                 <label className={LBL}>Seu projeto tem um nome? (opcional)</label>
-                <input {...register('project_name')} className={INPUT} placeholder="Nome do projeto" />
+                <input maxLength={120} {...register('project_name')} className={INPUT} placeholder="Nome do projeto" />
               </div>
             )}
           </fieldset>
@@ -1097,6 +1097,7 @@ export default function RegistrationForm() {
                 <div>
                   <label className={LBL}>Nome da Equipe *</label>
                   <input
+                    maxLength={120}
                     {...register('team_name', {
                       validate: v => inscriptionModality !== 'team' || (!!v && v.trim().length > 0) || 'Nome da equipe obrigatório',
                     })}

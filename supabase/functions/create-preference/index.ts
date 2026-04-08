@@ -20,6 +20,12 @@ function checkRate(ip: string, limit = 5, windowMs = 60000): boolean {
   if (hits.length >= limit) return false
   hits.push(now)
   rateMap.set(ip, hits)
+  // Cleanup stale IPs to prevent memory leak
+  if (rateMap.size > 100) {
+    for (const [key, val] of rateMap) {
+      if (val.every(t => now - t >= windowMs)) rateMap.delete(key)
+    }
+  }
   return true
 }
 
@@ -32,7 +38,8 @@ Deno.serve(async (req: Request) => {
   }
 
   // M2: Rate limiting per IP
-  const clientIp = req.headers.get('x-forwarded-for') || 'unknown'
+  const fwd = req.headers.get('x-forwarded-for') || ''
+  const clientIp = fwd.split(',').pop()?.trim() || 'unknown'
   if (!checkRate(clientIp)) {
     return new Response(
       JSON.stringify({ error: 'Too many requests — try again in a minute' }),
