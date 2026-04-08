@@ -39,7 +39,7 @@ const QUESTIONS = [
   },
   {
     q: 'Qual a política de cancelamento?',
-    a: 'Reembolso integral em até 7 dias após a compra (CDC). Até 10 dias antes: reembolso de 50%. Menos de 10 dias: sem reembolso. No-show não gera devolução.',
+    a: 'Reembolso integral em até 7 dias após a compra (CDC). Após 7 dias: reembolso de 50% se faltar mais de 10 dias para o evento; sem reembolso se faltar 10 dias ou menos. Não comparecimento não gera devolução. Solicitações devem ser enviadas para contato@hackiasc.com.',
   },
 ]
 

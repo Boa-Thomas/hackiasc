@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
+import { audit } from '../lib/auditLog'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -386,6 +387,8 @@ function Section({ title, children }) {
 
 function DetailView({ registration, onBack, onRefetch, readOnly }) {
   const [r, setR] = useState(registration)
+  const [refundInfo, setRefundInfo] = useState(null)
+  const [refundLoading, setRefundLoading] = useState(false)
 
   // Keep local state in sync when parent refetches
   useEffect(() => {
@@ -394,6 +397,7 @@ function DetailView({ registration, onBack, onRefetch, readOnly }) {
 
   async function updateField(field, value) {
     if (!supabase) return
+    const oldValue = r[field]
     const { error } = await supabase
       .from('registrations')
       .update({ [field]: value })
@@ -402,17 +406,109 @@ function DetailView({ registration, onBack, onRefetch, readOnly }) {
       alert(`Erro ao salvar: ${error.message}`)
       return
     }
+    audit({
+      action: 'registration.update_field',
+      actorType: 'admin',
+      targetTable: 'registrations',
+      targetId: r.id,
+      targetEmail: r.email,
+      oldData: { [field]: oldValue },
+      newData: { [field]: value },
+      metadata: { full_name: r.full_name },
+    })
     setR(prev => ({ ...prev, [field]: value }))
     onRefetch()
   }
 
   async function confirmPayment() {
-    await updateField('payment_status', 'confirmed')
-    await updateField('payment_confirmed_at', new Date().toISOString())
+    if (!supabase) return
+    const now = new Date().toISOString()
+    const { error } = await supabase
+      .from('registrations')
+      .update({ payment_status: 'confirmed', payment_confirmed_at: now })
+      .eq('id', r.id)
+    if (error) { alert(`Erro ao salvar: ${error.message}`); return }
+    audit({
+      action: 'payment.confirm',
+      actorType: 'admin',
+      targetTable: 'registrations',
+      targetId: r.id,
+      targetEmail: r.email,
+      oldData: { payment_status: r.payment_status },
+      newData: { payment_status: 'confirmed', payment_confirmed_at: now },
+      metadata: { full_name: r.full_name, ticket_price: r.ticket_price, ticket_tier: r.ticket_tier },
+    })
+    setR(prev => ({ ...prev, payment_status: 'confirmed', payment_confirmed_at: now }))
+    onRefetch()
+  }
+
+  async function previewRefund() {
+    if (!supabase) return
+    setRefundLoading(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('refund-payment', {
+        body: { registration_id: r.id, dry_run: true },
+      })
+      if (error) throw error
+      setRefundInfo(data)
+    } catch (err) {
+      alert(`Erro ao calcular reembolso: ${err.message}`)
+    } finally {
+      setRefundLoading(false)
+    }
+  }
+
+  async function executeRefund() {
+    if (!supabase) return
+    setRefundLoading(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('refund-payment', {
+        body: { registration_id: r.id, dry_run: false },
+      })
+      if (error) throw error
+      const amountStr = `R$ ${(data.refund_amount / 100).toFixed(2).replace('.', ',')}`
+      let msg = `Inscrição cancelada.\n\nReembolso: ${amountStr} (${data.refund_percentage}%)\n${data.reason}`
+      if (data.needs_manual_refund) {
+        msg += '\n\n⚠ Pagamento foi via Pix manual — reembolso precisa ser feito manualmente.'
+      }
+      if (data.mp_refund && !data.mp_refund.success) {
+        msg += '\n\n⚠ Reembolso automático no Mercado Pago falhou — processar manualmente.'
+      }
+      if (data.team_cancelled) {
+        msg += '\n\nTodos os membros do time foram cancelados.'
+      }
+      audit({
+        action: 'payment.refund',
+        actorType: 'admin',
+        targetTable: 'registrations',
+        targetId: r.id,
+        targetEmail: r.email,
+        oldData: { payment_status: 'confirmed' },
+        newData: { payment_status: 'cancelled', refund_amount: data.refund_amount, refund_percentage: data.refund_percentage },
+        metadata: {
+          full_name: r.full_name,
+          reason: data.reason,
+          mp_refund: data.mp_refund,
+          needs_manual_refund: data.needs_manual_refund,
+          team_cancelled: data.team_cancelled,
+        },
+      })
+      alert(msg)
+      setRefundInfo(null)
+      onRefetch()
+    } catch (err) {
+      alert(`Erro ao processar reembolso: ${err.message}`)
+    } finally {
+      setRefundLoading(false)
+    }
   }
 
   async function cancelRegistration() {
-    if (!window.confirm(`Cancelar inscrição de ${r.full_name}?`)) return
+    if (r.payment_status === 'confirmed') {
+      await previewRefund()
+      return
+    }
+    if (!window.confirm(`Cancelar inscrição de ${r.full_name}? (sem pagamento confirmado — sem reembolso)`)) return
     await updateField('payment_status', 'cancelled')
   }
 
@@ -439,14 +535,52 @@ function DetailView({ registration, onBack, onRefetch, readOnly }) {
             {r.payment_status !== 'cancelled' && (
               <button
                 onClick={cancelRegistration}
-                className="px-4 py-2 rounded-lg text-sm bg-hot/10 text-hot border border-hot/30 hover:bg-hot/20 transition-colors font-display"
+                disabled={refundLoading}
+                className="px-4 py-2 rounded-lg text-sm bg-hot/10 text-hot border border-hot/30 hover:bg-hot/20 transition-colors font-display disabled:opacity-50"
               >
-                Cancelar Inscrição
+                {refundLoading ? 'Calculando...' : 'Cancelar Inscrição'}
               </button>
             )}
           </div>
         )}
       </div>
+
+      {/* Refund Preview Panel */}
+      {refundInfo && (
+        <div className="card-glass rounded-xl p-5 border border-gold/30 flex flex-col gap-3">
+          <h3 className="text-sm font-display font-semibold text-gold uppercase tracking-widest">
+            Simulação de Reembolso
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div>
+              <span className="text-white/50">Valor pago:</span>{' '}
+              <span className="text-white font-mono">R$ {(refundInfo.ticket_price / 100).toFixed(2).replace('.', ',')}</span>
+            </div>
+            <div>
+              <span className="text-white/50">Reembolso:</span>{' '}
+              <span className={`font-mono font-bold ${refundInfo.refund_percentage > 0 ? 'text-cyan' : 'text-hot'}`}>
+                R$ {(refundInfo.refund_amount / 100).toFixed(2).replace('.', ',')} ({refundInfo.refund_percentage}%)
+              </span>
+            </div>
+          </div>
+          <p className="text-sm text-white/60">{refundInfo.reason}</p>
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={executeRefund}
+              disabled={refundLoading}
+              className="px-4 py-2 rounded-lg text-sm bg-hot/20 text-hot border border-hot/30 hover:bg-hot/30 transition-colors font-display disabled:opacity-50"
+            >
+              {refundLoading ? 'Processando...' : 'Confirmar Cancelamento'}
+            </button>
+            <button
+              onClick={() => setRefundInfo(null)}
+              className="px-4 py-2 rounded-lg text-sm bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition-colors font-display"
+            >
+              Voltar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Title */}
       <div className="card-glass rounded-xl p-5 flex items-center justify-between flex-wrap gap-3">
@@ -641,22 +775,77 @@ function ListView({ registrations, onSelect, onRefetch, loading, readOnly }) {
 
   async function handleConfirm(r) {
     if (!supabase) return
+    const now = new Date().toISOString()
     const { error } = await supabase
       .from('registrations')
-      .update({ payment_status: 'confirmed', payment_confirmed_at: new Date().toISOString() })
+      .update({ payment_status: 'confirmed', payment_confirmed_at: now })
       .eq('id', r.id)
     if (error) { alert(`Erro: ${error.message}`); return }
+    audit({
+      action: 'payment.confirm',
+      actorType: 'admin',
+      targetTable: 'registrations',
+      targetId: r.id,
+      targetEmail: r.email,
+      oldData: { payment_status: r.payment_status },
+      newData: { payment_status: 'confirmed' },
+      metadata: { full_name: r.full_name, ticket_price: r.ticket_price },
+    })
     onRefetch()
   }
 
   async function handleCancel(r) {
-    if (!window.confirm(`Cancelar inscrição de ${r.full_name}?`)) return
     if (!supabase) return
-    const { error } = await supabase
-      .from('registrations')
-      .update({ payment_status: 'cancelled' })
-      .eq('id', r.id)
-    if (error) { alert(`Erro: ${error.message}`); return }
+
+    if (r.payment_status === 'confirmed') {
+      const { data: preview, error: previewErr } = await supabase.functions.invoke('refund-payment', {
+        body: { registration_id: r.id, dry_run: true },
+      })
+      if (previewErr) { alert(`Erro: ${previewErr.message}`); return }
+
+      const amountStr = `R$ ${(preview.refund_amount / 100).toFixed(2).replace('.', ',')}`
+      const msg = `Cancelar inscrição de ${r.full_name}?\n\nReembolso: ${amountStr} (${preview.refund_percentage}%)\n${preview.reason}`
+      if (!window.confirm(msg)) return
+
+      const { data, error } = await supabase.functions.invoke('refund-payment', {
+        body: { registration_id: r.id, dry_run: false },
+      })
+      if (error) { alert(`Erro no reembolso: ${error.message}`); return }
+
+      audit({
+        action: 'payment.refund',
+        actorType: 'admin',
+        targetTable: 'registrations',
+        targetId: r.id,
+        targetEmail: r.email,
+        oldData: { payment_status: 'confirmed' },
+        newData: { payment_status: 'cancelled', refund_amount: data.refund_amount, refund_percentage: data.refund_percentage },
+        metadata: { full_name: r.full_name, reason: data.reason, needs_manual_refund: data.needs_manual_refund },
+      })
+
+      let result = `Cancelado. Reembolso: ${amountStr} (${data.refund_percentage}%)`
+      if (data.needs_manual_refund) result += '\n\nPix manual — reembolso precisa ser feito manualmente.'
+      if (data.mp_refund && !data.mp_refund.success) result += '\n\nReembolso MP falhou — processar manualmente.'
+      alert(result)
+    } else {
+      if (!window.confirm(`Cancelar inscrição de ${r.full_name}? (sem pagamento confirmado)`)) return
+      const { error } = await supabase
+        .from('registrations')
+        .update({ payment_status: 'cancelled' })
+        .eq('id', r.id)
+      if (error) { alert(`Erro: ${error.message}`); return }
+      audit({
+        action: 'registration.cancel',
+        actorType: 'admin',
+        targetTable: 'registrations',
+        targetId: r.id,
+        targetEmail: r.email,
+        oldData: { payment_status: r.payment_status },
+        newData: { payment_status: 'cancelled' },
+        metadata: { full_name: r.full_name },
+      })
+    }
+
     onRefetch()
   }
 
