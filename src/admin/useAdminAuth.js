@@ -64,9 +64,13 @@ export function useAdminAuth() {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
         const userRole = session.user.user_metadata?.role ?? null
-        setRole(userRole)
-        setIsAuthenticated(true)
-        startActivityTracking()
+        if (userRole === 'admin' || userRole === 'viewer') {
+          setRole(userRole)
+          setIsAuthenticated(true)
+          startActivityTracking()
+        } else {
+          await supabase.auth.signOut()
+        }
       }
     } catch {
       setIsAuthenticated(false)
@@ -135,6 +139,11 @@ export function useAdminAuth() {
       lockoutUntilRef.current = null
 
       const userRole = data.user?.user_metadata?.role ?? null
+      if (userRole !== 'admin' && userRole !== 'viewer') {
+        await supabase.auth.signOut()
+        setError('Acesso restrito a administradores.')
+        return false
+      }
       setRole(userRole)
       setIsAuthenticated(true)
       startActivityTracking()
