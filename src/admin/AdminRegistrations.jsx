@@ -900,7 +900,7 @@ function ListView({ registrations, onSelect, onRefetch, loading, readOnly }) {
   return (
     <div className="flex flex-col gap-4">
       {/* Toolbar */}
-      <div className="card-glass rounded-xl p-4 flex flex-wrap gap-3 items-center">
+      <div className="card-glass rounded-xl p-4 flex flex-wrap gap-3 items-center overflow-visible">
         <input
           type="search"
           placeholder="Buscar por nome ou email..."
@@ -914,10 +914,10 @@ function ListView({ registrations, onSelect, onRefetch, loading, readOnly }) {
           onChange={e => updateFilterStatus(e.target.value)}
           className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-electric/50 transition-colors"
         >
-          <option value="">Todos os status</option>
-          <option value="pending">Pendente</option>
-          <option value="confirmed">Confirmado</option>
-          <option value="cancelled">Cancelado</option>
+          <option value="" className="text-dark bg-white">Todos os status</option>
+          <option value="pending" className="text-dark bg-white">Pendente</option>
+          <option value="confirmed" className="text-dark bg-white">Confirmado</option>
+          <option value="cancelled" className="text-dark bg-white">Cancelado</option>
         </select>
 
         <select
@@ -925,11 +925,11 @@ function ListView({ registrations, onSelect, onRefetch, loading, readOnly }) {
           onChange={e => updateFilterOccupation(e.target.value)}
           className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-electric/50 transition-colors"
         >
-          <option value="">Todos os tipos</option>
-          <option value="hacker">Hacker</option>
-          <option value="hustler">Hustler</option>
-          <option value="hipster">Hipster</option>
-          <option value="enthusiast">Enthusiast</option>
+          <option value="" className="text-dark bg-white">Todos os tipos</option>
+          <option value="hacker" className="text-dark bg-white">Hacker</option>
+          <option value="hustler" className="text-dark bg-white">Hustler</option>
+          <option value="hipster" className="text-dark bg-white">Hipster</option>
+          <option value="enthusiast" className="text-dark bg-white">Enthusiast</option>
         </select>
 
         <select
@@ -937,10 +937,10 @@ function ListView({ registrations, onSelect, onRefetch, loading, readOnly }) {
           onChange={e => updateFilterModality(e.target.value)}
           className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-electric/50 transition-colors"
         >
-          <option value="">Todas as modalidades</option>
-          <option value="individual_own">Individual</option>
-          <option value="individual_form_team">Individual (p/ time)</option>
-          <option value="team">Time</option>
+          <option value="" className="text-dark bg-white">Todas as modalidades</option>
+          <option value="individual_own" className="text-dark bg-white">Individual</option>
+          <option value="individual_form_team" className="text-dark bg-white">Individual (p/ time)</option>
+          <option value="team" className="text-dark bg-white">Time</option>
         </select>
 
         <ExportDropdown filtered={filtered} />
