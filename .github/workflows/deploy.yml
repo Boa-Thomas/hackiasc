@@ -29,6 +29,10 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_EARLY_ACCESS_CODE: ${{ secrets.VITE_EARLY_ACCESS_CODE }}
+          VITE_PIX_KEY: ${{ secrets.VITE_PIX_KEY }}
+          VITE_SPONSOR_WHATSAPP: ${{ secrets.VITE_SPONSOR_WHATSAPP }}
+          VITE_SPONSOR_WHATSAPP_URL: ${{ secrets.VITE_SPONSOR_WHATSAPP_URL }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist

@@ -13,7 +13,7 @@ export const EVENT_CONFIG = {
   registrationStart: '2026-04-08T12:00:00-03:00',
   registrationEnd: '2026-05-13T15:00:00-03:00',
   earlyAccessStart: '2026-04-08T11:30:00-03:00',
-  earlyAccessCode: 'whatsapp2026',
+  earlyAccessCode: import.meta.env.VITE_EARLY_ACCESS_CODE || '',
   location: 'Centro de Inovação de Blumenau (CIB)',
   city: 'Blumenau, SC',
   capacity: '60-100',
@@ -37,7 +37,7 @@ export const EVENT_CONFIG = {
 
   // Pagamento
   payment: {
-    pixKey: 'a4f861fa-6e4e-4b57-860c-9b7ab14e2cb8',
+    pixKey: import.meta.env.VITE_PIX_KEY || '',
     pixKeyType: 'Chave aleatória',
     cardPaymentUrl: 'https://link.mercadopago.com.br/hackiasc',
   },
@@ -50,7 +50,7 @@ export const EVENT_CONFIG = {
   sponsorship: {
     coordinator: 'Vinicius Adilson da Costa',
     role: 'Coordenador Geral',
-    whatsapp: '+55 47 9 9170-8404',
-    whatsappUrl: 'https://wa.me/5547991708404',
+    whatsapp: import.meta.env.VITE_SPONSOR_WHATSAPP || '',
+    whatsappUrl: import.meta.env.VITE_SPONSOR_WHATSAPP_URL || '',
   },
 }
