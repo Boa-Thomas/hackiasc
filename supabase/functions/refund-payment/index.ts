@@ -1,12 +1,30 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+// H1: Restrict CORS to known origins only
+const ALLOWED_ORIGINS = ['https://hackiasc.com', 'https://www.hackiasc.com', 'http://localhost:5173']
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') || ''
+  return {
+    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  }
 }
 
 // Event start date (from edital)
 const EVENT_START = new Date('2026-05-29T08:00:00-03:00')
+
+// M2: Simple in-memory rate limiter per IP (5 requests per minute)
+const rateMap = new Map<string, number[]>()
+
+function checkRate(ip: string, limit = 5, windowMs = 60000): boolean {
+  const now = Date.now()
+  const hits = (rateMap.get(ip) || []).filter(t => now - t < windowMs)
+  if (hits.length >= limit) return false
+  hits.push(now)
+  rateMap.set(ip, hits)
+  return true
+}
 
 /**
  * Calculate refund percentage based on edital rules (Cláusula 12):
@@ -56,6 +74,8 @@ function calculateRefund(
 }
 
 Deno.serve(async (req: Request) => {
+  const corsHeaders = getCorsHeaders(req)
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -64,7 +84,40 @@ Deno.serve(async (req: Request) => {
     return new Response('Method not allowed', { status: 405 })
   }
 
+  // M2: Rate limiting per IP
+  const clientIp = req.headers.get('x-forwarded-for') || 'unknown'
+  if (!checkRate(clientIp)) {
+    return new Response(
+      JSON.stringify({ error: 'Too many requests — try again in a minute' }),
+      { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  // C3: Require authentication — extract and verify Bearer token
+  const authHeader = req.headers.get('authorization')
+  if (!authHeader?.startsWith('Bearer ')) {
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
   try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    )
+
+    // C3: Verify the JWT using the service role client
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token)
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const { registration_id, dry_run } = await req.json()
 
     if (!registration_id) {
@@ -74,15 +127,10 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    )
-
-    // Fetch registration
+    // Fetch registration — include is_team_leader for M4 check
     const { data: reg, error: regError } = await supabase
       .from('registrations')
-      .select('id, full_name, email, payment_status, payment_confirmed_at, payment_notes, ticket_price, ticket_tier, team_name, inscription_modality')
+      .select('id, full_name, email, payment_status, payment_confirmed_at, payment_notes, ticket_price, ticket_tier, team_name, inscription_modality, is_team_leader')
       .eq('id', registration_id)
       .single()
 
@@ -90,6 +138,14 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({ error: 'Registration not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // H4: Idempotency — prevent double refund
+    if (reg.payment_status === 'cancelled') {
+      return new Response(
+        JSON.stringify({ error: 'Already cancelled/refunded' }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -151,7 +207,7 @@ Deno.serve(async (req: Request) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${mpAccessToken}`,
+            'Authorization': `Bearer ${Deno.env.get('MP_ACCESS_TOKEN')}`,
           },
           body: JSON.stringify(refundBody),
         }
@@ -178,18 +234,23 @@ Deno.serve(async (req: Request) => {
       !mpPaymentId && refund.amount > 0 ? 'refund_method:manual' : null,
     ].filter(Boolean).join(' | ')
 
-    // Update registration(s)
     const updateData = {
       payment_status: 'cancelled' as const,
       payment_notes: refundNote,
     }
 
-    if (reg.inscription_modality === 'team' && reg.team_name) {
+    // M4: Team refund — only the team leader triggers the full team cancellation
+    const isTeam = reg.inscription_modality === 'team' && !!reg.team_name
+    const isLeader = reg.is_team_leader === true
+
+    if (isTeam && isLeader) {
+      // Leader cancels → cancel the entire team
       await supabase
         .from('registrations')
         .update(updateData)
         .eq('team_name', reg.team_name)
     } else {
+      // Individual cancellation or non-leader team member cancels only themselves
       await supabase
         .from('registrations')
         .update(updateData)
@@ -198,10 +259,11 @@ Deno.serve(async (req: Request) => {
 
     const needsManualRefund = !mpPaymentId && refund.amount > 0
 
-    // Audit log (skip for dry_run which was handled above)
+    // Audit log
     await supabase.from('audit_log').insert({
       action: 'payment.refund_processed',
-      actor_type: 'system',
+      actor_type: 'user',
+      actor_email: user.email,
       target_table: 'registrations',
       target_id: registration_id,
       target_email: reg.email,
@@ -212,7 +274,8 @@ Deno.serve(async (req: Request) => {
         reason: refund.reason,
         mp_refund: mpRefundResult,
         needs_manual_refund: needsManualRefund,
-        team_cancelled: reg.inscription_modality === 'team' && !!reg.team_name,
+        team_cancelled: isTeam && isLeader,
+        triggered_by_leader: isLeader,
       },
     })
 
@@ -227,11 +290,12 @@ Deno.serve(async (req: Request) => {
         reason: refund.reason,
         mp_refund: mpRefundResult,
         needs_manual_refund: needsManualRefund,
-        team_cancelled: reg.inscription_modality === 'team' && !!reg.team_name,
+        team_cancelled: isTeam && isLeader,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (err) {
+    const corsHeaders = getCorsHeaders(req)
     console.error('Refund error:', err)
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),

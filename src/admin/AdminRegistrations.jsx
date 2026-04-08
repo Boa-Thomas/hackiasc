@@ -31,6 +31,11 @@ const METHOD_LABELS = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+function escapeHtml(str) {
+  if (!str) return ''
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
 function formatBRL(cents) {
   if (cents == null) return '—'
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -106,9 +111,9 @@ function exportAttendanceList(data) {
   const rows = sorted.map((r, i) => `
     <tr>
       <td>${i + 1}</td>
-      <td>${r.full_name ?? ''}</td>
-      <td>${r.team_name ?? '—'}</td>
-      <td>${OCCUPATION_LABELS[r.occupation_type] ?? r.occupation_type ?? ''}</td>
+      <td>${escapeHtml(r.full_name)}</td>
+      <td>${escapeHtml(r.team_name) || '—'}</td>
+      <td>${escapeHtml(OCCUPATION_LABELS[r.occupation_type] ?? r.occupation_type)}</td>
       <td class="sig-col"></td>
     </tr>`).join('')
 
@@ -138,11 +143,11 @@ function exportBadges(data) {
     const c = typeColors[r.occupation_type] ?? { bg: '#f5f5f5', border: '#999', text: '#333' }
     return `
       <div class="badge-card" style="border-color: ${c.border};">
-        <div class="badge-name">${r.full_name ?? ''}</div>
+        <div class="badge-name">${escapeHtml(r.full_name)}</div>
         <div class="badge-type" style="background: ${c.bg}; color: ${c.text};">
-          ${OCCUPATION_LABELS[r.occupation_type] ?? r.occupation_type ?? ''}
+          ${escapeHtml(OCCUPATION_LABELS[r.occupation_type] ?? r.occupation_type)}
         </div>
-        <div class="badge-team">${r.team_name ?? 'Individual'}</div>
+        <div class="badge-team">${escapeHtml(r.team_name) || 'Individual'}</div>
       </div>`
   }).join('')
 
@@ -175,17 +180,17 @@ function exportTeamReport(data) {
       const memberRows = members
         .sort((a, b) => (b.is_team_leader ? 1 : 0) - (a.is_team_leader ? 1 : 0))
         .map(m => `<tr>
-          <td>${m.full_name}${m.is_team_leader ? ' (líder)' : ''}</td>
-          <td>${OCCUPATION_LABELS[m.occupation_type] ?? m.occupation_type ?? ''}</td>
-          <td>${m.email ?? ''}</td>
+          <td>${escapeHtml(m.full_name)}${m.is_team_leader ? ' (líder)' : ''}</td>
+          <td>${escapeHtml(OCCUPATION_LABELS[m.occupation_type] ?? m.occupation_type)}</td>
+          <td>${escapeHtml(m.email)}</td>
         </tr>`).join('')
 
       return `
         <div class="team-section">
-          <div class="team-title">${name} (${members.length} membros)</div>
-          ${leader ? `<div class="team-meta">Líder: ${leader.full_name}</div>` : ''}
-          ${project ? `<div class="team-meta">Projeto: ${project.project_name}</div>` : ''}
-          ${axes.length > 0 ? `<div class="team-meta">Eixos: ${axes.join(', ')}</div>` : ''}
+          <div class="team-title">${escapeHtml(name)} (${members.length} membros)</div>
+          ${leader ? `<div class="team-meta">Líder: ${escapeHtml(leader.full_name)}</div>` : ''}
+          ${project ? `<div class="team-meta">Projeto: ${escapeHtml(project.project_name)}</div>` : ''}
+          ${axes.length > 0 ? `<div class="team-meta">Eixos: ${axes.map(escapeHtml).join(', ')}</div>` : ''}
           <table>
             <thead><tr><th>Nome</th><th>Perfil</th><th>Email</th></tr></thead>
             <tbody>${memberRows}</tbody>

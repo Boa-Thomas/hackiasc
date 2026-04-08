@@ -135,7 +135,7 @@ export default function AdminAuditLog() {
 
     const { data, count, error } = await query
     if (error) {
-      console.error('Audit log fetch error:', error)
+      console.error('Audit log fetch error:', error?.message)
       setLoading(false)
       return
     }

@@ -29,9 +29,6 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_ADMIN_EMAIL: ${{ secrets.VITE_ADMIN_EMAIL }}
-          VITE_ADMIN_PASSWORD: ${{ secrets.VITE_ADMIN_PASSWORD }}
-          VITE_VIEWER_PASSWORD: ${{ secrets.VITE_VIEWER_PASSWORD }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist

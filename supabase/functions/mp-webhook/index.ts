@@ -1,7 +1,65 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
+// H1: Server-to-server webhook — no CORS needed
+
+// C2: Verify Mercado Pago webhook signature
+async function verifyMpSignature(req: Request, body: { data?: { id?: string } }): Promise<boolean> {
+  const secret = Deno.env.get('MP_WEBHOOK_SECRET')
+
+  if (!secret) {
+    // Graceful degradation during initial setup — log and allow
+    console.warn('MP_WEBHOOK_SECRET not configured — skipping signature verification')
+    return true
+  }
+
+  const xSignature = req.headers.get('x-signature')
+  const xRequestId = req.headers.get('x-request-id')
+
+  if (!xSignature || !xRequestId) {
+    console.warn('Missing x-signature or x-request-id headers')
+    return false
+  }
+
+  // Parse ts= and v1= from x-signature header
+  const parts = Object.fromEntries(
+    xSignature.split(',').map(p => p.split('=') as [string, string])
+  )
+  const ts = parts['ts']
+  const v1 = parts['v1']
+
+  if (!ts || !v1) {
+    console.warn('Invalid x-signature format')
+    return false
+  }
+
+  // Build the template string as per MP docs
+  const dataId = body.data?.id ?? ''
+  const template = `id:${dataId};request-id:${xRequestId};ts:${ts};`
+
+  // HMAC-SHA256 using Web Crypto API (available in Deno)
+  const encoder = new TextEncoder()
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(template))
+  const computed = Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+
+  if (computed !== v1) {
+    console.warn('Signature mismatch — possible replay or spoofed request')
+    return false
+  }
+
+  return true
+}
+
 Deno.serve(async (req: Request) => {
-  // MP sends both GET (for verification) and POST (for notifications)
+  // MP sends GET for endpoint verification — allow without signature check
   if (req.method === 'GET') {
     return new Response('ok', { status: 200 })
   }
@@ -12,6 +70,12 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json()
+
+    // C2: Verify signature before processing any business logic
+    const signatureValid = await verifyMpSignature(req, body)
+    if (!signatureValid) {
+      return new Response('Unauthorized', { status: 401 })
+    }
 
     // MP sends different notification types — we only care about 'payment'
     if (body.type !== 'payment' && body.action !== 'payment.created' && body.action !== 'payment.updated') {

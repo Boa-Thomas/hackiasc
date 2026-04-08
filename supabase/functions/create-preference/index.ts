@@ -1,22 +1,52 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+// H1: Restrict CORS to known origins only
+const ALLOWED_ORIGINS = ['https://hackiasc.com', 'https://www.hackiasc.com', 'http://localhost:5173']
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') || ''
+  return {
+    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  }
+}
+
+// M2: Simple in-memory rate limiter per IP (5 requests per minute)
+const rateMap = new Map<string, number[]>()
+
+function checkRate(ip: string, limit = 5, windowMs = 60000): boolean {
+  const now = Date.now()
+  const hits = (rateMap.get(ip) || []).filter(t => now - t < windowMs)
+  if (hits.length >= limit) return false
+  hits.push(now)
+  rateMap.set(ip, hits)
+  return true
 }
 
 Deno.serve(async (req: Request) => {
+  const corsHeaders = getCorsHeaders(req)
+
   // CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
-  try {
-    const { registration_id, email, full_name, amount, description } = await req.json()
+  // M2: Rate limiting per IP
+  const clientIp = req.headers.get('x-forwarded-for') || 'unknown'
+  if (!checkRate(clientIp)) {
+    return new Response(
+      JSON.stringify({ error: 'Too many requests — try again in a minute' }),
+      { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
 
-    if (!registration_id || !email || !amount) {
+  try {
+    // C4: Ignore the `amount` field from request body — price is determined server-side
+    const { registration_id, email, full_name, description } = await req.json()
+
+    if (!registration_id || !email) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: registration_id, email, amount' }),
+        JSON.stringify({ error: 'Missing required fields: registration_id, email' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -34,39 +64,38 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const webhookUrl = `${supabaseUrl}/functions/v1/mp-webhook`
 
-    // Check early bird expiration — re-validate availability before changing price
-    const EARLY_BIRD_LIMIT = 10
-    const REGULAR_PRICE = 20000
-    let effectiveAmount = amount
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    const { data: reg } = await supabase
+    // C4 + C6: Use atomic RPC to claim early bird slot — eliminates race condition
+    // The RPC handles all early bird logic atomically and returns true if early bird was applied
+    const { error: rpcError } = await supabase.rpc('claim_early_bird_slot', {
+      p_reg_id: registration_id,
+    })
+
+    if (rpcError) {
+      console.error('claim_early_bird_slot error:', rpcError)
+      return new Response(
+        JSON.stringify({ error: 'Failed to determine ticket price' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Fetch the registration after the RPC to get the final authoritative price
+    const { data: reg, error: regError } = await supabase
       .from('registrations')
-      .select('price_expires_at, ticket_price')
+      .select('ticket_price, ticket_tier')
       .eq('id', registration_id)
       .single()
 
-    if (reg?.price_expires_at && new Date(reg.price_expires_at) < new Date()) {
-      // Timer expired — check if early bird spots are still available
-      const { data: countData } = await supabase.rpc('get_confirmed_count')
-      const confirmedCount = countData ?? 0
-
-      if (confirmedCount >= EARLY_BIRD_LIMIT) {
-        // Early bird spots exhausted — update to regular price
-        effectiveAmount = REGULAR_PRICE
-        await supabase
-          .from('registrations')
-          .update({ ticket_price: REGULAR_PRICE, ticket_tier: 'regular' })
-          .eq('id', registration_id)
-      } else {
-        // Early bird spots still available — renew the 30-min window
-        const newExpiry = new Date(Date.now() + 30 * 60 * 1000).toISOString()
-        await supabase
-          .from('registrations')
-          .update({ price_expires_at: newExpiry })
-          .eq('id', registration_id)
-      }
+    if (regError || !reg) {
+      return new Response(
+        JSON.stringify({ error: 'Registration not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
+
+    // Server-side authoritative price — never trust client-supplied amount
+    const effectiveAmount = reg.ticket_price
 
     // Create Mercado Pago preference
     const preference = {
@@ -134,7 +163,7 @@ Deno.serve(async (req: Request) => {
       target_table: 'registrations',
       target_id: registration_id,
       target_email: email,
-      new_data: { preference_id: mpData.id, amount: effectiveAmount },
+      new_data: { preference_id: mpData.id, amount: effectiveAmount, ticket_tier: reg.ticket_tier },
       metadata: { full_name: full_name || null },
     })
 
@@ -146,6 +175,7 @@ Deno.serve(async (req: Request) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (err) {
+    const corsHeaders = getCorsHeaders(req)
     console.error('Error:', err)
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),

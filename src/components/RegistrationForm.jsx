@@ -14,6 +14,24 @@ const CHK_INPUT = 'mt-0.5 w-4 h-4 rounded border-dark-border bg-dark text-cyan a
 
 const ORDINALS = ['2º', '3º', '4º', '5º', '6º']
 
+function validateCPF(cpf) {
+  const cleaned = cpf.replace(/\D/g, '')
+  if (cleaned.length !== 11) return false
+  if (/^(\d)\1{10}$/.test(cleaned)) return false
+
+  let sum = 0
+  for (let i = 0; i < 9; i++) sum += parseInt(cleaned[i]) * (10 - i)
+  let remainder = (sum * 10) % 11
+  if (remainder >= 10) remainder = 0
+  if (remainder !== parseInt(cleaned[9])) return false
+
+  sum = 0
+  for (let i = 0; i < 10; i++) sum += parseInt(cleaned[i]) * (11 - i)
+  remainder = (sum * 10) % 11
+  if (remainder >= 10) remainder = 0
+  return remainder === parseInt(cleaned[10])
+}
+
 const EMPTY_MEMBER = {
   full_name: '',
   email: '',
@@ -41,7 +59,7 @@ function validateMember(member) {
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(member.email.trim())) errs.email = 'E-mail inválido'
   if (!member.phone.trim()) errs.phone = 'Telefone obrigatório'
   if (!member.birth_date) errs.birth_date = 'Data obrigatória'
-  if (!member.cpf.trim()) errs.cpf = 'CPF obrigatório'
+  if (!validateCPF(member.cpf)) errs.cpf = 'CPF inválido'
   if (!member.occupation_type) errs.occupation_type = 'Selecione um perfil'
   if (!member.ai_experience_level) errs.ai_experience_level = 'Selecione um nível'
   if (!member.dietary_restrictions.trim()) errs.dietary_restrictions = 'Campo obrigatório'
@@ -475,7 +493,7 @@ export default function RegistrationForm() {
       })
 
       if (error) {
-        console.error('Recovery RPC error:', error)
+        console.error('Recovery RPC error:', error?.message)
         setRecovering(false)
         return { success: false, message: 'Erro ao buscar inscrição. Tente novamente.' }
       }
@@ -522,7 +540,7 @@ export default function RegistrationForm() {
       setRecovering(false)
       return { success: true }
     } catch (err) {
-      console.error('Recovery error:', err)
+      console.error('Recovery error:', err?.message)
       setRecovering(false)
       return { success: false, message: 'Erro inesperado. Tente novamente.' }
     }
@@ -937,7 +955,7 @@ export default function RegistrationForm() {
 
             <div>
               <label className={LBL}>CPF *</label>
-              <input {...register('cpf', { required: 'CPF obrigatório' })} className={INPUT} placeholder="000.000.000-00" />
+              <input {...register('cpf', { validate: v => validateCPF(v) || 'CPF inválido' })} className={INPUT} placeholder="000.000.000-00" />
               {errors.cpf && <p className={ERR}>{errors.cpf.message}</p>}
             </div>
 
