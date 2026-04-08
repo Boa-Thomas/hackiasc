@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
+import { audit } from '../lib/auditLog'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -186,14 +187,25 @@ export default function AdminCheckin() {
   async function handleCheckin(id) {
     if (!supabase) return
     setBusyId(id)
+    const now = new Date().toISOString()
     const { error: err } = await supabase
       .from('registrations')
-      .update({ checked_in_at: new Date().toISOString() })
+      .update({ checked_in_at: now })
       .eq('id', id)
     if (err) alert(`Erro: ${err.message}`)
     else {
+      const reg = registrations.find(r => r.id === id)
+      audit({
+        action: 'checkin.in',
+        actorType: 'admin',
+        targetTable: 'registrations',
+        targetId: id,
+        targetEmail: reg?.email,
+        newData: { checked_in_at: now },
+        metadata: { full_name: reg?.full_name },
+      })
       setRegistrations(prev => prev.map(r =>
-        r.id === id ? { ...r, checked_in_at: new Date().toISOString() } : r
+        r.id === id ? { ...r, checked_in_at: now } : r
       ))
     }
     setBusyId(null)
@@ -208,6 +220,16 @@ export default function AdminCheckin() {
       .eq('id', id)
     if (err) alert(`Erro: ${err.message}`)
     else {
+      const reg = registrations.find(r => r.id === id)
+      audit({
+        action: 'checkin.undo',
+        actorType: 'admin',
+        targetTable: 'registrations',
+        targetId: id,
+        targetEmail: reg?.email,
+        oldData: { checked_in_at: reg?.checked_in_at },
+        metadata: { full_name: reg?.full_name },
+      })
       setRegistrations(prev => prev.map(r =>
         r.id === id ? { ...r, checked_in_at: null } : r
       ))

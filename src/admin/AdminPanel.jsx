@@ -3,12 +3,14 @@ import AdminDashboard from './AdminDashboard'
 import AdminRegistrations from './AdminRegistrations'
 import AdminTeams from './AdminTeams'
 import AdminCheckin from './AdminCheckin'
+import AdminAuditLog from './AdminAuditLog'
 
 const ALL_TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'registrations', label: 'Inscrições', icon: '📋' },
   { id: 'teams', label: 'Times', icon: '👥' },
   { id: 'checkin', label: 'Check-in', icon: '✅', adminOnly: true },
+  { id: 'logs', label: 'Logs', icon: '📜', adminOnly: true },
 ]
 
 export default function AdminPanel({ onLogout, role = 'admin' }) {
@@ -75,6 +77,7 @@ export default function AdminPanel({ onLogout, role = 'admin' }) {
         )}
         {activeTab === 'teams' && <AdminTeams readOnly={readOnly} />}
         {!readOnly && activeTab === 'checkin' && <AdminCheckin />}
+        {!readOnly && activeTab === 'logs' && <AdminAuditLog />}
       </main>
     </div>
   )

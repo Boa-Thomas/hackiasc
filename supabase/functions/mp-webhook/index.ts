@@ -104,6 +104,16 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Payment ${paymentId} → registration ${registrationId} → ${paymentStatus}`)
 
+    // Audit log
+    await supabase.from('audit_log').insert({
+      action: paymentStatus === 'confirmed' ? 'payment.confirmed_webhook' : `payment.${paymentStatus}_webhook`,
+      actor_type: 'system',
+      target_table: 'registrations',
+      target_id: registrationId,
+      new_data: { payment_status: paymentStatus, mp_payment_id: paymentId, mp_status: payment.status },
+      metadata: registration?.team_name ? { team_name: registration.team_name } : null,
+    })
+
     return new Response('ok', { status: 200 })
   } catch (err) {
     console.error('Webhook error:', err)

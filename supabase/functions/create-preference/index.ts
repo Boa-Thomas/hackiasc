@@ -126,6 +126,18 @@ Deno.serve(async (req: Request) => {
       .update({ payment_notes: `mp_preference:${mpData.id}` })
       .eq('id', registration_id)
 
+    // Audit log
+    await supabase.from('audit_log').insert({
+      action: 'payment.preference_created',
+      actor_type: 'system',
+      actor_email: email,
+      target_table: 'registrations',
+      target_id: registration_id,
+      target_email: email,
+      new_data: { preference_id: mpData.id, amount: effectiveAmount },
+      metadata: { full_name: full_name || null },
+    })
+
     return new Response(
       JSON.stringify({
         init_point: mpData.init_point,

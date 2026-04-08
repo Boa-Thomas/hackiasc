@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { supabase } from '../lib/supabase'
+import { audit } from '../lib/auditLog'
 import { useTicketPrice } from '../hooks/useTicketPrice'
 import { EVENT_CONFIG } from '../lib/config'
 import PaymentInfo from './PaymentInfo'
@@ -500,6 +501,16 @@ export default function RegistrationForm() {
         priceFormatted: perPersonFormatted,
         price_expires_at: data.price_expires_at,
       })
+      audit({
+        action: 'registration.recover',
+        actorType: 'public',
+        actorEmail: email.trim().toLowerCase(),
+        targetTable: 'registrations',
+        targetId: data.id,
+        targetEmail: data.email,
+        newData: { ticket_tier: data.ticket_tier, ticket_price: data.ticket_price, member_count: memberCount },
+      })
+
       setSubmitted(true)
       setRecovering(false)
       return { success: true }
@@ -636,6 +647,24 @@ export default function RegistrationForm() {
       return
     }
 
+    audit({
+      action: data.inscription_modality === 'team' ? 'registration.create_team' : 'registration.create',
+      actorType: 'public',
+      actorEmail: data.email,
+      targetTable: 'registrations',
+      targetId: leaderId,
+      targetEmail: data.email,
+      newData: {
+        full_name: leaderBase.full_name,
+        inscription_modality: data.inscription_modality,
+        team_name: leaderBase.team_name,
+        member_count: totalPeople,
+        ticket_tier: tier,
+        ticket_price: currentPrice,
+        payment_method: data.payment_method,
+      },
+    })
+
     setSubmittedData({
       ...leaderBase,
       payment_method: data.payment_method,
@@ -698,6 +727,14 @@ export default function RegistrationForm() {
       setWaitlistSubmitting(false)
       return
     }
+    audit({
+      action: 'waitlist.join',
+      actorType: 'public',
+      actorEmail: email.toLowerCase(),
+      targetTable: 'waitlist',
+      targetEmail: email.toLowerCase(),
+      newData: { full_name: name, phone },
+    })
     setWaitlistSubmitted(true)
     setWaitlistSubmitting(false)
   }

@@ -191,6 +191,41 @@ CREATE TRIGGER trg_check_team_size
   EXECUTE FUNCTION check_team_size();
 
 -- ============================================================
+-- Audit Log — rastreamento de todas as ações do sistema
+-- ============================================================
+
+CREATE TABLE audit_log (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  action TEXT NOT NULL,             -- e.g. 'registration.create', 'payment.confirm'
+  actor_type TEXT NOT NULL CHECK (actor_type IN ('public','admin','system')),
+  actor_email TEXT,                 -- admin email or user email
+  target_table TEXT,                -- 'registrations', 'waitlist'
+  target_id UUID,                   -- ID of affected record
+  target_email TEXT,                -- email of affected participant
+  old_data JSONB,                   -- previous state (for updates)
+  new_data JSONB,                   -- new state / action details
+  metadata JSONB                    -- extra context (team_name, refund info, etc.)
+);
+
+CREATE INDEX idx_audit_created_at ON audit_log(created_at DESC);
+CREATE INDEX idx_audit_action ON audit_log(action);
+CREATE INDEX idx_audit_target_id ON audit_log(target_id);
+
+ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can insert (public registration, edge functions via service role)
+CREATE POLICY "Allow audit log insert"
+  ON audit_log FOR INSERT TO anon WITH CHECK (true);
+
+CREATE POLICY "Allow auth audit log insert"
+  ON audit_log FOR INSERT TO authenticated WITH CHECK (true);
+
+-- Only admin can read
+CREATE POLICY "Admin can read audit log"
+  ON audit_log FOR SELECT TO authenticated USING (true);
+
+-- ============================================================
 -- MIGRATION: Run on existing databases
 -- ============================================================
 -- ALTER TABLE registrations ADD COLUMN accept_lgpd BOOLEAN NOT NULL DEFAULT false;

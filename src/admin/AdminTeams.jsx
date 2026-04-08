@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
+import { audit } from '../lib/auditLog'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -304,13 +305,25 @@ function TeamCard({ team, allTeamNames, expanded, onToggle, onRefetch, readOnly 
 
   async function handleMove(member, newTeamName) {
     if (!supabase) return
+    const oldTeam = member.team_name
     const { error } = await supabase
       .from('registrations')
       .update({ team_name: newTeamName })
       .eq('id', member.id)
     if (error) {
       alert(`Erro ao mover membro: ${error.message}`)
+      return
     }
+    audit({
+      action: 'team.move_member',
+      actorType: 'admin',
+      targetTable: 'registrations',
+      targetId: member.id,
+      targetEmail: member.email,
+      oldData: { team_name: oldTeam },
+      newData: { team_name: newTeamName },
+      metadata: { full_name: member.full_name },
+    })
     onRefetch()
   }
 
@@ -325,7 +338,18 @@ function TeamCard({ team, allTeamNames, expanded, onToggle, onRefetch, readOnly 
       .eq('id', member.id)
     if (error) {
       alert(`Erro ao remover membro: ${error.message}`)
+      return
     }
+    audit({
+      action: 'team.remove_member',
+      actorType: 'admin',
+      targetTable: 'registrations',
+      targetId: member.id,
+      targetEmail: member.email,
+      oldData: { team_name: name, inscription_modality: 'team' },
+      newData: { team_name: null, inscription_modality: 'individual_own' },
+      metadata: { full_name: member.full_name },
+    })
     onRefetch()
   }
 
@@ -475,11 +499,24 @@ function MatchingSuggestions({ individuals, teamsMap, sortedTeamNames, onRefetch
   async function handleAdd(individualId, teamName) {
     if (!supabase) return
     setBusy(individualId)
+    const individual = seekingTeam.find(i => i.id === individualId)
     const { error } = await supabase
       .from('registrations')
       .update({ team_name: teamName, inscription_modality: 'team' })
       .eq('id', individualId)
     if (error) alert(`Erro: ${error.message}`)
+    else {
+      audit({
+        action: 'team.add_member',
+        actorType: 'admin',
+        targetTable: 'registrations',
+        targetId: individualId,
+        targetEmail: individual?.email,
+        oldData: { team_name: null, inscription_modality: individual?.inscription_modality },
+        newData: { team_name: teamName, inscription_modality: 'team' },
+        metadata: { full_name: individual?.full_name },
+      })
+    }
     onRefetch()
     setBusy(null)
   }
