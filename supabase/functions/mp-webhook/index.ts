@@ -7,9 +7,8 @@ async function verifyMpSignature(req: Request, body: { data?: { id?: string } })
   const secret = Deno.env.get('MP_WEBHOOK_SECRET')
 
   if (!secret) {
-    // Graceful degradation during initial setup — log and allow
-    console.warn('MP_WEBHOOK_SECRET not configured — skipping signature verification')
-    return true
+    console.error('MP_WEBHOOK_SECRET not configured — rejecting request for safety')
+    return false
   }
 
   const xSignature = req.headers.get('x-signature')
