@@ -52,13 +52,55 @@ function formatDateTime(iso) {
 }
 
 function exportCSV(data) {
-  const headers = ['Nome', 'Email', 'Telefone', 'CPF', 'Tipo', 'Modalidade', 'Time', 'Tier', 'Valor', 'Status', 'Data']
+  const headers = [
+    // Dados pessoais
+    'Nome', 'Email', 'Telefone', 'Data de Nascimento', 'LinkedIn', 'CPF',
+    // Perfil
+    'Tipo', 'Experiência IA (1-10)',
+    // Necessidades do evento
+    'Restrições Alimentares', 'PcD', 'Tipo PcD',
+    // Projeto
+    'Tem Projeto', 'Nome do Projeto',
+    // Eixos econômicos
+    'Eixos Econômicos',
+    // Modalidade
+    'Modalidade', 'Time', 'Líder do Time',
+    // Pagamento
+    'Método Pagamento', 'Tier', 'Valor', 'Status Pagamento',
+    'Pagamento Confirmado Em', 'Observações Pagamento',
+    // Datas
+    'Data Inscrição', 'Expira Preço Em', 'Check-in Em',
+    // Declarações
+    'Aceite LGPD', 'Aceite Código/IP',
+  ]
+
+  const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString('pt-BR') : ''
+  const fmtDateTime = (iso) => iso ? new Date(iso).toLocaleString('pt-BR') : ''
+  const fmtBool = (v) => v ? 'Sim' : 'Não'
+
   const rows = data.map(r => [
-    r.full_name, r.email, r.phone, r.cpf, r.occupation_type,
-    r.inscription_modality, r.team_name || '', r.ticket_tier,
+    // Dados pessoais
+    r.full_name, r.email, r.phone, fmtDate(r.birth_date), r.linkedin_url || '', r.cpf,
+    // Perfil
+    r.occupation_type, r.ai_experience_level,
+    // Necessidades do evento
+    r.dietary_restrictions || '', fmtBool(r.is_pcd), r.pcd_type || '',
+    // Projeto
+    fmtBool(r.has_project), r.project_name || '',
+    // Eixos econômicos
+    Array.isArray(r.economic_axes) ? r.economic_axes.join(', ') : '',
+    // Modalidade
+    r.inscription_modality, r.team_name || '', fmtBool(r.is_team_leader),
+    // Pagamento
+    r.payment_method || '', r.ticket_tier,
     (r.ticket_price / 100).toFixed(2), r.payment_status,
-    new Date(r.created_at).toLocaleDateString('pt-BR'),
+    fmtDateTime(r.payment_confirmed_at), r.payment_notes || '',
+    // Datas
+    fmtDateTime(r.created_at), fmtDateTime(r.price_expires_at), fmtDateTime(r.checked_in_at),
+    // Declarações
+    fmtBool(r.accept_lgpd), fmtBool(r.accept_code_ip),
   ])
+
   const csv = [headers, ...rows]
     .map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(','))
     .join('\n')
