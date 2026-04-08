@@ -91,6 +91,16 @@ Deno.serve(async (req: Request) => {
     }
 
     // Sanitize: strip any fields not in the expected schema to prevent injection
+    const safeNewData = new_data && typeof new_data === 'object' ? { ...new_data } : null
+
+    // Validate ticket_price if present — only allow known values (prevents client-side manipulation)
+    if (safeNewData && 'ticket_price' in safeNewData) {
+      const price = safeNewData.ticket_price
+      if (price !== 15000 && price !== 20000) {
+        safeNewData.ticket_price = null
+      }
+    }
+
     const safeEntry = {
       action,
       actor_type: 'anon' as const,
@@ -98,7 +108,7 @@ Deno.serve(async (req: Request) => {
       target_table: typeof target_table === 'string' ? target_table : null,
       target_id: typeof target_id === 'string' ? target_id : null,
       target_email: typeof target_email === 'string' ? target_email : null,
-      new_data: new_data && typeof new_data === 'object' ? new_data : null,
+      new_data: safeNewData,
       metadata: metadata && typeof metadata === 'object' ? metadata : null,
     }
 
