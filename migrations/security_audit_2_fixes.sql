@@ -31,12 +31,12 @@ AS $$
 DECLARE
   v_record RECORD;
 BEGIN
-  SELECT * INTO v_record FROM rate_limits WHERE key = p_key;
+  -- Upsert to avoid race condition on concurrent INSERT
+  INSERT INTO rate_limits (key)
+  VALUES (p_key)
+  ON CONFLICT (key) DO NOTHING;
 
-  IF NOT FOUND THEN
-    INSERT INTO rate_limits (key) VALUES (p_key);
-    RETURN TRUE;
-  END IF;
+  SELECT * INTO v_record FROM rate_limits WHERE key = p_key;
 
   -- Reset if outside window
   IF v_record.first_attempt_at < now() - (p_window_minutes || ' minutes')::INTERVAL THEN
