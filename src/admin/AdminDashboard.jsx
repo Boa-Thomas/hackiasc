@@ -829,6 +829,9 @@ export default function AdminDashboard({ onViewRegistration }) {
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [lastUpdated, setLastUpdated] = useState(() => Date.now())
   const [isLive, setIsLive] = useState(false)
+  const [feeData, setFeeData] = useState(null)
+  const [syncStatus, setSyncStatus] = useState(null)
+  const [syncing, setSyncing] = useState(false)
 
   const fetchRegistrations = useCallback(async () => {
     if (!supabase) return
@@ -846,22 +849,54 @@ export default function AdminDashboard({ onViewRegistration }) {
     setLoading(false)
   }, [])
 
+  const fetchFeeData = useCallback(async () => {
+    if (!supabase) return
+    const { data } = await supabase.rpc('get_mp_fee_summary')
+    if (data) setFeeData(data)
+  }, [])
+
+  const fetchSyncStatus = useCallback(async () => {
+    if (!supabase) return
+    const { data } = await supabase.from('mp_sync_status').select('*').eq('id', 1).single()
+    if (data) setSyncStatus(data)
+  }, [])
+
+  const handleMpSync = useCallback(async () => {
+    if (!supabase) return
+    setSyncing(true)
+    try {
+      const { error: syncError } = await supabase.functions.invoke('sync-mp-payments')
+      if (syncError) throw syncError
+      await fetchFeeData()
+      await fetchSyncStatus()
+    } catch (err) {
+      console.error('MP sync error:', err)
+    } finally {
+      setSyncing(false)
+    }
+  }, [fetchFeeData, fetchSyncStatus])
+
   // Initial fetch + realtime subscription
   useEffect(() => {
     if (!supabase) return
     fetchRegistrations() // eslint-disable-line react-hooks/set-state-in-effect
+    fetchFeeData()
+    fetchSyncStatus()
 
     const channel = supabase
       .channel('dashboard-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'registrations' }, () => {
         fetchRegistrations()
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mp_payments' }, () => {
+        fetchFeeData()
+      })
       .subscribe((status) => {
         setIsLive(status === 'SUBSCRIBED')
       })
 
     return () => { channel?.unsubscribe() }
-  }, [fetchRegistrations])
+  }, [fetchRegistrations, fetchFeeData, fetchSyncStatus])
 
   // Auto-refresh interval
   useEffect(() => {
@@ -942,18 +977,50 @@ export default function AdminDashboard({ onViewRegistration }) {
         max={maxCapacity}
       />
 
+      {/* MP Sync indicator */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-mono text-white/40">
+          {syncStatus?.last_sync_at
+            ? `Último sync MP: ${formatDate(syncStatus.last_sync_at)}`
+            : 'MP ainda não sincronizado'}
+        </span>
+        <button
+          onClick={handleMpSync}
+          disabled={syncing}
+          className={`px-3 py-1 rounded text-xs font-mono border transition-colors ${
+            syncing
+              ? 'bg-gold/10 text-gold border-gold/20 cursor-wait'
+              : 'bg-cyan/10 text-cyan border-cyan/20 hover:bg-cyan/20'
+          }`}
+        >
+          {syncing ? 'Sincronizando...' : 'Sincronizar MP'}
+        </button>
+      </div>
+
       {/* Revenue cards + advanced metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <RevenueCard
-          label="Receita confirmada"
-          amount={stats.revenueConfirmed}
+          label="Receita bruta"
+          amount={feeData ? feeData.total_gross : stats.revenueConfirmed}
           color="#06d6a0"
+        />
+        <RevenueCard
+          label="Receita líquida"
+          amount={feeData ? feeData.total_net : stats.revenueConfirmed}
+          color="#3a86ff"
+        />
+        <RevenueCard
+          label="Taxas MP"
+          amount={feeData ? feeData.total_fees : 0}
+          color="#ff006e"
         />
         <RevenueCard
           label="Receita pendente"
           amount={stats.revenuePending}
           color="#ffbe0b"
         />
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           label="Ticket médio"
           value={formatBRL(stats.avgTicket)}
@@ -961,8 +1028,8 @@ export default function AdminDashboard({ onViewRegistration }) {
         />
         <MetricCard
           label="Receita projetada"
-          value={formatBRL(stats.revenueConfirmed + stats.revenuePending)}
-          sub="Se todos pendentes confirmarem"
+          value={formatBRL((feeData ? feeData.total_net : stats.revenueConfirmed) + stats.revenuePending)}
+          sub="Líquida + pendentes"
           color="#8338ec"
         />
       </div>

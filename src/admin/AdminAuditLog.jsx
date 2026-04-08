@@ -24,6 +24,8 @@ const ACTION_LABELS = {
   'team.move_member': 'Membro movido de time',
   'team.remove_member': 'Membro removido do time',
   'team.add_member': 'Membro adicionado ao time',
+  'mp_payments.sync': 'Sincronização MP (cron)',
+  'mp_payments.manual_sync': 'Sincronização MP (manual)',
 }
 
 const ACTOR_STYLES = {
@@ -38,6 +40,7 @@ const ACTION_CATEGORIES = {
   checkin: 'bg-electric/10 text-electric border-electric/30',
   team: 'bg-violet/10 text-violet border-violet/30',
   waitlist: 'bg-white/5 text-white/60 border-white/10',
+  mp_payments: 'bg-cyan/10 text-cyan border-cyan/30',
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
