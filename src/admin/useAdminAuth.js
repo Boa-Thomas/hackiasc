@@ -123,13 +123,14 @@ export function useAdminAuth() {
       })
 
       if (authError) {
+        console.error('[Admin Auth]', authError.message, authError.status)
         failedAttemptsRef.current += 1
         if (failedAttemptsRef.current >= MAX_FAILED_ATTEMPTS) {
           lockoutUntilRef.current = Date.now() + LOCKOUT_DURATION_MS
           failedAttemptsRef.current = 0
           setError('Conta bloqueada por 5 minutos após múltiplas tentativas inválidas.')
         } else {
-          setError('Credenciais inválidas.')
+          setError(`Credenciais inválidas. (${authError.message})`)
         }
         return false
       }
