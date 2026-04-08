@@ -2,8 +2,8 @@
 -- Password: same viewer password but now only in Supabase Auth, not in JS bundle
 INSERT INTO auth.users (
   instance_id, id, aud, role, email, encrypted_password,
-  email_confirmed_at, raw_user_meta_data, created_at, updated_at,
-  confirmation_token, recovery_token
+  email_confirmed_at, raw_user_meta_data, raw_app_meta_data,
+  created_at, updated_at, confirmation_token, recovery_token
 )
 SELECT
   '00000000-0000-0000-0000-000000000000',
@@ -13,7 +13,8 @@ SELECT
   'viewer@hackiasc.com',
   crypt('4AXu22Rg7Q8L', gen_salt('bf')),
   now(),
-  '{"role": "viewer", "email_verified": true}'::jsonb,
+  '{"email_verified": true}'::jsonb,
+  '{"role": "viewer"}'::jsonb,
   now(),
   now(),
   '',
@@ -39,4 +40,4 @@ WHERE u.email = 'viewer@hackiasc.com'
     SELECT 1 FROM auth.identities i WHERE i.user_id = u.id AND i.provider = 'email'
   );
 
-SELECT id, email, raw_user_meta_data->>'role' as role FROM auth.users ORDER BY created_at;
+SELECT id, email, raw_app_meta_data->>'role' as role FROM auth.users ORDER BY created_at;

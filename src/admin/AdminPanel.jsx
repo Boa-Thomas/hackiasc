@@ -13,7 +13,7 @@ const ALL_TABS = [
   { id: 'logs', label: 'Logs', icon: '📜', adminOnly: true },
 ]
 
-export default function AdminPanel({ onLogout, role = 'admin' }) {
+export default function AdminPanel({ onLogout, role = 'viewer' }) {
   const readOnly = role === 'viewer'
   const TABS = readOnly ? ALL_TABS.filter(t => !t.adminOnly) : ALL_TABS
   const [activeTab, setActiveTab] = useState('dashboard')

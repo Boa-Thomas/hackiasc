@@ -66,6 +66,28 @@ CREATE INDEX idx_reg_payment_status ON registrations(payment_status);
 -- 3. Habilitar Row Level Security
 ALTER TABLE registrations ENABLE ROW LEVEL SECURITY;
 
+-- 3a. Helper functions for role-based RLS checks
+-- Uses app_metadata (not user_metadata) because users can self-modify user_metadata
+CREATE OR REPLACE FUNCTION is_admin_or_viewer()
+RETURNS BOOLEAN
+LANGUAGE sql STABLE SECURITY DEFINER
+AS $$
+  SELECT COALESCE(
+    (auth.jwt() -> 'app_metadata' ->> 'role') IN ('admin', 'viewer'),
+    false
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql STABLE SECURITY DEFINER
+AS $$
+  SELECT COALESCE(
+    (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin',
+    false
+  );
+$$;
+
 -- 4. Policy: Qualquer pessoa pode se inscrever (INSERT)
 CREATE POLICY "Allow public registration insert"
   ON registrations
@@ -73,20 +95,20 @@ CREATE POLICY "Allow public registration insert"
   TO anon
   WITH CHECK (true);
 
--- 5. Policy: Apenas admin (authenticated) pode ler
+-- 5. Policy: Apenas admin/viewer pode ler (role checked via JWT metadata)
 CREATE POLICY "Admin can read all registrations"
   ON registrations
   FOR SELECT
   TO authenticated
-  USING (true);
+  USING (is_admin_or_viewer());
 
 -- 6. Policy: Apenas admin pode atualizar (confirmar pagamento)
 CREATE POLICY "Admin can update registrations"
   ON registrations
   FOR UPDATE
   TO authenticated
-  USING (true)
-  WITH CHECK (true);
+  USING (is_admin())
+  WITH CHECK (is_admin());
 
 -- 7. Função RPC para contar inscrições confirmadas (seguro para anon)
 CREATE OR REPLACE FUNCTION get_confirmed_count()
@@ -214,16 +236,13 @@ CREATE INDEX idx_audit_target_id ON audit_log(target_id);
 
 ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
 
--- Anyone can insert (public registration, edge functions via service role)
-CREATE POLICY "Allow audit log insert"
-  ON audit_log FOR INSERT TO anon WITH CHECK (true);
+-- Only admin can insert audit entries (service_role bypasses RLS automatically)
+CREATE POLICY "Admin can insert audit log"
+  ON audit_log FOR INSERT TO authenticated WITH CHECK (is_admin());
 
-CREATE POLICY "Allow auth audit log insert"
-  ON audit_log FOR INSERT TO authenticated WITH CHECK (true);
-
--- Only admin can read
+-- Only admin/viewer can read audit log (role checked via JWT metadata)
 CREATE POLICY "Admin can read audit log"
-  ON audit_log FOR SELECT TO authenticated USING (true);
+  ON audit_log FOR SELECT TO authenticated USING (is_admin_or_viewer());
 
 -- ============================================================
 -- MIGRATION: Run on existing databases
