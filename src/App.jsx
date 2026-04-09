@@ -30,7 +30,7 @@ export default function App() {
 
   // Scroll to section when returning from subpages
   useEffect(() => {
-    if (page && page !== '#privacidade' && page !== '#patrocinio' && !PAYMENT_HASHES.includes(page) && !ADMIN_HASHES.includes(page)) {
+    if (page && page !== '#privacidade' && page !== '#patrocinio' && page !== '#sponsorship' && !PAYMENT_HASHES.includes(page) && !ADMIN_HASHES.includes(page)) {
       if (!/^#[a-zA-Z][\w-]*$/.test(page)) return
       setTimeout(() => {
         const el = document.getElementById(page.slice(1))
@@ -66,13 +66,16 @@ export default function App() {
     )
   }
 
-  if (page === '#patrocinio') {
+  if (page === '#patrocinio' || page === '#sponsorship') {
     return (
-      <SponsorshipPage onBack={() => {
-        window.location.hash = ''
-        setPage('')
-        window.scrollTo(0, 0)
-      }} />
+      <SponsorshipPage
+        lang={page === '#sponsorship' ? 'en-US' : 'pt-BR'}
+        onBack={() => {
+          window.location.hash = ''
+          setPage('')
+          window.scrollTo(0, 0)
+        }}
+      />
     )
   }
 
