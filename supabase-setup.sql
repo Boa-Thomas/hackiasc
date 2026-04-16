@@ -128,6 +128,22 @@ $$;
 -- Permitir que anon chame essa função
 GRANT EXECUTE ON FUNCTION get_confirmed_count() TO anon;
 
+-- 7b. Contar ingressos early bird vendidos (pending + confirmed, exclui cancelled)
+-- Usado para determinar se early bird ainda está disponível
+CREATE OR REPLACE FUNCTION get_early_bird_sold()
+RETURNS INTEGER
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT COUNT(*)::INTEGER
+  FROM registrations
+  WHERE ticket_tier = 'early_bird'
+    AND payment_status != 'cancelled';
+$$;
+
+GRANT EXECUTE ON FUNCTION get_early_bird_sold() TO anon;
+
 -- ============================================================
 -- RPC: Recover pending registration for payment retry
 -- ============================================================

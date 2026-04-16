@@ -19,11 +19,11 @@ export function useTicketPrice() {
         setLoading(false)
         return
       }
-      const [confirmed, total] = await Promise.all([
-        supabase.rpc('get_confirmed_count'),
+      const [earlyBird, total] = await Promise.all([
+        supabase.rpc('get_early_bird_sold'),
         supabase.rpc('get_total_registration_count'),
       ])
-      setConfirmedCount(!confirmed.error && confirmed.data !== null ? confirmed.data : 0)
+      setConfirmedCount(!earlyBird.error && earlyBird.data !== null ? earlyBird.data : 0)
       setTotalCount(!total.error && total.data !== null ? total.data : 0)
       setLoading(false)
     }
