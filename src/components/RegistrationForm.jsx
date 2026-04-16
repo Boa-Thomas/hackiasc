@@ -660,6 +660,7 @@ export default function RegistrationForm() {
     }
 
     if (insertError) {
+      if (import.meta.env.DEV) console.error('[RegistrationForm] Insert error:', insertError)
       if (insertError.code === '23505') {
         const result = await recoverRegistration(data.email)
         if (!result.success) {

@@ -52,6 +52,9 @@ CREATE TABLE registrations (
   -- Check-in (dia do evento)
   checked_in_at TIMESTAMPTZ,
 
+  -- Participação remota (equipes — máx. 1 por equipe, edital 2.2.1)
+  is_remote BOOLEAN NOT NULL DEFAULT false,
+
   -- LGPD e declarações adicionais
   accept_lgpd BOOLEAN NOT NULL DEFAULT false,
   accept_code_ip BOOLEAN NOT NULL DEFAULT false
@@ -252,3 +255,4 @@ CREATE POLICY "Admin can read audit log"
 -- ALTER TABLE registrations ADD COLUMN cpf TEXT NOT NULL DEFAULT '';
 -- ALTER TABLE registrations ALTER COLUMN linkedin_url DROP NOT NULL;
 -- ALTER TABLE registrations ADD COLUMN price_expires_at TIMESTAMPTZ;
+-- ALTER TABLE registrations ADD COLUMN IF NOT EXISTS is_remote BOOLEAN NOT NULL DEFAULT false;
