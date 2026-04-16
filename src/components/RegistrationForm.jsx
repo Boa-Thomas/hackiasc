@@ -603,6 +603,7 @@ export default function RegistrationForm() {
       ticket_tier: tier,
       ticket_price: currentPrice,
       price_expires_at: tier === 'early_bird' ? new Date(Date.now() + 30 * 60 * 1000).toISOString() : null,
+      is_remote: false,
       accept_lgpd: data.accept_lgpd || false,
       accept_code_ip: data.accept_code_ip || false,
     }
