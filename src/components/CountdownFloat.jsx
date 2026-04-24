@@ -25,7 +25,7 @@ function Digit({ value, label }) {
   const str = String(value).padStart(2, '0')
   return (
     <div className="flex flex-col items-center gap-[2px] sm:gap-[3px]">
-        className="bg-black/35 border border-white/25 rounded-md sm:rounded-lg font-mono font-black text-white text-center flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.5)]"
+      <div className="bg-black/35 border border-white/25 rounded-md sm:rounded-lg font-mono font-black text-white text-center flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.5)]"
         style={{
           padding: '4px 8px',
           fontSize: 'clamp(18px, 4vw, 34px)',
