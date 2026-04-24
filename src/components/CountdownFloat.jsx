@@ -164,7 +164,7 @@ export default function CountdownFloat() {
             <a
               href="#inscricao"
               onClick={() => setDismissed(true)}
-              className="urgency-cta"
+              className="urgency-cta w-full flex justify-center"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
