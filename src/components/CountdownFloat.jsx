@@ -24,32 +24,17 @@ function useCountdown(targetDate) {
 function Digit({ value, label }) {
   const str = String(value).padStart(2, '0')
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
-      <div style={{
-        background: 'rgba(0,0,0,0.35)',
-        border: '1px solid rgba(255,255,255,0.25)',
-        borderRadius: '8px',
-        padding: '6px 12px',
-        fontFamily: 'JetBrains Mono, monospace',
-        fontWeight: 900,
-        fontSize: 'clamp(22px, 3vw, 34px)',
-        color: '#fff',
-        lineHeight: 1,
-        minWidth: '54px',
-        textAlign: 'center',
-        textShadow: '0 0 20px rgba(255,255,255,0.5)',
-        letterSpacing: '-1px',
-      }}>
+    <div className="flex flex-col items-center gap-[2px] sm:gap-[3px]">
+        className="bg-black/35 border border-white/25 rounded-md sm:rounded-lg font-mono font-black text-white text-center flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.5)]"
+        style={{
+          padding: '4px 8px',
+          fontSize: 'clamp(18px, 4vw, 34px)',
+          minWidth: 'clamp(42px, 8vw, 54px)',
+          letterSpacing: '-1px',
+        }}>
         {str}
       </div>
-      <span style={{
-        fontSize: '8px',
-        textTransform: 'uppercase',
-        letterSpacing: '2px',
-        color: 'rgba(255,255,255,0.55)',
-        fontFamily: 'JetBrains Mono, monospace',
-        fontWeight: 700,
-      }}>
+      <span className="text-[7px] sm:text-[8px] uppercase tracking-[1px] sm:tracking-[2px] text-white/55 font-mono font-bold">
         {label}
       </span>
     </div>
@@ -112,18 +97,13 @@ export default function CountdownFloat() {
         }} />
 
         {/* Corpo da barra */}
-        <div style={{
-          /* gradiente vibrante que rompe com o dark do site */
-          background: 'linear-gradient(100deg, #1a0533 0%, #2d0a5e 30%, #1e0b45 60%, #0f1535 100%)',
-          borderTop: '1px solid rgba(131,56,236,0.6)',
-          boxShadow: '0 -12px 60px rgba(131,56,236,0.35), 0 -2px 0 rgba(255,0,110,0.2)',
-          padding: 'clamp(10px, 1.5vw, 18px) clamp(16px, 4vw, 56px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '16px',
-          position: 'relative',
-          overflow: 'hidden',
+        <div 
+          className="flex flex-col md:flex-row items-center justify-center md:justify-between gap-3 md:gap-4 p-4 md:py-3 md:px-8 lg:px-14 relative overflow-hidden"
+          style={{
+            /* gradiente vibrante que rompe com o dark do site */
+            background: 'linear-gradient(100deg, #1a0533 0%, #2d0a5e 30%, #1e0b45 60%, #0f1535 100%)',
+            borderTop: '1px solid rgba(131,56,236,0.6)',
+            boxShadow: '0 -12px 60px rgba(131,56,236,0.35), 0 -2px 0 rgba(255,0,110,0.2)',
         }}>
 
           {/* Glow radial de fundo */}
@@ -133,8 +113,8 @@ export default function CountdownFloat() {
           }} />
 
           {/* ── ESQUERDA: Mensagem de urgência ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="flex flex-col items-center md:items-start gap-1 shrink-0 z-10">
+            <div className="flex items-center gap-2">
               {/* Dot pulsante */}
               <span style={{
                 display: 'inline-block',
@@ -156,10 +136,7 @@ export default function CountdownFloat() {
               </span>
             </div>
             {/* Preço atual */}
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              paddingLeft: '17px',
-            }}>
+            <div className="flex items-center justify-center md:justify-start gap-1 md:pl-[17px]">
               <span style={{
                 fontFamily: 'Sora, sans-serif',
                 fontSize: 'clamp(11px, 1.2vw, 14px)',
@@ -172,23 +149,18 @@ export default function CountdownFloat() {
           </div>
 
           {/* ── CENTRO: Countdown ── */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: 'clamp(4px, 1vw, 10px)',
-            flexShrink: 0,
-          }}>
+          <div className="flex items-start gap-1 sm:gap-2 shrink-0 z-10">
             <Digit value={days}    label="dias"     />
-            <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '28px', fontWeight: 900, paddingTop: '6px', lineHeight: 1 }}>:</span>
+            <span className="text-white/30 text-xl md:text-3xl font-black pt-1 md:pt-1.5 leading-none font-mono">:</span>
             <Digit value={hours}   label="horas"    />
-            <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '28px', fontWeight: 900, paddingTop: '6px', lineHeight: 1 }}>:</span>
+            <span className="text-white/30 text-xl md:text-3xl font-black pt-1 md:pt-1.5 leading-none font-mono">:</span>
             <Digit value={minutes} label="min"      />
-            <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '28px', fontWeight: 900, paddingTop: '6px', lineHeight: 1 }}>:</span>
+            <span className="text-white/30 text-xl md:text-3xl font-black pt-1 md:pt-1.5 leading-none font-mono">:</span>
             <Digit value={seconds} label="seg"      />
           </div>
 
           {/* ── DIREITA: CTA de conversão ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '7px', flexShrink: 0 }}>
+          <div className="flex flex-col items-center gap-1.5 shrink-0 z-10 w-full md:w-auto">
             <a
               href="#inscricao"
               onClick={() => setDismissed(true)}
