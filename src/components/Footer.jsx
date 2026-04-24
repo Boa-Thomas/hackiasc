@@ -1,4 +1,5 @@
 import { EVENT_CONFIG } from '../lib/config'
+import DatiLogo from './DatiLogo'
 
 export default function Footer() {
   return (
@@ -97,6 +98,25 @@ export default function Footer() {
               </li>
             </ul>
           </div>
+        </div>
+
+        {/* Realizador — DATI */}
+        <div className="border-t border-dark-border pt-8 pb-6 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <span className="text-xs text-text-muted uppercase tracking-[3px] font-mono whitespace-nowrap">Oferecimento</span>
+            <a
+              href="https://dati.com.br"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="opacity-60 hover:opacity-100 transition-opacity duration-300"
+              aria-label="DATI — Agência de Desenvolvimento de TI de Santa Catarina"
+            >
+              <DatiLogo height={32} />
+            </a>
+          </div>
+          <p className="text-xs text-text-muted text-center sm:text-right max-w-xs">
+            Agência de Desenvolvimento de TI do Estado de Santa Catarina
+          </p>
         </div>
 
         {/* Divider */}

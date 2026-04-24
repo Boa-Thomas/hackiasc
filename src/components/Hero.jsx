@@ -1,3 +1,5 @@
+import DatiLogo from './DatiLogo'
+
 export default function Hero() {
   return (
     <section className="relative min-h-screen flex items-center justify-center bg-grid overflow-hidden">
@@ -68,6 +70,24 @@ export default function Hero() {
               <div className="text-[10px] sm:text-sm text-text-muted mt-1">{label}</div>
             </div>
           ))}
+        </div>
+
+        {/* Realizador — DATI */}
+        <div className="animate-slide-up mt-12 flex flex-col items-center gap-3" style={{ animationDelay: '600ms' }}>
+          <div className="flex items-center gap-3">
+            <div className="h-px w-16 bg-gradient-to-r from-transparent to-white/20" />
+            <span className="text-xs text-text-muted uppercase tracking-[3px] font-mono">Oferecimento</span>
+            <div className="h-px w-16 bg-gradient-to-l from-transparent to-white/20" />
+          </div>
+          <a
+            href="https://dati.com.br"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="opacity-70 hover:opacity-100 transition-opacity duration-300"
+            aria-label="DATI — Agência de Desenvolvimento de TI"
+          >
+            <DatiLogo height={38} />
+          </a>
         </div>
       </div>
 
