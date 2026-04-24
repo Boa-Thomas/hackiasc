@@ -109,13 +109,13 @@ export default function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               className="opacity-60 hover:opacity-100 transition-opacity duration-300"
-              aria-label="DATI — Agência de Desenvolvimento de TI de Santa Catarina"
+              aria-label="DATI — AWS Advanced Partner"
             >
               <DatiLogo height={32} />
             </a>
           </div>
           <p className="text-xs text-text-muted text-center sm:text-right max-w-xs">
-            Agência de Desenvolvimento de TI do Estado de Santa Catarina
+            AWS Advanced Partner — Soluções em Cloud e Infraestrutura de TI
           </p>
         </div>
 

@@ -84,7 +84,7 @@ export default function Hero() {
             target="_blank"
             rel="noopener noreferrer"
             className="opacity-70 hover:opacity-100 transition-opacity duration-300"
-            aria-label="DATI — Agência de Desenvolvimento de TI"
+            aria-label="DATI — AWS Advanced Partner"
           >
             <DatiLogo height={38} />
           </a>
