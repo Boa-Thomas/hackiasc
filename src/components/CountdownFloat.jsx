@@ -155,7 +155,7 @@ export default function CountdownFloat() {
                 🔥 Virada de Lote em:
               </span>
             </div>
-            {/* Âncora de preço — o que o usuário PERDE */}
+            {/* Preço atual */}
             <div style={{
               display: 'flex', alignItems: 'center', gap: '6px',
               paddingLeft: '17px',
@@ -166,18 +166,7 @@ export default function CountdownFloat() {
                 color: '#06d6a0',
                 fontWeight: 700,
               }}>
-                Agora R$150
-              </span>
-              <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px' }}>→</span>
-              <span style={{
-                fontFamily: 'Sora, sans-serif',
-                fontSize: 'clamp(11px, 1.2vw, 14px)',
-                color: 'rgba(255,255,255,0.4)',
-                fontWeight: 500,
-                textDecoration: 'line-through',
-                animation: 'priceBlink 4s ease-in-out infinite',
-              }}>
-                R$200 depois
+                Lote atual: R$ 200,00
               </span>
             </div>
           </div>
@@ -224,7 +213,7 @@ export default function CountdownFloat() {
                 letterSpacing: '0.2px',
               }}
             >
-              ⚡ Garantir por R$150 agora
+              ⚡ Garantir ingresso
             </a>
             <button
               onClick={() => setDismissed(true)}
