@@ -15,6 +15,7 @@ import AdminLogin from './admin/AdminLogin'
 import AdminPanel from './admin/AdminPanel'
 import { useAdminAuth } from './admin/useAdminAuth'
 import CountdownFloat from './components/CountdownFloat'
+import ScrollToTop from './components/ScrollToTop'
 
 const PAYMENT_HASHES = ['#pagamento-sucesso', '#pagamento-erro', '#pagamento-pendente']
 const ADMIN_HASHES = ['#admin', '#admin-login']
@@ -106,6 +107,7 @@ export default function App() {
       <FAQ />
       <Footer />
       <CountdownFloat />
+      <ScrollToTop />
     </div>
   )
 }
