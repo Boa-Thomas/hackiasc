@@ -40,7 +40,7 @@ CREATE TABLE registrations (
 
   -- Pagamento
   payment_method TEXT NOT NULL CHECK (payment_method IN ('pix','card')),
-  ticket_tier TEXT NOT NULL CHECK (ticket_tier IN ('early_bird','regular','dati')),
+  ticket_tier TEXT NOT NULL,  -- valores válidos = ids em get_tier_definitions() + get_coupon_definitions() (ver migrations/generalize_tier_pricing_server.sql)
   ticket_price INTEGER NOT NULL,
   payment_status TEXT DEFAULT 'pending' CHECK (payment_status IN ('pending','confirmed','cancelled')),
   payment_confirmed_at TIMESTAMPTZ,
