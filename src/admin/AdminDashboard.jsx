@@ -48,6 +48,7 @@ function computeStats(registrations) {
   const byTier = {
     early_bird: registrations.filter((r) => r.ticket_tier === 'early_bird').length,
     regular: registrations.filter((r) => r.ticket_tier === 'regular').length,
+    dati: registrations.filter((r) => r.ticket_tier === 'dati').length,
   }
 
   const byModality = {
@@ -1108,6 +1109,7 @@ export default function AdminDashboard({ onViewRegistration }) {
           items={[
             { label: 'Early Bird', count: stats.byTier.early_bird, color: '#ffbe0b' },
             { label: 'Regular', count: stats.byTier.regular, color: '#3a86ff' },
+            { label: 'DATI', count: stats.byTier.dati, color: '#8338ec' },
           ]}
         />
         <BreakdownGroup

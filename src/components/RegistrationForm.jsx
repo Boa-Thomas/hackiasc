@@ -415,7 +415,14 @@ export default function RegistrationForm() {
   const [showRecovery, setShowRecovery] = useState(false)
   const [recoveryError, setRecoveryError] = useState('')
 
-  const { currentPrice, currentPriceFormatted, earlyBirdAvailable, earlyBirdSpotsLeft, tier, capacityFull, loading } = useTicketPrice()
+  // URL params — early access + DATI secret discount
+  const urlParams = new URLSearchParams(window.location.search)
+  const earlyCode = urlParams.get('early')
+  const hasEarlyAccess = earlyCode === EVENT_CONFIG.earlyAccessCode
+  const datiCode = urlParams.get('dati')
+  const hasDatiDiscount = !!EVENT_CONFIG.datiDiscountCode && datiCode === EVENT_CONFIG.datiDiscountCode
+
+  const { currentPrice, currentPriceFormatted, earlyBirdAvailable, earlyBirdSpotsLeft, tier, capacityFull, loading } = useTicketPrice({ hasDatiDiscount })
 
   // Waitlist state
   const [waitlistSubmitted, setWaitlistSubmitted] = useState(false)
@@ -431,11 +438,6 @@ export default function RegistrationForm() {
   const totalPrice = currentPrice * totalPeople
   const totalPriceFormatted = `R$ ${(totalPrice / 100).toFixed(0)},00`
   const isTeamWithMembers = inscriptionModality === 'team' && teamMembers.length > 0
-
-  // Early access — check URL param ?early=CODE
-  const urlParams = new URLSearchParams(window.location.search)
-  const earlyCode = urlParams.get('early')
-  const hasEarlyAccess = earlyCode === EVENT_CONFIG.earlyAccessCode
 
   // Registration window — fallback to open if config fields not yet set
   const now = new Date()
@@ -847,6 +849,11 @@ export default function RegistrationForm() {
               <span>&#9889;</span> Acesso antecipado — Comunidade WhatsApp
             </div>
           )}
+          {hasDatiDiscount && (
+            <div className="inline-flex items-center gap-2 px-4 py-2 mb-4 rounded-full border border-violet/30 bg-violet/10 text-violet text-sm font-mono">
+              <span>&#9733;</span> DATI &mdash; {EVENT_CONFIG.datiDiscountPercent}% de desconto aplicado
+            </div>
+          )}
           <span className="font-mono text-sm text-cyan tracking-wider uppercase">Inscrição</span>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mt-4 mb-4">
             Garanta sua <span className="text-gradient-cyan">vaga</span>
@@ -862,7 +869,11 @@ export default function RegistrationForm() {
                 <span className="text-text-muted text-sm">
                   ({currentPriceFormatted} &times; {totalPeople} pessoas)
                 </span>
-                {earlyBirdAvailable && (
+                {hasDatiDiscount ? (
+                  <span className="px-3 py-1 rounded-full text-xs font-mono bg-violet/10 text-violet border border-violet/20">
+                    DATI &mdash; {EVENT_CONFIG.datiDiscountPercent}% off
+                  </span>
+                ) : earlyBirdAvailable && (
                   <span className="px-3 py-1 rounded-full text-xs font-mono bg-cyan/10 text-cyan border border-cyan/20">
                     Early Bird &mdash; {earlyBirdSpotsLeft} vagas
                   </span>
@@ -872,7 +883,11 @@ export default function RegistrationForm() {
               <>
                 <span className="text-3xl font-bold font-mono text-white">{currentPriceFormatted}</span>
                 <span className="text-text-muted text-sm">/pessoa</span>
-                {earlyBirdAvailable && (
+                {hasDatiDiscount ? (
+                  <span className="px-3 py-1 rounded-full text-xs font-mono bg-violet/10 text-violet border border-violet/20">
+                    DATI &mdash; {EVENT_CONFIG.datiDiscountPercent}% off
+                  </span>
+                ) : earlyBirdAvailable && (
                   <span className="px-3 py-1 rounded-full text-xs font-mono bg-cyan/10 text-cyan border border-cyan/20">
                     Early Bird &mdash; {earlyBirdSpotsLeft} vagas
                   </span>
