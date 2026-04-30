@@ -40,7 +40,7 @@ CREATE TABLE registrations (
 
   -- Pagamento
   payment_method TEXT NOT NULL CHECK (payment_method IN ('pix','card')),
-  ticket_tier TEXT NOT NULL CHECK (ticket_tier IN ('early_bird','regular')),
+  ticket_tier TEXT NOT NULL CHECK (ticket_tier IN ('early_bird','regular','dati')),
   ticket_price INTEGER NOT NULL,
   payment_status TEXT DEFAULT 'pending' CHECK (payment_status IN ('pending','confirmed','cancelled')),
   payment_confirmed_at TIMESTAMPTZ,
@@ -272,3 +272,5 @@ CREATE POLICY "Admin can read audit log"
 -- ALTER TABLE registrations ALTER COLUMN linkedin_url DROP NOT NULL;
 -- ALTER TABLE registrations ADD COLUMN price_expires_at TIMESTAMPTZ;
 -- ALTER TABLE registrations ADD COLUMN IF NOT EXISTS is_remote BOOLEAN NOT NULL DEFAULT false;
+-- ALTER TABLE registrations DROP CONSTRAINT registrations_ticket_tier_check;
+-- ALTER TABLE registrations ADD CONSTRAINT registrations_ticket_tier_check CHECK (ticket_tier IN ('early_bird','regular','dati'));

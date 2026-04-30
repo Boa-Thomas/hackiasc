@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { EVENT_CONFIG } from '../lib/config'
 
 const EARLY_BIRD_LIMIT = 10
 const EARLY_BIRD_PRICE = 15000
 const REGULAR_PRICE = 20000
 const MAX_CAPACITY = 100
 
-export function useTicketPrice() {
+export function useTicketPrice({ hasDatiDiscount = false } = {}) {
   const [confirmedCount, setConfirmedCount] = useState(null)
   const [totalCount, setTotalCount] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -30,8 +31,22 @@ export function useTicketPrice() {
     fetchCounts()
   }, [])
 
-  const earlyBirdAvailable = confirmedCount !== null && confirmedCount < EARLY_BIRD_LIMIT
-  const currentPrice = earlyBirdAvailable ? EARLY_BIRD_PRICE : REGULAR_PRICE
+  const earlyBirdAvailable = !hasDatiDiscount && confirmedCount !== null && confirmedCount < EARLY_BIRD_LIMIT
+  const datiPrice = Math.round(REGULAR_PRICE * (1 - EVENT_CONFIG.datiDiscountPercent / 100))
+
+  let currentPrice
+  let tier
+  if (hasDatiDiscount) {
+    currentPrice = datiPrice
+    tier = 'dati'
+  } else if (earlyBirdAvailable) {
+    currentPrice = EARLY_BIRD_PRICE
+    tier = 'early_bird'
+  } else {
+    currentPrice = REGULAR_PRICE
+    tier = 'regular'
+  }
+
   const earlyBirdSpotsLeft = earlyBirdAvailable ? EARLY_BIRD_LIMIT - confirmedCount : 0
   const capacityFull = totalCount !== null && totalCount >= MAX_CAPACITY
 
@@ -44,6 +59,7 @@ export function useTicketPrice() {
     totalCount,
     capacityFull,
     loading,
-    tier: earlyBirdAvailable ? 'early_bird' : 'regular',
+    tier,
+    hasDatiDiscount,
   }
 }

@@ -15,6 +15,8 @@ export const EVENT_CONFIG = {
   loteDeadline: '2026-04-30T23:59:00-03:00', // Virada de lote — early bird
   earlyAccessStart: '2026-04-08T11:30:00-03:00',
   earlyAccessCode: import.meta.env.VITE_EARLY_ACCESS_CODE || '',
+  datiDiscountCode: import.meta.env.VITE_DATI_DISCOUNT_CODE || '',
+  datiDiscountPercent: 20,
   location: 'Centro de Inovação de Blumenau (CIB)',
   city: 'Blumenau, SC',
   capacity: '60-100',

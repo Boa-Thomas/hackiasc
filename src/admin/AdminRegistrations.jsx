@@ -22,6 +22,7 @@ const MODALITY_LABELS = {
 const TIER_LABELS = {
   early_bird: 'Early Bird',
   regular: 'Regular',
+  dati: 'DATI',
 }
 
 const METHOD_LABELS = {
