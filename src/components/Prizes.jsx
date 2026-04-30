@@ -66,7 +66,7 @@ export default function Prizes() {
         </div>
 
         <p className="text-center text-sm text-text-muted mt-4 mb-8">
-          Todas as equipes participantes ganham um ingresso para o <strong className="text-white">TSW Blumenau Healthtech 2026</strong>.
+          As equipes vencedoras ganham um ingresso para o <strong className="text-white">TSW Blumenau Healthtech 2026</strong>.
         </p>
 
         {/* Evaluation criteria */}
