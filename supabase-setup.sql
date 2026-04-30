@@ -128,9 +128,9 @@ $$;
 -- Permitir que anon chame essa função
 GRANT EXECUTE ON FUNCTION get_confirmed_count() TO anon;
 
--- 7b. Contar ingressos early bird vendidos (pending + confirmed, exclui cancelled)
--- Usado para determinar se early bird ainda está disponível
-CREATE OR REPLACE FUNCTION get_early_bird_sold()
+-- 7b. Contar ingressos vendidos por tier (pending + confirmed, exclui cancelled)
+-- Usado pelo front para checar disponibilidade do lote vigente.
+CREATE OR REPLACE FUNCTION get_tier_sold(p_tier TEXT)
 RETURNS INTEGER
 LANGUAGE sql
 SECURITY DEFINER
@@ -138,8 +138,21 @@ STABLE
 AS $$
   SELECT COUNT(*)::INTEGER
   FROM registrations
-  WHERE ticket_tier = 'early_bird'
+  WHERE ticket_tier = p_tier
     AND payment_status != 'cancelled';
+$$;
+
+GRANT EXECUTE ON FUNCTION get_tier_sold(TEXT) TO anon;
+
+-- Legado: get_early_bird_sold mantido apenas para integrações externas que ainda chamem.
+-- O hook useTicketPrice agora usa get_tier_sold('early_bird').
+CREATE OR REPLACE FUNCTION get_early_bird_sold()
+RETURNS INTEGER
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT get_tier_sold('early_bird');
 $$;
 
 GRANT EXECUTE ON FUNCTION get_early_bird_sold() TO anon;

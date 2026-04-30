@@ -9,17 +9,46 @@ export const EVENT_CONFIG = {
   eventStartDate: '2026-05-29T08:00:00-03:00',
   eventEndDate: '2026-05-31T22:00:00-03:00',
   maxCapacity: 100,
-  earlyBirdLimit: 10,
+  earlyBirdLimit: 10, // back-compat — espelha tiers[0].limit (lido pelo AdminDashboard)
   registrationStart: '2026-04-08T12:00:00-03:00',
   registrationEnd: '2026-05-13T15:00:00-03:00',
-  loteDeadline: '2026-04-30T23:59:00-03:00', // Virada de lote — early bird
+  loteDeadline: '2026-04-30T23:59:00-03:00', // back-compat — espelha o deadline do lote vigente (lido pelo CountdownFloat)
   earlyAccessStart: '2026-04-08T11:30:00-03:00',
   earlyAccessCode: import.meta.env.VITE_EARLY_ACCESS_CODE || '',
-  datiDiscountCode: import.meta.env.VITE_DATI_DISCOUNT_CODE || '',
-  datiDiscountPercent: 20,
+  datiDiscountCode: import.meta.env.VITE_DATI_DISCOUNT_CODE || '', // back-compat — espelha coupons[].code
+  datiDiscountPercent: 20, // back-compat — espelha coupons[].discountPercent
   location: 'Centro de Inovação de Blumenau (CIB)',
   city: 'Blumenau, SC',
   capacity: '60-100',
+
+  // Lotes — avaliados em ordem; primeiro disponível ganha.
+  // Disponível enquanto: (limit ausente OU vendidos < limit) E (deadline ausente OU agora < deadline).
+  // O último tier (sem limit/deadline) é o fallback.
+  // Para adicionar um lote intermediário, insira um objeto antes do 'regular'.
+  tiers: [
+    {
+      id: 'early_bird',
+      label: 'Early Bird',
+      priceCents: 15000,
+      limit: 10,
+      deadline: '2026-04-30T23:59:00-03:00',
+    },
+    {
+      id: 'regular',
+      label: 'Regular',
+      priceCents: 20000,
+    },
+  ],
+
+  // Cupons — desconto aplicado sobre o lote vigente (não substituem o lote).
+  coupons: [
+    {
+      id: 'dati',
+      label: 'DATI',
+      code: import.meta.env.VITE_DATI_DISCOUNT_CODE || '',
+      discountPercent: 20,
+    },
+  ],
 
   // Organização e contato
   organizer: {

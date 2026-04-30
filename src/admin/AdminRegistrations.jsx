@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { audit } from '../lib/auditLog'
+import { EVENT_CONFIG } from '../lib/config'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -19,11 +20,10 @@ const MODALITY_LABELS = {
   team: 'Time',
 }
 
-const TIER_LABELS = {
-  early_bird: 'Early Bird',
-  regular: 'Regular',
-  dati: 'DATI',
-}
+const TIER_LABELS = Object.fromEntries([
+  ...EVENT_CONFIG.tiers.map(t => [t.id, t.label]),
+  ...EVENT_CONFIG.coupons.map(c => [c.id, c.label]),
+])
 
 const METHOD_LABELS = {
   pix: 'Pix',
