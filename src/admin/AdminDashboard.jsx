@@ -577,24 +577,24 @@ function AIExperienceChart({ aiLevels, aiAvg }) {
           Média: {aiAvg}
         </span>
       </div>
-      <div className="flex items-end gap-1.5 h-20">
+      <div className="flex items-end gap-1.5">
         {levels.map(lvl => {
           const count = aiLevels[lvl] ?? 0
-          const height = max > 0 ? (count / max) * 100 : 0
+          const barHeight = max > 0 ? (count / max) * 80 : 0
           return (
             <div key={lvl} className="flex-1 flex flex-col items-center gap-1">
-              <span className="text-[10px] font-mono text-white/40">
+              <span className="text-[10px] font-mono text-white/40 leading-none h-3">
                 {count > 0 ? count : ''}
               </span>
               <div
                 className="w-full rounded-t transition-all duration-500"
                 style={{
-                  height: `${height}%`,
+                  height: `${barHeight}px`,
                   minHeight: count > 0 ? '4px' : '0',
                   background: `hsl(${160 + lvl * 12}, 70%, 55%)`,
                 }}
               />
-              <span className="text-[10px] font-mono text-white/30">{lvl}</span>
+              <span className="text-[10px] font-mono text-white/30 leading-none">{lvl}</span>
             </div>
           )
         })}
