@@ -142,6 +142,7 @@ export default function AdminFinanceiro({ readOnly = false }) {
     let query = supabase
       .from('mp_payments')
       .select('*', { count: 'exact' })
+      .eq('operation_type', 'regular_payment')
       .order('date_created', { ascending: false })
 
     if (filterStatus) query = query.eq('status', filterStatus)
@@ -171,6 +172,7 @@ export default function AdminFinanceiro({ readOnly = false }) {
     const { data, error } = await supabase
       .from('mp_payments')
       .select('status, payment_method, gross_amount')
+      .eq('operation_type', 'regular_payment')
     if (error) {
       console.error('Fetch breakdown error:', error)
       setBreakdownLoading(false)
@@ -360,6 +362,9 @@ export default function AdminFinanceiro({ readOnly = false }) {
 
             <span className="text-xs font-mono text-white/30">
               {totalCount} pagamento{totalCount !== 1 ? 's' : ''}
+            </span>
+            <span className="text-xs font-mono text-white/30 basis-full">
+              Operações internas da conta MP (cofrinho, transferências) não são exibidas.
             </span>
           </div>
 
