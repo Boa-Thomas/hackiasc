@@ -14,15 +14,20 @@ import PaymentReturn from './components/PaymentReturn'
 import AdminLogin from './admin/AdminLogin'
 import AdminPanel from './admin/AdminPanel'
 import { useAdminAuth } from './admin/useAdminAuth'
+import ParticipantLogin from './participant/ParticipantLogin'
+import ParticipantPanel from './participant/ParticipantPanel'
+import { useParticipantAuth } from './participant/useParticipantAuth'
 import CountdownFloat from './components/CountdownFloat'
 import ScrollToTop from './components/ScrollToTop'
 
 const PAYMENT_HASHES = ['#pagamento-sucesso', '#pagamento-erro', '#pagamento-pendente']
 const ADMIN_HASHES = ['#admin', '#admin-login']
+const PARTICIPANT_HASHES = ['#participante', '#participante-login']
 
 export default function App() {
   const [page, setPage] = useState(window.location.hash)
   const { isAuthenticated, role, loading: authLoading, error: authError, login, logout } = useAdminAuth()
+  const participantAuth = useParticipantAuth()
 
   useEffect(() => {
     const onHashChange = () => setPage(window.location.hash)
@@ -32,7 +37,15 @@ export default function App() {
 
   // Scroll to section when returning from subpages
   useEffect(() => {
-    if (page && page !== '#privacidade' && page !== '#patrocinio' && page !== '#sponsorship' && !PAYMENT_HASHES.includes(page) && !ADMIN_HASHES.includes(page)) {
+    if (
+      page &&
+      page !== '#privacidade' &&
+      page !== '#patrocinio' &&
+      page !== '#sponsorship' &&
+      !PAYMENT_HASHES.includes(page) &&
+      !ADMIN_HASHES.includes(page) &&
+      !PARTICIPANT_HASHES.includes(page)
+    ) {
       if (!/^#[a-zA-Z][\w-]*$/.test(page)) return
       setTimeout(() => {
         const el = document.getElementById(page.slice(1))
@@ -56,6 +69,29 @@ export default function App() {
     }
 
     return <AdminPanel onLogout={logout} role={role} />
+  }
+
+  // Participant routes
+  if (PARTICIPANT_HASHES.includes(page)) {
+    if (participantAuth.loading) {
+      return (
+        <div className="min-h-screen bg-dark flex items-center justify-center">
+          <p className="text-white/60 font-mono">Carregando...</p>
+        </div>
+      )
+    }
+
+    if (!participantAuth.isAuthenticated) {
+      return (
+        <ParticipantLogin
+          onLogin={participantAuth.login}
+          error={participantAuth.error}
+          loading={participantAuth.loading}
+        />
+      )
+    }
+
+    return <ParticipantPanel auth={participantAuth} />
   }
 
   if (page === '#privacidade') {

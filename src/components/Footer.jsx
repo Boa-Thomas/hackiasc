@@ -58,6 +58,11 @@ export default function Footer() {
                   Política de Privacidade
                 </a>
               </li>
+              <li>
+                <a href="#participante-login" className="text-sm text-text-muted hover:text-white transition-colors">
+                  Já sou inscrito · Acessar painel
+                </a>
+              </li>
             </ul>
           </div>
 
