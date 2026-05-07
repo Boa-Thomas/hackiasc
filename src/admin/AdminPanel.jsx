@@ -5,12 +5,14 @@ import AdminTeams from './AdminTeams'
 import AdminCheckin from './AdminCheckin'
 import AdminAuditLog from './AdminAuditLog'
 import AdminFinanceiro from './AdminFinanceiro'
+import AdminBulkOrders from './AdminBulkOrders'
 
 const ALL_TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'registrations', label: 'Inscrições', icon: '📋' },
   { id: 'teams', label: 'Times', icon: '👥' },
   { id: 'financeiro', label: 'Financeiro', icon: '💰' },
+  { id: 'bulk', label: 'Empresarial', icon: '🏢' },
   { id: 'checkin', label: 'Check-in', icon: '✅', adminOnly: true },
   { id: 'logs', label: 'Logs', icon: '📜', adminOnly: true },
 ]
@@ -79,6 +81,7 @@ export default function AdminPanel({ onLogout, role = 'viewer' }) {
         )}
         {activeTab === 'teams' && <AdminTeams readOnly={readOnly} />}
         {activeTab === 'financeiro' && <AdminFinanceiro readOnly={readOnly} />}
+        {activeTab === 'bulk' && <AdminBulkOrders readOnly={readOnly} />}
         {!readOnly && activeTab === 'checkin' && <AdminCheckin />}
         {!readOnly && activeTab === 'logs' && <AdminAuditLog />}
       </main>
