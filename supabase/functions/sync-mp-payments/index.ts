@@ -103,6 +103,7 @@ function mapPayment(p: any) {
     payment_id: p.id,
     registration_id: isValidUUID(p.external_reference) ? p.external_reference : null,
     status: p.status,
+    operation_type: p.operation_type ?? 'regular_payment',
     gross_amount: Math.round((p.transaction_amount ?? 0) * 100),
     net_amount: Math.round((p.transaction_details?.net_received_amount ?? 0) * 100),
     marketplace_fee: fees['mercadopago_fee'] ?? 0,
@@ -212,8 +213,12 @@ Deno.serve(async (req: Request) => {
       synced += batch.length
     }
 
-    // Calculate totals for response
-    const approved = rows.filter(r => r.status === 'approved')
+    // Calculate totals for response — only regular customer payments count as
+    // event revenue. Internal account ops (operation_type 'investment' for
+    // piggy bank / "Cofrinho", 'money_transfer', etc) must be excluded.
+    const approved = rows.filter(
+      r => r.status === 'approved' && r.operation_type === 'regular_payment'
+    )
     const totalGross = approved.reduce((s, r) => s + r.gross_amount, 0)
     const totalNet = approved.reduce((s, r) => s + r.net_amount, 0)
     const totalFees = approved.reduce(
