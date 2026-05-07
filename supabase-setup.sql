@@ -427,6 +427,12 @@ ALTER TABLE team_join_requests ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Admin can read team join requests"
   ON team_join_requests FOR SELECT TO authenticated USING (is_admin_or_viewer());
 
+-- Admin pode aprovar/recusar/cancelar pedidos diretamente (override do líder)
+CREATE POLICY "Admin can update team join requests"
+  ON team_join_requests FOR UPDATE TO authenticated
+  USING (is_admin())
+  WITH CHECK (is_admin());
+
 -- 4. Trigger: enforce 6-member limit on team_name UPDATE (insert trigger already exists)
 CREATE OR REPLACE FUNCTION check_team_size_update()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
