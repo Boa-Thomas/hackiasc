@@ -415,12 +415,42 @@ export default function RegistrationForm() {
   const [showRecovery, setShowRecovery] = useState(false)
   const [recoveryError, setRecoveryError] = useState('')
 
-  // URL params — early access + DATI secret discount
+  // URL params — early access + DATI secret discount + voucher empresarial
   const urlParams = new URLSearchParams(window.location.search)
   const earlyCode = urlParams.get('early')
   const hasEarlyAccess = earlyCode === EVENT_CONFIG.earlyAccessCode
   const datiCode = urlParams.get('dati')
   const hasDatiDiscount = !!EVENT_CONFIG.datiDiscountCode && datiCode === EVENT_CONFIG.datiDiscountCode
+  const voucherCode = (urlParams.get('voucher') || '').trim().toUpperCase()
+  const isVoucherMode = !!voucherCode
+
+  // Voucher lookup — validates code and fetches company info
+  const [voucherState, setVoucherState] = useState(isVoucherMode ? { status: 'loading' } : null)
+  useEffect(() => {
+    if (!isVoucherMode || !supabase) {
+      if (isVoucherMode && !supabase) setVoucherState({ status: 'error', reason: 'system_unavailable' })
+      return
+    }
+    let cancelled = false
+    supabase.rpc('lookup_voucher', { p_code: voucherCode }).then(({ data, error }) => {
+      if (cancelled) return
+      if (error || !data) {
+        setVoucherState({ status: 'error', reason: 'lookup_failed' })
+        return
+      }
+      if (!data.valid) {
+        setVoucherState({ status: 'invalid', reason: data.reason })
+        return
+      }
+      setVoucherState({
+        status: 'valid',
+        companyName: data.company_name,
+        ticketPrice: data.ticket_price,
+        ticketTier: data.ticket_tier,
+      })
+    })
+    return () => { cancelled = true }
+  }, [isVoucherMode, voucherCode])
 
   const { currentPrice, currentPriceFormatted, earlyBirdAvailable, earlyBirdSpotsLeft, tier, capacityFull, loading } = useTicketPrice({ hasDatiDiscount })
 
@@ -553,6 +583,86 @@ export default function RegistrationForm() {
   const onSubmit = async (data) => {
     setSubmitting(true)
     setSubmitError('')
+
+    // ── Voucher mode — empresa já pagou; só insere registration confirmada
+    if (isVoucherMode) {
+      if (voucherState?.status !== 'valid') {
+        setSubmitError('Voucher inválido ou expirado.')
+        setSubmitting(false)
+        return
+      }
+      const payload = {
+        full_name: data.full_name.trim(),
+        email: data.email.trim().toLowerCase(),
+        phone: data.phone.trim(),
+        birth_date: data.birth_date,
+        linkedin_url: data.linkedin_url?.trim() || null,
+        cpf: data.cpf?.trim() || '',
+        occupation_type: data.occupation_type,
+        ai_experience_level: parseInt(data.ai_experience_level),
+        dietary_restrictions: data.dietary_restrictions?.trim() || '',
+        is_pcd: data.is_pcd === 'yes',
+        pcd_type: data.is_pcd === 'yes' ? (data.pcd_type?.trim() || null) : null,
+        has_project: data.has_project === 'yes',
+        project_name: data.has_project === 'yes' ? (data.project_name?.trim() || null) : null,
+        economic_axes: data.economic_axes || [],
+        is_remote: false,
+        accept_lgpd: data.accept_lgpd || false,
+        accept_code_ip: data.accept_code_ip || false,
+      }
+
+      if (!supabase) {
+        setSubmitError('Sistema indisponível. Tente novamente mais tarde.')
+        setSubmitting(false)
+        return
+      }
+
+      const { data: result, error: rpcError } = await supabase.rpc('redeem_voucher', {
+        p_code: voucherCode,
+        p_data: payload,
+      })
+
+      if (rpcError) {
+        const msg = rpcError.message || ''
+        if (msg.includes('voucher_already_redeemed')) setSubmitError('Este voucher já foi utilizado.')
+        else if (msg.includes('voucher_cancelled')) setSubmitError('Este voucher foi cancelado.')
+        else if (msg.includes('voucher_not_found')) setSubmitError('Voucher não encontrado.')
+        else if (msg.includes('order_not_paid')) setSubmitError('O pagamento da empresa ainda não foi confirmado. Aguarde alguns minutos e tente novamente.')
+        else if (msg.includes('duplicate key value') || msg.includes('23505')) setSubmitError('Este e-mail já está cadastrado em outra inscrição.')
+        else setSubmitError('Erro ao processar inscrição: ' + msg)
+        setSubmitting(false)
+        return
+      }
+
+      audit({
+        action: 'registration.create_voucher',
+        actorType: 'public',
+        actorEmail: payload.email,
+        targetTable: 'registrations',
+        targetId: result.registration_id,
+        targetEmail: payload.email,
+        newData: {
+          full_name: payload.full_name,
+          company_name: result.company_name,
+          ticket_tier: result.ticket_tier,
+          ticket_price: result.ticket_price,
+          voucher_code: voucherCode,
+        },
+      })
+
+      setSubmittedData({
+        ...payload,
+        memberCount: 1,
+        registration_id: result.registration_id,
+        ticket_price: result.ticket_price,
+        ticket_tier: result.ticket_tier,
+        company_name: result.company_name,
+        voucher_code: voucherCode,
+      })
+      setSubmitted(true)
+      setSubmitting(false)
+      return
+    }
 
     // Validate team members before proceeding
     if (inscriptionModality === 'team' && teamMembers.length > 0) {
@@ -706,7 +816,47 @@ export default function RegistrationForm() {
     setSubmitting(false)
   }
 
-  if (!registrationOpen) {
+  // ─── Voucher loading / error states ────────────────────────────────────────
+  if (isVoucherMode && voucherState?.status === 'loading') {
+    return (
+      <section id="inscricao" className="relative py-24 sm:py-32">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6">
+          <div className="card-glass rounded-2xl p-8 sm:p-12 text-center">
+            <p className="text-white/60 font-mono">Validando voucher...</p>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  if (isVoucherMode && voucherState?.status !== 'valid' && !submitted) {
+    const reason = voucherState?.reason
+    const messages = {
+      not_found: 'Voucher não encontrado. Verifique o código ou entre em contato com a empresa.',
+      redeemed: 'Este voucher já foi utilizado por outro participante.',
+      cancelled: 'Este voucher foi cancelado pela organização.',
+      order_not_paid: 'O pagamento da empresa ainda não foi confirmado. Aguarde a confirmação ou entre em contato com o responsável.',
+      lookup_failed: 'Erro ao validar voucher. Tente recarregar a página.',
+      system_unavailable: 'Sistema indisponível no momento. Tente novamente mais tarde.',
+    }
+    return (
+      <section id="inscricao" className="relative py-24 sm:py-32">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6">
+          <div className="card-glass rounded-2xl p-8 sm:p-12 text-center">
+            <span className="font-mono text-sm text-hot tracking-wider uppercase">Voucher inválido</span>
+            <p className="mt-6 text-white">{messages[reason] || 'Voucher inválido.'}</p>
+            <p className="text-text-muted mt-4 text-sm">
+              Dúvidas: <a href={`mailto:${EVENT_CONFIG.organizer.email}`} className="text-electric underline">{EVENT_CONFIG.organizer.email}</a>
+            </p>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  // Voucher mode bypassa as checagens normais de janela e capacidade —
+  // a empresa já pagou e o ingresso está reservado.
+  if (!registrationOpen && !isVoucherMode) {
     return (
       <section id="inscricao" className="relative py-24 sm:py-32">
         <div className="max-w-2xl mx-auto px-4 sm:px-6">
@@ -771,7 +921,8 @@ export default function RegistrationForm() {
   }
 
   // ─── Capacity full → waitlist ───────────────────────────────────────────────
-  if (capacityFull && !submitted) {
+  // Voucher mode bypassa: o ingresso já foi pago pela empresa, não precisa de vaga adicional.
+  if (capacityFull && !submitted && !isVoucherMode) {
     return (
       <section id="inscricao" className="relative py-24 sm:py-32">
         <div className="max-w-2xl mx-auto px-4 sm:px-6">
@@ -819,6 +970,45 @@ export default function RegistrationForm() {
     )
   }
 
+  if (submitted && isVoucherMode) {
+    return (
+      <section id="inscricao" className="relative py-24 sm:py-32">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6">
+          <div className="card-glass rounded-2xl p-8 sm:p-12 text-center space-y-6">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-cyan/20 border border-cyan/40 mx-auto">
+              <svg className="w-8 h-8 text-cyan" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <span className="font-mono text-sm text-cyan tracking-wider uppercase">Inscrição confirmada</span>
+              <h2 className="text-2xl sm:text-3xl font-bold text-white mt-3">
+                Você está dentro, <span className="text-gradient-cyan">{submittedData?.full_name?.split(' ')[0]}</span>!
+              </h2>
+            </div>
+            <p className="text-text-muted">
+              Sua inscrição foi confirmada via <strong className="text-white">{submittedData?.company_name}</strong>.
+              {' '}Pagamento já está coberto pela empresa — não há nada a pagar.
+            </p>
+            <div className="card-glass rounded-xl p-5 text-left space-y-2 border border-cyan/20 bg-cyan/5">
+              <p className="text-xs font-mono uppercase tracking-wider text-cyan">Próximos passos</p>
+              <ul className="text-sm text-white/80 space-y-1.5 list-disc list-inside">
+                <li>Você receberá informações oficiais no e-mail <strong>{submittedData?.email}</strong></li>
+                <li>Acesse o <a href="#participante-login" className="text-electric underline">painel do participante</a> com seu e-mail e CPF para ver/editar dados e formar/entrar em uma equipe</li>
+                <li>Chegue ao Centro de Inovação de Blumenau (CIB) na noite de abertura — 29/05 às 19h</li>
+              </ul>
+            </div>
+            <p className="text-xs text-text-muted">
+              Voucher: <span className="font-mono text-white/70">{submittedData?.voucher_code}</span>
+              {' • '}
+              Dúvidas: <a href={`mailto:${EVENT_CONFIG.organizer.email}`} className="text-electric underline">{EVENT_CONFIG.organizer.email}</a>
+            </p>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
   if (submitted) {
     return (
       <section id="inscricao" className="relative py-24 sm:py-32">
@@ -844,21 +1034,40 @@ export default function RegistrationForm() {
 
       <div className="relative z-10 max-w-2xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-12">
-          {hasEarlyAccess && (
+          {isVoucherMode && voucherState?.status === 'valid' && (
+            <div className="inline-flex items-center gap-2 px-4 py-2 mb-4 rounded-full border border-cyan/30 bg-cyan/10 text-cyan text-sm font-mono">
+              <span>🏢</span> Voucher empresarial — {voucherState.companyName}
+            </div>
+          )}
+          {!isVoucherMode && hasEarlyAccess && (
             <div className="inline-flex items-center gap-2 px-4 py-2 mb-4 rounded-full border border-cyan/30 bg-cyan/10 text-cyan text-sm font-mono">
               <span>&#9889;</span> Acesso antecipado — Comunidade WhatsApp
             </div>
           )}
-          {hasDatiDiscount && (
+          {!isVoucherMode && hasDatiDiscount && (
             <div className="inline-flex items-center gap-2 px-4 py-2 mb-4 rounded-full border border-violet/30 bg-violet/10 text-violet text-sm font-mono">
               <span>&#9733;</span> DATI &mdash; {EVENT_CONFIG.datiDiscountPercent}% de desconto aplicado
             </div>
           )}
           <span className="font-mono text-sm text-cyan tracking-wider uppercase">Inscrição</span>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mt-4 mb-4">
-            Garanta sua <span className="text-gradient-cyan">vaga</span>
+            {isVoucherMode
+              ? <>Complete sua <span className="text-gradient-cyan">inscrição</span></>
+              : <>Garanta sua <span className="text-gradient-cyan">vaga</span></>
+            }
           </h2>
 
+          {isVoucherMode && voucherState?.status === 'valid' ? (
+            <div className="inline-flex flex-col items-center gap-2 px-6 py-4 rounded-xl border border-cyan/30 bg-cyan/5 max-w-md">
+              <p className="text-sm text-white">
+                A empresa <strong className="text-cyan">{voucherState.companyName}</strong> já cobriu seu ingresso.
+              </p>
+              <p className="text-xs text-text-muted">
+                Preencha apenas seus dados pessoais — não há pagamento a fazer.
+              </p>
+            </div>
+          ) : (
+          <>
           {/* Price badge */}
           <div className="inline-flex items-center gap-3 px-6 py-3 rounded-xl border border-dark-border bg-surface">
             {loading ? (
@@ -936,6 +1145,8 @@ export default function RegistrationForm() {
               </div>
             )}
           </div>
+          </>
+          )}
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
@@ -1090,7 +1301,8 @@ export default function RegistrationForm() {
             </div>
           </fieldset>
 
-          {/* ===== MODALIDADE ===== */}
+          {/* ===== MODALIDADE ===== — escondida no fluxo de voucher (sempre individual) */}
+          {!isVoucherMode && (
           <fieldset className="card-glass rounded-2xl p-6 sm:p-8 space-y-5">
             <legend className="text-sm font-mono text-electric tracking-wider uppercase mb-2">Modalidade de Inscrição</legend>
 
@@ -1171,6 +1383,7 @@ export default function RegistrationForm() {
               </div>
             )}
           </fieldset>
+          )}
 
           {/* ===== TERMOS E CONDIÇÕES ===== */}
           <fieldset className="card-glass rounded-2xl p-6 sm:p-8 space-y-5">
@@ -1319,14 +1532,18 @@ export default function RegistrationForm() {
           >
             {submitting
               ? 'Enviando...'
-              : isTeamWithMembers
-                ? `Ir para o Checkout — ${totalPriceFormatted} (${totalPeople} pessoas)`
-                : `Ir para o Checkout — ${currentPriceFormatted}`
+              : isVoucherMode
+                ? 'Confirmar Inscrição'
+                : isTeamWithMembers
+                  ? `Ir para o Checkout — ${totalPriceFormatted} (${totalPeople} pessoas)`
+                  : `Ir para o Checkout — ${currentPriceFormatted}`
             }
           </button>
 
           <p className="text-xs text-text-muted text-center">
-            Pagamento seguro via Mercado Pago. Aceita Pix, cartão de crédito e débito.
+            {isVoucherMode
+              ? 'Sem pagamento — sua inscrição é coberta pela empresa.'
+              : 'Pagamento seguro via Mercado Pago. Aceita Pix, cartão de crédito e débito.'}
           </p>
         </form>
       </div>

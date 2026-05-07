@@ -33,6 +33,7 @@ function checkRate(ip: string, limit = 10, windowMs = 60000): boolean {
 const ALLOWED_PUBLIC_ACTIONS = new Set([
   'registration.create',
   'registration.create_team',
+  'registration.create_voucher',
   'registration.recover',
   'waitlist.join',
 ])
@@ -93,10 +94,13 @@ Deno.serve(async (req: Request) => {
     // Sanitize: strip any fields not in the expected schema to prevent injection
     const safeNewData = new_data && typeof new_data === 'object' ? { ...new_data } : null
 
-    // Validate ticket_price if present — only allow known values (prevents client-side manipulation)
+    // Validate ticket_price if present — only allow known values (prevents client-side manipulation).
+    // Voucher flow is server-priced by bulk_orders, so any positive int is acceptable there.
     if (safeNewData && 'ticket_price' in safeNewData) {
       const price = safeNewData.ticket_price
-      if (price !== 15000 && price !== 20000) {
+      const isVoucher = action === 'registration.create_voucher'
+      const validVoucher = isVoucher && typeof price === 'number' && price > 0 && price <= 100000
+      if (!validVoucher && price !== 15000 && price !== 20000) {
         safeNewData.ticket_price = null
       }
     }
