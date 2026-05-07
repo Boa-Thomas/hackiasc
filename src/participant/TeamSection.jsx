@@ -25,6 +25,7 @@ const ERROR_LABELS = {
   new_leader_not_in_team: 'Membro selecionado não está na equipe.',
   team_name_required: 'Informe um nome de equipe válido (até 120 caracteres).',
   team_name_taken: 'Esse nome de equipe já está em uso.',
+  payment_not_confirmed: 'Pagamento ainda não confirmado — funcionalidades de equipe ficam liberadas após a confirmação.',
 }
 
 function translateError(err) {

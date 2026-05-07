@@ -469,6 +469,25 @@ BEGIN
 END;
 $$;
 
+-- 5b. Helper: same as above but also requires payment_status = 'confirmed'.
+-- Used by all team / event resource RPCs — quem não pagou não acessa.
+CREATE OR REPLACE FUNCTION participant_session_owner_confirmed(p_token UUID)
+RETURNS UUID
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+DECLARE
+  v_id UUID;
+  v_status TEXT;
+BEGIN
+  v_id := participant_session_owner(p_token);
+  SELECT payment_status INTO v_status FROM registrations WHERE id = v_id;
+  IF v_status <> 'confirmed' THEN
+    RAISE EXCEPTION 'payment_not_confirmed';
+  END IF;
+  RETURN v_id;
+END;
+$$;
+
 -- 6. Login: validate email + CPF, return session token (NULL on failure)
 CREATE OR REPLACE FUNCTION participant_login(p_email TEXT, p_cpf TEXT)
 RETURNS JSON
@@ -582,6 +601,16 @@ BEGIN
   INTO v_reg
   FROM registrations WHERE id = v_reg_id;
 
+  -- Quem ainda não confirmou pagamento não acessa dados de equipe.
+  IF v_reg.payment_status <> 'confirmed' THEN
+    RETURN json_build_object(
+      'profile', row_to_json(v_reg),
+      'team_members', '[]'::JSON,
+      'pending_requests', '[]'::JSON,
+      'my_requests', '[]'::JSON
+    );
+  END IF;
+
   IF v_reg.team_name IS NOT NULL THEN
     SELECT json_agg(m ORDER BY m.is_team_leader DESC, m.created_at)
     INTO v_members
@@ -678,7 +707,7 @@ DECLARE
   v_reg_id UUID;
   v_result JSON;
 BEGIN
-  v_reg_id := participant_session_owner(p_token);
+  v_reg_id := participant_session_owner_confirmed(p_token);
 
   SELECT json_agg(t ORDER BY t.team_name)
   INTO v_result
@@ -718,7 +747,7 @@ DECLARE
   v_request_id UUID;
   v_clean_team TEXT;
 BEGIN
-  v_reg_id := participant_session_owner(p_token);
+  v_reg_id := participant_session_owner_confirmed(p_token);
   v_clean_team := TRIM(COALESCE(p_team_name, ''));
 
   IF v_clean_team = '' THEN
@@ -765,7 +794,7 @@ DECLARE
   v_reg_id UUID;
   v_updated INTEGER;
 BEGIN
-  v_reg_id := participant_session_owner(p_token);
+  v_reg_id := participant_session_owner_confirmed(p_token);
 
   UPDATE team_join_requests
   SET status = 'cancelled', updated_at = now()
@@ -794,7 +823,7 @@ DECLARE
   v_request RECORD;
   v_team_count INTEGER;
 BEGIN
-  v_reg_id := participant_session_owner(p_token);
+  v_reg_id := participant_session_owner_confirmed(p_token);
 
   SELECT team_name, is_team_leader INTO v_leader_team, v_leader_is_leader
   FROM registrations WHERE id = v_reg_id;
@@ -860,7 +889,7 @@ DECLARE
   v_leader_is_leader BOOLEAN;
   v_request RECORD;
 BEGIN
-  v_reg_id := participant_session_owner(p_token);
+  v_reg_id := participant_session_owner_confirmed(p_token);
 
   SELECT team_name, is_team_leader INTO v_leader_team, v_leader_is_leader
   FROM registrations WHERE id = v_reg_id;
@@ -905,7 +934,7 @@ DECLARE
   v_is_leader BOOLEAN;
   v_team_count INTEGER;
 BEGIN
-  v_reg_id := participant_session_owner(p_token);
+  v_reg_id := participant_session_owner_confirmed(p_token);
 
   SELECT team_name, is_team_leader INTO v_team, v_is_leader
   FROM registrations WHERE id = v_reg_id;
@@ -947,7 +976,7 @@ DECLARE
   v_clean_name TEXT;
   v_exists BOOLEAN;
 BEGIN
-  v_reg_id := participant_session_owner(p_token);
+  v_reg_id := participant_session_owner_confirmed(p_token);
   v_clean_name := TRIM(COALESCE(p_team_name, ''));
 
   IF v_clean_name = '' OR length(v_clean_name) > 120 THEN
@@ -995,7 +1024,7 @@ DECLARE
   v_is_leader BOOLEAN;
   v_new_leader_team TEXT;
 BEGIN
-  v_reg_id := participant_session_owner(p_token);
+  v_reg_id := participant_session_owner_confirmed(p_token);
 
   IF v_reg_id = p_new_leader_id THEN
     RAISE EXCEPTION 'cannot_transfer_to_self';

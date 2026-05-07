@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import TeamSection from './TeamSection'
 import EditProfile from './EditProfile'
 import ComingSoon from './ComingSoon'
 
-const TABS = [
+const ALL_TABS = [
   { id: 'team', label: 'Equipe', icon: 'team' },
   { id: 'profile', label: 'Meus Dados', icon: 'profile' },
   { id: 'event', label: 'Em Breve', icon: 'event' },
 ]
+
+const UNPAID_TABS = ALL_TABS.filter(t => t.id === 'profile')
 
 function TabIcon({ name }) {
   if (name === 'team') return (
@@ -28,8 +30,16 @@ function TabIcon({ name }) {
 }
 
 export default function ParticipantPanel({ auth }) {
-  const [tab, setTab] = useState('team')
   const profile = auth.profile
+  const isPaid = profile?.payment_status === 'confirmed'
+  const tabs = isPaid ? ALL_TABS : UNPAID_TABS
+  const [tab, setTab] = useState(isPaid ? 'team' : 'profile')
+
+  // Se o pagamento muda de confirmado para outra coisa (improvável mas possível
+  // após refreshMe), garantimos que o usuário não fica em uma aba bloqueada.
+  useEffect(() => {
+    if (!tabs.some(t => t.id === tab)) setTab(tabs[0].id) // eslint-disable-line react-hooks/set-state-in-effect
+  }, [tabs, tab])
 
   return (
     <div className="min-h-screen bg-dark text-white bg-grid">
@@ -73,12 +83,12 @@ export default function ParticipantPanel({ auth }) {
           </div>
           <div className="flex flex-wrap gap-2">
             <PaymentBadge status={profile?.payment_status} />
-            {profile?.team_name && (
+            {isPaid && profile?.team_name && (
               <span className="px-3 py-1 rounded-full text-xs font-mono bg-electric/10 text-electric border border-electric/20">
                 Equipe: {profile.team_name}
               </span>
             )}
-            {profile?.is_team_leader && (
+            {isPaid && profile?.is_team_leader && (
               <span className="px-3 py-1 rounded-full text-xs font-mono bg-gold/10 text-gold border border-gold/20">
                 Líder
               </span>
@@ -86,9 +96,11 @@ export default function ParticipantPanel({ auth }) {
           </div>
         </div>
 
+        {!isPaid && <PaymentRequiredBanner status={profile?.payment_status} email={profile?.email} />}
+
         {/* Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
-          {TABS.map(({ id, label, icon }) => (
+          {tabs.map(({ id, label, icon }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
@@ -105,10 +117,54 @@ export default function ParticipantPanel({ auth }) {
         </div>
 
         {/* Content */}
-        {tab === 'team' && <TeamSection auth={auth} />}
+        {tab === 'team' && isPaid && <TeamSection auth={auth} />}
         {tab === 'profile' && <EditProfile auth={auth} />}
-        {tab === 'event' && <ComingSoon />}
+        {tab === 'event' && isPaid && <ComingSoon />}
       </main>
+    </div>
+  )
+}
+
+function PaymentRequiredBanner({ status, email }) {
+  const isCancelled = status === 'cancelled'
+  return (
+    <div className={`rounded-2xl p-5 mb-6 border ${
+      isCancelled
+        ? 'bg-hot/5 border-hot/30'
+        : 'bg-gold/5 border-gold/30'
+    }`}>
+      <div className="flex items-start gap-3">
+        <svg className={`w-5 h-5 flex-shrink-0 mt-0.5 ${isCancelled ? 'text-hot' : 'text-gold'}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 0 0 1.74-3L13.74 4a2 2 0 0 0-3.48 0L3.34 16a2 2 0 0 0 1.73 3z" />
+        </svg>
+        <div className="flex-1">
+          <h3 className={`font-semibold ${isCancelled ? 'text-hot' : 'text-gold'}`}>
+            {isCancelled ? 'Inscrição cancelada' : 'Pagamento pendente'}
+          </h3>
+          <p className="text-sm text-text-muted mt-1 leading-relaxed">
+            {isCancelled
+              ? 'Sua inscrição foi cancelada. Você ainda pode atualizar seus dados, mas o acesso à equipe e aos recursos do evento está bloqueado. Entre em contato com a organização caso seja um engano.'
+              : 'Para acessar a área de equipe, recursos do evento e demais funcionalidades, é necessário ter o pagamento confirmado. Por enquanto você pode atualizar apenas seus dados pessoais abaixo.'}
+          </p>
+          <div className="flex flex-wrap gap-2 mt-3">
+            {!isCancelled && (
+              <a
+                href="#inscricao"
+                onClick={() => { window.location.hash = '' }}
+                className="px-4 py-2 text-sm rounded-lg border border-gold/40 bg-gold/10 text-gold hover:bg-gold/20 transition-colors"
+              >
+                Finalizar pagamento
+              </a>
+            )}
+            <a
+              href={`mailto:contato@hackiasc.com${email ? `?subject=${encodeURIComponent(`[HackIA SC] Dúvida sobre inscrição de ${email}`)}` : ''}`}
+              className="px-4 py-2 text-sm rounded-lg border border-dark-border text-text-muted hover:text-white transition-colors"
+            >
+              Falar com a organização
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
