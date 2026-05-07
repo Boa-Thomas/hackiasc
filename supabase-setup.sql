@@ -264,6 +264,105 @@ CREATE POLICY "Admin can read audit log"
   ON audit_log FOR SELECT TO authenticated USING (is_admin_or_viewer());
 
 -- ============================================================
+-- Ticket transfer — mover ingresso pago de A para B sem reembolso
+-- (ex.: empresa pagou por A, A não pode comparecer, B vai no lugar)
+-- ============================================================
+
+ALTER TABLE registrations
+  ADD COLUMN IF NOT EXISTS transferred_to_id UUID REFERENCES registrations(id),
+  ADD COLUMN IF NOT EXISTS transferred_from_id UUID REFERENCES registrations(id),
+  ADD COLUMN IF NOT EXISTS transferred_at TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_reg_transferred_to ON registrations(transferred_to_id);
+CREATE INDEX IF NOT EXISTS idx_reg_transferred_from ON registrations(transferred_from_id);
+
+-- RPC: transfere o pagamento de p_from_id (confirmado) para p_to_id (pendente).
+-- A vira 'cancelled' com nota de transferência, B fica 'confirmed' herdando
+-- payment_method, ticket_tier, ticket_price e payment_confirmed_at.
+-- Não dispara reembolso — o dinheiro continua com o evento.
+CREATE OR REPLACE FUNCTION transfer_ticket(p_from_id UUID, p_to_id UUID)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_from registrations;
+  v_to   registrations;
+  v_now  TIMESTAMPTZ := now();
+BEGIN
+  IF NOT is_admin() THEN
+    RAISE EXCEPTION 'unauthorized';
+  END IF;
+
+  IF p_from_id = p_to_id THEN
+    RAISE EXCEPTION 'origem e destino devem ser diferentes';
+  END IF;
+
+  SELECT * INTO v_from FROM registrations WHERE id = p_from_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'inscrição de origem não encontrada';
+  END IF;
+
+  SELECT * INTO v_to FROM registrations WHERE id = p_to_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'inscrição de destino não encontrada';
+  END IF;
+
+  IF v_from.payment_status <> 'confirmed' THEN
+    RAISE EXCEPTION 'origem precisa ter pagamento confirmado (atual: %)', v_from.payment_status;
+  END IF;
+
+  IF v_to.payment_status = 'confirmed' THEN
+    RAISE EXCEPTION 'destino já tem pagamento confirmado';
+  END IF;
+
+  IF v_to.payment_status = 'cancelled' THEN
+    RAISE EXCEPTION 'destino está cancelado';
+  END IF;
+
+  IF v_from.transferred_to_id IS NOT NULL THEN
+    RAISE EXCEPTION 'ingresso de origem já foi transferido anteriormente';
+  END IF;
+
+  -- Destino herda o pagamento
+  UPDATE registrations SET
+    payment_method        = v_from.payment_method,
+    ticket_tier           = v_from.ticket_tier,
+    ticket_price          = v_from.ticket_price,
+    payment_status        = 'confirmed',
+    payment_confirmed_at  = COALESCE(v_from.payment_confirmed_at, v_now),
+    payment_notes         = TRIM(BOTH E'\n' FROM
+                              COALESCE(payment_notes, '') ||
+                              E'\n[' || to_char(v_now, 'YYYY-MM-DD HH24:MI') ||
+                              '] Transferido de ' || v_from.email),
+    transferred_from_id   = v_from.id
+  WHERE id = p_to_id;
+
+  -- Origem é marcada como transferida (cancelled, sem reembolso)
+  UPDATE registrations SET
+    payment_status = 'cancelled',
+    payment_notes  = TRIM(BOTH E'\n' FROM
+                       COALESCE(payment_notes, '') ||
+                       E'\n[' || to_char(v_now, 'YYYY-MM-DD HH24:MI') ||
+                       '] Transferido para ' || v_to.email),
+    transferred_to_id = v_to.id,
+    transferred_at    = v_now
+  WHERE id = p_from_id;
+
+  RETURN json_build_object(
+    'success', true,
+    'from_id', p_from_id,
+    'to_id', p_to_id,
+    'ticket_tier', v_from.ticket_tier,
+    'ticket_price', v_from.ticket_price,
+    'transferred_at', v_now
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION transfer_ticket(UUID, UUID) TO authenticated;
+
+-- ============================================================
 -- MIGRATION: Run on existing databases
 -- ============================================================
 -- ALTER TABLE registrations ADD COLUMN accept_lgpd BOOLEAN NOT NULL DEFAULT false;
@@ -274,3 +373,6 @@ CREATE POLICY "Admin can read audit log"
 -- ALTER TABLE registrations ADD COLUMN IF NOT EXISTS is_remote BOOLEAN NOT NULL DEFAULT false;
 -- ALTER TABLE registrations DROP CONSTRAINT registrations_ticket_tier_check;
 -- ALTER TABLE registrations ADD CONSTRAINT registrations_ticket_tier_check CHECK (ticket_tier IN ('early_bird','regular','dati'));
+-- ALTER TABLE registrations ADD COLUMN IF NOT EXISTS transferred_to_id UUID REFERENCES registrations(id);
+-- ALTER TABLE registrations ADD COLUMN IF NOT EXISTS transferred_from_id UUID REFERENCES registrations(id);
+-- ALTER TABLE registrations ADD COLUMN IF NOT EXISTS transferred_at TIMESTAMPTZ;
