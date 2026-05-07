@@ -699,6 +699,10 @@ $$;
 GRANT EXECUTE ON FUNCTION participant_update_profile(UUID, TEXT, TEXT, TEXT, BOOLEAN, TEXT) TO anon;
 
 -- 10. List teams open to new members (member_count < 6)
+-- Agrupamos por team_name (alinha com AdminTeams). Não filtramos por
+-- inscription_modality porque o admin pode mover membros para um time via
+-- handleMove sem atualizar a modality, e queremos que esses times também
+-- apareçam aqui.
 CREATE OR REPLACE FUNCTION participant_list_teams(p_token UUID)
 RETURNS JSON
 LANGUAGE plpgsql SECURITY DEFINER
@@ -718,8 +722,7 @@ BEGIN
       (SELECT full_name FROM registrations
        WHERE team_name = r.team_name AND is_team_leader = true LIMIT 1) AS leader_name
     FROM registrations r
-    WHERE r.inscription_modality = 'team'
-      AND r.team_name IS NOT NULL
+    WHERE r.team_name IS NOT NULL
       AND r.payment_status <> 'cancelled'
     GROUP BY r.team_name
     HAVING COUNT(*) < 6
