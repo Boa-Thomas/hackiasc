@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { audit } from '../lib/auditLog'
+import TransferTicketModal from './TransferTicketModal'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -434,15 +435,23 @@ function Section({ title, children }) {
 
 // ─── Detail View ──────────────────────────────────────────────────────────────
 
-function DetailView({ registration, onBack, onRefetch, readOnly }) {
+function DetailView({ registration, registrations, onBack, onRefetch, readOnly, onSelect }) {
   const [r, setR] = useState(registration)
   const [refundInfo, setRefundInfo] = useState(null)
   const [refundLoading, setRefundLoading] = useState(false)
+  const [showTransfer, setShowTransfer] = useState(false)
 
   // Keep local state in sync when parent refetches
   useEffect(() => {
     setR(registration)
   }, [registration])
+
+  const transferredTo   = r.transferred_to_id
+    ? registrations?.find(x => x.id === r.transferred_to_id) ?? null
+    : null
+  const transferredFrom = r.transferred_from_id
+    ? registrations?.find(x => x.id === r.transferred_from_id) ?? null
+    : null
 
   async function updateField(field, value) {
     if (!supabase) return
@@ -581,6 +590,15 @@ function DetailView({ registration, onBack, onRefetch, readOnly }) {
                 Confirmar Pagamento
               </button>
             )}
+            {r.payment_status === 'confirmed' && !r.transferred_to_id && (
+              <button
+                onClick={() => setShowTransfer(true)}
+                className="px-4 py-2 rounded-lg text-sm bg-electric/15 text-electric border border-electric/30 hover:bg-electric/25 transition-colors font-display"
+                title="Transferir este ingresso para outra pessoa já cadastrada (sem reembolso)"
+              >
+                Transferir Ingresso
+              </button>
+            )}
             {r.payment_status !== 'cancelled' && (
               <button
                 onClick={cancelRegistration}
@@ -593,6 +611,70 @@ function DetailView({ registration, onBack, onRefetch, readOnly }) {
           </div>
         )}
       </div>
+
+      {showTransfer && (
+        <TransferTicketModal
+          source={r}
+          onClose={() => setShowTransfer(false)}
+          onDone={() => {
+            setShowTransfer(false)
+            onRefetch()
+          }}
+        />
+      )}
+
+      {(transferredTo || transferredFrom || r.transferred_to_id || r.transferred_from_id) && (
+        <div className="card-glass rounded-xl p-5 border border-violet/30 flex flex-col gap-3">
+          <h3 className="text-sm font-display font-semibold text-violet uppercase tracking-widest">
+            Transferência de ingresso
+          </h3>
+          {r.transferred_to_id && (
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="text-sm text-white/80">
+                Ingresso transferido para{' '}
+                <span className="font-mono text-violet">
+                  {transferredTo?.full_name ?? '—'}
+                </span>
+                {transferredTo?.email && (
+                  <span className="text-white/40 font-mono"> ({transferredTo.email})</span>
+                )}
+                {r.transferred_at && (
+                  <span className="text-white/40 font-mono"> em {formatDateTime(r.transferred_at)}</span>
+                )}
+              </div>
+              {transferredTo && onSelect && (
+                <button
+                  onClick={() => onSelect(transferredTo.id)}
+                  className="px-3 py-1 rounded text-xs bg-violet/15 text-violet border border-violet/30 hover:bg-violet/25 transition-colors"
+                >
+                  Ver destinatário →
+                </button>
+              )}
+            </div>
+          )}
+          {r.transferred_from_id && (
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="text-sm text-white/80">
+                Ingresso recebido de{' '}
+                <span className="font-mono text-violet">
+                  {transferredFrom?.full_name ?? '—'}
+                </span>
+                {transferredFrom?.email && (
+                  <span className="text-white/40 font-mono"> ({transferredFrom.email})</span>
+                )}
+              </div>
+              {transferredFrom && onSelect && (
+                <button
+                  onClick={() => onSelect(transferredFrom.id)}
+                  className="px-3 py-1 rounded text-xs bg-violet/15 text-violet border border-violet/30 hover:bg-violet/25 transition-colors"
+                >
+                  Ver origem →
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Refund Preview Panel */}
       {refundInfo && (
@@ -1162,9 +1244,11 @@ export default function AdminRegistrations({ selectedId, onClearSelection, onSel
     return (
       <DetailView
         registration={selectedRegistration}
+        registrations={registrations}
         onBack={onClearSelection}
         onRefetch={fetchRegistrations}
         readOnly={readOnly}
+        onSelect={id => onSelect?.(id)}
       />
     )
   }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { audit } from '../lib/auditLog'
+import TransferTicketModal from './TransferTicketModal'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -148,13 +149,17 @@ function MoveModal({ member, teams, onConfirm, onCancel }) {
 
 // ─── MemberRow ───────────────────────────────────────────────────────────────
 
-function MemberRow({ member, allTeamNames, onMove, onRemove, readOnly }) {
+function MemberRow({ member, allTeamNames, onMove, onRemove, onTransfer, readOnly }) {
   const [showMove, setShowMove] = useState(false)
 
   async function handleMove(newTeamName) {
     setShowMove(false)
     await onMove(member, newTeamName)
   }
+
+  const wasTransferred = !!member.transferred_to_id
+  const wasReceived = !!member.transferred_from_id
+  const canTransfer = member.payment_status === 'confirmed' && !wasTransferred
 
   return (
     <>
@@ -185,6 +190,22 @@ function MemberRow({ member, allTeamNames, onMove, onRemove, readOnly }) {
               colorMap={PAYMENT_COLORS}
               value={member.payment_status}
             />
+            {wasTransferred && (
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono border bg-violet/15 text-violet border-violet/30"
+                title="Ingresso transferido para outro participante"
+              >
+                ↗ transferido
+              </span>
+            )}
+            {wasReceived && (
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono border bg-violet/15 text-violet border-violet/30"
+                title="Ingresso recebido por transferência"
+              >
+                ↩ recebido
+              </span>
+            )}
           </div>
           <div className="flex flex-wrap gap-3 text-xs text-white/50 font-mono">
             <span>{member.email}</span>
@@ -196,21 +217,34 @@ function MemberRow({ member, allTeamNames, onMove, onRemove, readOnly }) {
           </div>
         </div>
 
-        {/* Actions (non-leader only) */}
-        {!readOnly && !member.is_team_leader && (
+        {/* Actions */}
+        {!readOnly && (
           <div className="flex gap-1.5 flex-shrink-0">
-            <button
-              onClick={() => setShowMove(true)}
-              className="px-2.5 py-1 rounded-lg text-xs font-medium bg-electric/10 text-electric/80 hover:bg-electric/20 hover:text-electric border border-electric/20 transition-colors"
-            >
-              Mover
-            </button>
-            <button
-              onClick={() => onRemove(member)}
-              className="px-2.5 py-1 rounded-lg text-xs font-medium bg-hot/10 text-hot/70 hover:bg-hot/20 hover:text-hot border border-hot/20 transition-colors"
-            >
-              Remover
-            </button>
+            {canTransfer && (
+              <button
+                onClick={() => onTransfer(member)}
+                className="px-2.5 py-1 rounded-lg text-xs font-medium bg-violet/10 text-violet/80 hover:bg-violet/20 hover:text-violet border border-violet/20 transition-colors"
+                title="Transferir ingresso pago para outra pessoa cadastrada (sem reembolso)"
+              >
+                Transferir
+              </button>
+            )}
+            {!member.is_team_leader && (
+              <>
+                <button
+                  onClick={() => setShowMove(true)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-electric/10 text-electric/80 hover:bg-electric/20 hover:text-electric border border-electric/20 transition-colors"
+                >
+                  Mover
+                </button>
+                <button
+                  onClick={() => onRemove(member)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-hot/10 text-hot/70 hover:bg-hot/20 hover:text-hot border border-hot/20 transition-colors"
+                >
+                  Remover
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -292,7 +326,7 @@ function PaymentProgressBar({ confirmed, total }) {
 
 // ─── TeamCard ─────────────────────────────────────────────────────────────────
 
-function TeamCard({ team, allTeamNames, expanded, onToggle, onRefetch, readOnly }) {
+function TeamCard({ team, allTeamNames, expanded, onToggle, onRefetch, onTransfer, readOnly }) {
   const { name, members } = team
   const status = getTeamStatus(members)
   const confirmedCount = members.filter(m => m.payment_status === 'confirmed').length
@@ -403,6 +437,7 @@ function TeamCard({ team, allTeamNames, expanded, onToggle, onRefetch, readOnly 
               allTeamNames={allTeamNames}
               onMove={handleMove}
               onRemove={handleRemove}
+              onTransfer={onTransfer}
               readOnly={readOnly}
             />
           ))}
@@ -595,6 +630,7 @@ export default function AdminTeams({ readOnly }) {
   const [error, setError]                 = useState(null)
   const [search, setSearch]               = useState('')
   const [expandedTeam, setExpandedTeam]   = useState(null)
+  const [transferSource, setTransferSource] = useState(null)
 
   // fetchData is defined outside useEffect so TeamCard can call it for refetch
   async function fetchData() {
@@ -607,7 +643,7 @@ export default function AdminTeams({ readOnly }) {
     }
     const { data, error: err } = await supabase
       .from('registrations')
-      .select('id, full_name, email, phone, occupation_type, ai_experience_level, team_name, is_team_leader, inscription_modality, payment_status, ticket_price, created_at')
+      .select('id, full_name, email, phone, occupation_type, ai_experience_level, team_name, is_team_leader, inscription_modality, payment_status, ticket_price, ticket_tier, payment_method, payment_confirmed_at, transferred_to_id, transferred_from_id, transferred_at, created_at')
       .order('full_name', { ascending: true })
 
     if (err) {
@@ -629,7 +665,7 @@ export default function AdminTeams({ readOnly }) {
       }
       const { data, error: err } = await supabase
         .from('registrations')
-        .select('id, full_name, email, phone, occupation_type, ai_experience_level, team_name, is_team_leader, inscription_modality, payment_status, ticket_price, created_at')
+        .select('id, full_name, email, phone, occupation_type, ai_experience_level, team_name, is_team_leader, inscription_modality, payment_status, ticket_price, ticket_tier, payment_method, payment_confirmed_at, transferred_to_id, transferred_from_id, transferred_at, created_at')
         .order('full_name', { ascending: true })
 
       if (err) {
@@ -761,6 +797,7 @@ export default function AdminTeams({ readOnly }) {
               expanded={expandedTeam === name}
               onToggle={() => toggleTeam(name)}
               onRefetch={fetchData}
+              onTransfer={setTransferSource}
               readOnly={readOnly}
             />
           ))}
@@ -777,6 +814,17 @@ export default function AdminTeams({ readOnly }) {
         sortedTeamNames={sortedTeamNames}
         onRefetch={fetchData}
       />
+
+      {transferSource && (
+        <TransferTicketModal
+          source={transferSource}
+          onClose={() => setTransferSource(null)}
+          onDone={() => {
+            setTransferSource(null)
+            fetchData()
+          }}
+        />
+      )}
     </div>
   )
 }
