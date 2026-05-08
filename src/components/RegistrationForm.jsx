@@ -391,7 +391,7 @@ function MemberCard({ index, member, errors, onChange, onRemove }) {
 // ─── RegistrationForm ────────────────────────────────────────────────────────
 
 export default function RegistrationForm() {
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
+  const { register, handleSubmit, watch, setValue, setError, clearErrors, formState: { errors } } = useForm({
     defaultValues: {
       inscription_modality: 'individual_form_team',
       payment_method: 'card',
@@ -403,6 +403,7 @@ export default function RegistrationForm() {
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [submitErrorAction, setSubmitErrorAction] = useState(null)
   const [submittedData, setSubmittedData] = useState(null)
   const [teamMembers, setTeamMembers] = useState([])
   const [memberErrors, setMemberErrors] = useState([])
@@ -580,9 +581,51 @@ export default function RegistrationForm() {
     }
   }
 
+  // ─── CPF availability check (defense in depth — DB also has UNIQUE) ──────
+  // entries: [{ cpf, label, target: 'leader' | 'member', memberIdx? }]
+  const checkCpfsAvailable = async (entries) => {
+    // 1) Internal duplicate: same CPF appearing twice in the same submission
+    const seen = new Map()
+    for (const e of entries) {
+      const clean = (e.cpf || '').replace(/\D/g, '')
+      if (clean.length !== 11) continue
+      if (seen.has(clean)) {
+        return {
+          ok: false,
+          kind: 'internal_dup',
+          message: `O CPF está repetido entre ${seen.get(clean)} e ${e.label}. Cada participante deve ter um CPF único.`,
+          conflictA: seen.get(clean),
+          conflictB: e,
+        }
+      }
+      seen.set(clean, e.label)
+    }
+
+    if (!supabase) return { ok: true }
+
+    // 2) DB lookup in parallel
+    const checks = await Promise.all(entries.map(async (e) => {
+      const clean = (e.cpf || '').replace(/\D/g, '')
+      if (clean.length !== 11) return { ...e, exists: false }
+      try {
+        const { data: result, error } = await supabase.rpc('check_cpf_registered', { p_cpf: clean })
+        if (error) return { ...e, exists: false, lookupError: true }
+        return { ...e, exists: !!result?.exists, status: result?.status }
+      } catch {
+        return { ...e, exists: false, lookupError: true }
+      }
+    }))
+
+    const conflict = checks.find(c => c.exists)
+    if (conflict) return { ok: false, kind: 'db_conflict', conflict }
+    return { ok: true }
+  }
+
   const onSubmit = async (data) => {
     setSubmitting(true)
     setSubmitError('')
+    setSubmitErrorAction(null)
+    clearErrors('cpf')
 
     // ── Voucher mode — empresa já pagou; só insere registration confirmada
     if (isVoucherMode) {
@@ -617,6 +660,21 @@ export default function RegistrationForm() {
         return
       }
 
+      const cpfCheck = await checkCpfsAvailable([
+        { cpf: payload.cpf, label: 'sua inscrição', target: 'leader' },
+      ])
+      if (!cpfCheck.ok) {
+        const c = cpfCheck.conflict
+        const msg = c?.status === 'confirmed'
+          ? 'Já existe uma inscrição confirmada com este CPF. Acesse o painel do participante para visualizar.'
+          : 'Já existe uma inscrição com este CPF. Acesse o painel do participante para finalizar.'
+        setError('cpf', { message: 'CPF já cadastrado em outra inscrição' })
+        setSubmitError(msg)
+        setSubmitErrorAction({ label: 'Ir para o painel do participante', href: '#participante-login' })
+        setSubmitting(false)
+        return
+      }
+
       const { data: result, error: rpcError } = await supabase.rpc('redeem_voucher', {
         p_code: voucherCode,
         p_data: payload,
@@ -628,6 +686,11 @@ export default function RegistrationForm() {
         else if (msg.includes('voucher_cancelled')) setSubmitError('Este voucher foi cancelado.')
         else if (msg.includes('voucher_not_found')) setSubmitError('Voucher não encontrado.')
         else if (msg.includes('order_not_paid')) setSubmitError('O pagamento da empresa ainda não foi confirmado. Aguarde alguns minutos e tente novamente.')
+        else if (msg.includes('uq_reg_cpf_active')) {
+          setError('cpf', { message: 'CPF já cadastrado em outra inscrição' })
+          setSubmitError('Já existe uma inscrição com este CPF. Acesse o painel do participante para visualizar.')
+          setSubmitErrorAction({ label: 'Ir para o painel do participante', href: '#participante-login' })
+        }
         else if (msg.includes('duplicate key value') || msg.includes('23505')) setSubmitError('Este e-mail já está cadastrado em outra inscrição.')
         else setSubmitError('Erro ao processar inscrição: ' + msg)
         setSubmitting(false)
@@ -732,6 +795,46 @@ export default function RegistrationForm() {
       return
     }
 
+    // CPF availability pre-check (avoid wasting submit on dup); DB UNIQUE
+    // index `uq_reg_cpf_active` is the source of truth for race conditions.
+    const cpfEntries = [{ cpf: leaderBase.cpf, label: 'sua inscrição', target: 'leader' }]
+    if (data.inscription_modality === 'team') {
+      teamMembers.forEach((m, idx) => {
+        cpfEntries.push({
+          cpf: m.cpf?.trim() || '',
+          label: `${ORDINALS[idx]} membro`,
+          target: 'member',
+          memberIdx: idx,
+        })
+      })
+    }
+    const cpfCheck = await checkCpfsAvailable(cpfEntries)
+    if (!cpfCheck.ok) {
+      if (cpfCheck.kind === 'internal_dup') {
+        setSubmitError(cpfCheck.message)
+        const dup = cpfCheck.conflictB
+        if (dup.target === 'leader') setError('cpf', { message: 'CPF repetido com outro participante' })
+        else setMemberErrors(prev => prev.map((e, i) => i === dup.memberIdx ? { ...e, cpf: 'CPF repetido com outro participante' } : e))
+      } else {
+        const c = cpfCheck.conflict
+        if (c.target === 'leader') {
+          setError('cpf', { message: 'CPF já cadastrado em outra inscrição' })
+          const msg = c.status === 'confirmed'
+            ? 'Já existe uma inscrição confirmada com este CPF. Acesse o painel do participante para visualizar.'
+            : 'Já existe uma inscrição com este CPF. Acesse o painel do participante para finalizar.'
+          setSubmitError(msg)
+          setSubmitErrorAction({ label: 'Ir para o painel do participante', href: '#participante-login' })
+        } else {
+          setMemberErrors(prev => prev.map((e, i) => i === c.memberIdx ? { ...e, cpf: 'CPF já cadastrado em outra inscrição' } : e))
+          setSubmitError(`O CPF do ${c.label} já está em outra inscrição. Cada participante só pode estar em uma inscrição.`)
+          const el = document.getElementById(`member-card-${c.memberIdx}`)
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }
+      setSubmitting(false)
+      return
+    }
+
     let insertError = null
     const leaderId = crypto.randomUUID()
 
@@ -775,9 +878,16 @@ export default function RegistrationForm() {
     if (insertError) {
       if (import.meta.env.DEV) console.error('[RegistrationForm] Insert error:', insertError)
       if (insertError.code === '23505') {
-        const result = await recoverRegistration(data.email)
-        if (!result.success) {
-          setSubmitError(result.message)
+        const errMsg = `${insertError.message || ''} ${insertError.details || ''}`
+        if (errMsg.includes('uq_reg_cpf_active')) {
+          setError('cpf', { message: 'CPF já cadastrado em outra inscrição' })
+          setSubmitError('Já existe uma inscrição com este CPF. Acesse o painel do participante para visualizar.')
+          setSubmitErrorAction({ label: 'Ir para o painel do participante', href: '#participante-login' })
+        } else {
+          const result = await recoverRegistration(data.email)
+          if (!result.success) {
+            setSubmitError(result.message)
+          }
         }
       } else {
         setSubmitError('Erro ao enviar inscrição. Tente novamente.')
@@ -1522,7 +1632,17 @@ export default function RegistrationForm() {
 
           {/* Submit */}
           {submitError && (
-            <div className="p-4 rounded-xl bg-hot/10 border border-hot/20 text-hot text-sm">{submitError}</div>
+            <div className="p-4 rounded-xl bg-hot/10 border border-hot/20 text-hot text-sm">
+              <p>{submitError}</p>
+              {submitErrorAction && (
+                <a
+                  href={submitErrorAction.href}
+                  className="inline-block mt-3 px-4 py-2 rounded-lg bg-hot/20 hover:bg-hot/30 text-hot font-semibold transition-colors"
+                >
+                  {submitErrorAction.label} →
+                </a>
+              )}
+            </div>
           )}
 
           <button
