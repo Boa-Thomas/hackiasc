@@ -376,6 +376,7 @@ GRANT EXECUTE ON FUNCTION transfer_ticket(UUID, UUID) TO authenticated;
 -- ALTER TABLE registrations ADD COLUMN IF NOT EXISTS transferred_to_id UUID REFERENCES registrations(id);
 -- ALTER TABLE registrations ADD COLUMN IF NOT EXISTS transferred_from_id UUID REFERENCES registrations(id);
 -- ALTER TABLE registrations ADD COLUMN IF NOT EXISTS transferred_at TIMESTAMPTZ;
+-- ALTER TABLE registrations ADD COLUMN IF NOT EXISTS applied_discount_code TEXT;  -- migrations/support_dati_discount_validation.sql
 
 -- ============================================================
 -- PARTICIPANT LOGIN — Email + CPF auth for self-service panel
