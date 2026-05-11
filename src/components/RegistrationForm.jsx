@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { audit } from '../lib/auditLog'
 import { useTicketPrice } from '../hooks/useTicketPrice'
 import { EVENT_CONFIG } from '../lib/config'
+import { parseRegistrationInsertError } from '../lib/registrationErrors'
 import PaymentInfo from './PaymentInfo'
 
 const INPUT = 'w-full bg-dark border border-dark-border rounded-xl px-4 py-3 text-white text-sm placeholder-text-muted focus:outline-none focus:border-electric focus:ring-1 focus:ring-electric/30 transition-colors'
@@ -777,9 +778,28 @@ export default function RegistrationForm() {
     if (insertError) {
       if (import.meta.env.DEV) console.error('[RegistrationForm] Insert error:', insertError)
       if (insertError.code === '23505') {
-        const result = await recoverRegistration(data.email)
-        if (!result.success) {
-          setSubmitError(result.message)
+        const parsed = parseRegistrationInsertError(insertError, {
+          leaderEmail: data.email,
+          leaderCpf: data.cpf,
+          members: teamMembers,
+        })
+
+        if (parsed.belongsTo === 'leader' && parsed.kind === 'email') {
+          // Caminho clássico: e-mail do líder já tem inscrição pendente — tenta recovery.
+          const result = await recoverRegistration(data.email)
+          if (!result.success) {
+            setSubmitError(parsed.userMessage)
+          }
+        } else if (parsed.belongsTo === 'member' && typeof parsed.memberIndex === 'number') {
+          // Mostra o erro no card do membro conflitante e dá scroll.
+          setMemberErrors(prev => prev.map((e, i) =>
+            i === parsed.memberIndex ? { ...e, [parsed.kind]: parsed.userMessage } : e,
+          ))
+          const el = document.getElementById(`member-card-${parsed.memberIndex}`)
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          setSubmitError(parsed.userMessage)
+        } else {
+          setSubmitError(parsed.userMessage)
         }
       } else {
         setSubmitError('Erro ao enviar inscrição. Tente novamente.')

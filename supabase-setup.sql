@@ -10,7 +10,7 @@ CREATE TABLE registrations (
 
   -- Dados pessoais
   full_name TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
+  email TEXT NOT NULL,
   phone TEXT NOT NULL,
   birth_date DATE NOT NULL,
   linkedin_url TEXT,
@@ -65,6 +65,12 @@ CREATE TABLE registrations (
 
 -- 2. Index para queries de status de pagamento
 CREATE INDEX idx_reg_payment_status ON registrations(payment_status);
+
+-- 2a. Índice único parcial no e-mail — só vale para inscrições ativas.
+-- Linhas com payment_status = 'cancelled' não bloqueiam reinscrição.
+CREATE UNIQUE INDEX uq_registrations_email_active
+  ON registrations (LOWER(email))
+  WHERE payment_status <> 'cancelled';
 
 -- 3. Habilitar Row Level Security
 ALTER TABLE registrations ENABLE ROW LEVEL SECURITY;
@@ -377,6 +383,8 @@ GRANT EXECUTE ON FUNCTION transfer_ticket(UUID, UUID) TO authenticated;
 -- ALTER TABLE registrations ADD COLUMN IF NOT EXISTS transferred_from_id UUID REFERENCES registrations(id);
 -- ALTER TABLE registrations ADD COLUMN IF NOT EXISTS transferred_at TIMESTAMPTZ;
 -- ALTER TABLE registrations ADD COLUMN IF NOT EXISTS applied_discount_code TEXT;  -- migrations/support_dati_discount_validation.sql
+-- ALTER TABLE registrations DROP CONSTRAINT IF EXISTS registrations_email_key;  -- migrations/allow_reregister_after_cancel.sql
+-- CREATE UNIQUE INDEX IF NOT EXISTS uq_registrations_email_active ON registrations (LOWER(email)) WHERE payment_status <> 'cancelled';  -- migrations/allow_reregister_after_cancel.sql
 
 -- ============================================================
 -- PARTICIPANT LOGIN — Email + CPF auth for self-service panel
