@@ -516,6 +516,41 @@ function DetailView({ registration, registrations, onBack, onRefetch, readOnly, 
     }
   }
 
+  function formatRefundResultMessage(data, opts = {}) {
+    const amountStr = `R$ ${(data.refund_amount / 100).toFixed(2).replace('.', ',')}`
+    const lines = []
+    if (opts.retry) {
+      lines.push(`Nova tentativa de reembolso MP — ${amountStr} (${data.refund_percentage}%).`)
+    } else {
+      lines.push(`Inscrição cancelada.`)
+      lines.push(`Reembolso: ${amountStr} (${data.refund_percentage}%)`)
+      lines.push(data.reason)
+    }
+    if (data.needs_manual_refund) {
+      lines.push('')
+      lines.push('⚠ Pagamento foi via Pix manual — reembolso precisa ser feito pelo banco.')
+    }
+    if (data.mp_refund) {
+      if (data.mp_refund.success) {
+        lines.push('')
+        lines.push(`✓ Mercado Pago confirmou o estorno (refund ID ${data.mp_refund.id}).`)
+      } else {
+        const code = data.mp_refund.mp_error_code || data.mp_refund.mp_status || 'desconhecido'
+        const msg = data.mp_refund.error || '(sem detalhe)'
+        lines.push('')
+        lines.push(`⚠ Mercado Pago recusou o estorno automático (${code}):`)
+        lines.push(msg)
+        lines.push('')
+        lines.push('Use "Tentar Reembolso MP novamente" para retry sem precisar do app do banco.')
+      }
+    }
+    if (data.team_cancelled) {
+      lines.push('')
+      lines.push('Todos os membros do time foram cancelados.')
+    }
+    return lines.join('\n')
+  }
+
   async function executeRefund() {
     if (!supabase) return
     setRefundLoading(true)
@@ -524,17 +559,6 @@ function DetailView({ registration, registrations, onBack, onRefetch, readOnly, 
         body: { registration_id: r.id, dry_run: false },
       })
       if (error) throw error
-      const amountStr = `R$ ${(data.refund_amount / 100).toFixed(2).replace('.', ',')}`
-      let msg = `Inscrição cancelada.\n\nReembolso: ${amountStr} (${data.refund_percentage}%)\n${data.reason}`
-      if (data.needs_manual_refund) {
-        msg += '\n\n⚠ Pagamento foi via Pix manual — reembolso precisa ser feito manualmente.'
-      }
-      if (data.mp_refund && !data.mp_refund.success) {
-        msg += '\n\n⚠ Reembolso automático no Mercado Pago falhou — processar manualmente.'
-      }
-      if (data.team_cancelled) {
-        msg += '\n\nTodos os membros do time foram cancelados.'
-      }
       audit({
         action: 'payment.refund',
         actorType: 'admin',
@@ -551,11 +575,39 @@ function DetailView({ registration, registrations, onBack, onRefetch, readOnly, 
           team_cancelled: data.team_cancelled,
         },
       })
-      alert(msg)
+      alert(formatRefundResultMessage(data))
       setRefundInfo(null)
       onRefetch()
     } catch (err) {
       alert(`Erro ao processar reembolso: ${err.message}`)
+    } finally {
+      setRefundLoading(false)
+    }
+  }
+
+  async function retryMpRefund() {
+    if (!supabase) return
+    if (!window.confirm('Tentar novo estorno no Mercado Pago com o mesmo valor calculado anteriormente?')) return
+    setRefundLoading(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('refund-payment', {
+        body: { registration_id: r.id, dry_run: false, retry_mp_only: true },
+      })
+      if (error) throw error
+      audit({
+        action: 'payment.refund_retry_mp',
+        actorType: 'admin',
+        targetTable: 'registrations',
+        targetId: r.id,
+        targetEmail: r.email,
+        oldData: { payment_status: 'cancelled' },
+        newData: { mp_refund_retry: true, refund_amount: data.refund_amount },
+        metadata: { full_name: r.full_name, mp_refund: data.mp_refund },
+      })
+      alert(formatRefundResultMessage(data, { retry: true }))
+      onRefetch()
+    } catch (err) {
+      alert(`Erro ao tentar reembolso MP: ${err.message}`)
     } finally {
       setRefundLoading(false)
     }
@@ -606,6 +658,16 @@ function DetailView({ registration, registrations, onBack, onRefetch, readOnly, 
                 className="px-4 py-2 rounded-lg text-sm bg-hot/10 text-hot border border-hot/30 hover:bg-hot/20 transition-colors font-display disabled:opacity-50"
               >
                 {refundLoading ? 'Calculando...' : 'Cancelar Inscrição'}
+              </button>
+            )}
+            {r.payment_status === 'cancelled' && /mp_refund:FAILED/.test(r.payment_notes || '') && (
+              <button
+                onClick={retryMpRefund}
+                disabled={refundLoading}
+                className="px-4 py-2 rounded-lg text-sm bg-gold/15 text-gold border border-gold/40 hover:bg-gold/25 transition-colors font-display disabled:opacity-50"
+                title="Reenvia a requisição de estorno ao Mercado Pago sem alterar o cancelamento local"
+              >
+                {refundLoading ? 'Processando...' : 'Tentar Reembolso MP novamente'}
               </button>
             )}
           </div>

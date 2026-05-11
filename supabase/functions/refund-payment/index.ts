@@ -134,7 +134,7 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    const { registration_id, dry_run } = await req.json()
+    const { registration_id, dry_run, retry_mp_only } = await req.json()
 
     if (!registration_id) {
       return new Response(
@@ -157,26 +157,39 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // H4: Idempotency — prevent double refund
-    if (reg.payment_status === 'cancelled') {
-      return new Response(
-        JSON.stringify({ error: 'Already cancelled/refunded' }),
-        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    // retry_mp_only: registration is already cancelled locally but the MP refund
+    // failed on the first attempt. Skip status checks, skip second cancellation,
+    // just re-fire the MP API call. This is what admin uses when the bank app
+    // detour is undesirable.
+    if (retry_mp_only) {
+      if (reg.payment_status !== 'cancelled') {
+        return new Response(
+          JSON.stringify({ error: 'retry_mp_only requires a cancelled registration' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    } else {
+      // H4: Idempotency — prevent double refund
+      if (reg.payment_status === 'cancelled') {
+        return new Response(
+          JSON.stringify({ error: 'Already cancelled/refunded' }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
 
-    if (reg.payment_status !== 'confirmed') {
-      return new Response(
-        JSON.stringify({ error: `Cannot refund — status is "${reg.payment_status}", expected "confirmed"` }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+      if (reg.payment_status !== 'confirmed') {
+        return new Response(
+          JSON.stringify({ error: `Cannot refund — status is "${reg.payment_status}", expected "confirmed"` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
 
-    if (!reg.payment_confirmed_at) {
-      return new Response(
-        JSON.stringify({ error: 'Cannot calculate refund — no payment confirmation date' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      if (!reg.payment_confirmed_at) {
+        return new Response(
+          JSON.stringify({ error: 'Cannot calculate refund — no payment confirmation date' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
     }
 
     // Calculate refund
@@ -201,7 +214,13 @@ Deno.serve(async (req: Request) => {
     // Extract MP payment ID from payment_notes (format: "mp_payment:12345 | status:approved")
     const mpPaymentMatch = reg.payment_notes?.match(/mp_payment:(\d+)/)
     const mpPaymentId = mpPaymentMatch?.[1]
-    let mpRefundResult: { success: boolean; id?: string; error?: string } | null = null
+    let mpRefundResult: {
+      success: boolean
+      id?: string
+      error?: string
+      mp_status?: number
+      mp_error_code?: string
+    } | null = null
 
     // Attempt MP refund if we have a payment ID and refund amount > 0
     if (mpPaymentId && refund.amount > 0) {
@@ -217,13 +236,20 @@ Deno.serve(async (req: Request) => {
         ? {} // full refund — no body needed
         : { amount: refund.amount / 100 } // partial refund in BRL (not cents)
 
+      // Mercado Pago requires an idempotency key on refund POSTs. Without it
+      // a retry can either be silently rejected as a duplicate or, worse,
+      // create a second refund. Deriving the key from registration + amount
+      // makes the same retry safe.
+      const idempotencyKey = `refund:${registration_id}:${refund.amount}`
+
       const mpResponse = await fetch(
         `https://api.mercadopago.com/v1/payments/${mpPaymentId}/refunds`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${Deno.env.get('MP_ACCESS_TOKEN')}`,
+            'Authorization': `Bearer ${mpAccessToken}`,
+            'X-Idempotency-Key': idempotencyKey,
           },
           body: JSON.stringify(refundBody),
         }
@@ -233,65 +259,97 @@ Deno.serve(async (req: Request) => {
         const mpData = await mpResponse.json()
         mpRefundResult = { success: true, id: mpData.id?.toString() }
       } else {
-        const mpError = await mpResponse.text()
-        console.error('MP refund failed:', mpError)
-        mpRefundResult = { success: false, error: mpError }
-        // Don't block cancellation if MP refund fails — admin can handle manually
+        // Try to parse MP's structured error JSON so the admin sees the real
+        // reason ("Insufficient balance", "Refund period expired", etc) and
+        // not just "FAILED" in payment_notes.
+        const mpErrorText = await mpResponse.text()
+        let mpErrorCode: string | undefined
+        let mpErrorMessage = mpErrorText
+        try {
+          const parsed = JSON.parse(mpErrorText)
+          mpErrorCode = parsed.error || parsed.cause?.[0]?.code?.toString()
+          mpErrorMessage = parsed.message || parsed.cause?.[0]?.description || mpErrorText
+        } catch {
+          // not JSON — keep raw text
+        }
+        console.error('MP refund failed:', mpResponse.status, mpErrorMessage)
+        mpRefundResult = {
+          success: false,
+          error: mpErrorMessage,
+          mp_status: mpResponse.status,
+          mp_error_code: mpErrorCode,
+        }
+        // Don't block cancellation if MP refund fails — admin can retry later.
       }
     }
 
-    // Build payment_notes with refund info
+    const needsManualRefund = !mpPaymentId && refund.amount > 0
+
+    // Build payment_notes with refund info (include MP error code on failure so
+    // it's visible in audit log / admin notes without needing edge logs).
     const refundNote = [
       reg.payment_notes || '',
       `refund:${refund.percentage}%`,
       `refund_amount:${refund.amount}`,
       mpRefundResult?.success ? `mp_refund:${mpRefundResult.id}` : null,
-      mpRefundResult && !mpRefundResult.success ? 'mp_refund:FAILED' : null,
+      mpRefundResult && !mpRefundResult.success
+        ? `mp_refund:FAILED(${mpRefundResult.mp_error_code || mpRefundResult.mp_status || 'unknown'})`
+        : null,
       !mpPaymentId && refund.amount > 0 ? 'refund_method:manual' : null,
     ].filter(Boolean).join(' | ')
-
-    const updateData = {
-      payment_status: 'cancelled' as const,
-      payment_notes: refundNote,
-    }
 
     // M4: Team refund — only the team leader triggers the full team cancellation
     const isTeam = reg.inscription_modality === 'team' && !!reg.team_name
     const isLeader = reg.is_team_leader === true
 
-    if (isTeam && isLeader) {
-      // Leader cancels → cancel the entire team
+    // In retry_mp_only the row is already cancelled; just append the new
+    // refund attempt note instead of re-cancelling (which would no-op anyway).
+    if (retry_mp_only) {
       await supabase
         .from('registrations')
-        .update(updateData)
-        .eq('team_name', reg.team_name)
-    } else {
-      // Individual cancellation or non-leader team member cancels only themselves
-      await supabase
-        .from('registrations')
-        .update(updateData)
+        .update({ payment_notes: refundNote })
         .eq('id', registration_id)
+    } else {
+      const updateData = {
+        payment_status: 'cancelled' as const,
+        payment_notes: refundNote,
+      }
+      if (isTeam && isLeader) {
+        // Leader cancels → cancel the entire team
+        await supabase
+          .from('registrations')
+          .update(updateData)
+          .eq('team_name', reg.team_name)
+      } else {
+        // Individual cancellation or non-leader team member cancels only themselves
+        await supabase
+          .from('registrations')
+          .update(updateData)
+          .eq('id', registration_id)
+      }
     }
 
-    const needsManualRefund = !mpPaymentId && refund.amount > 0
-
-    // Audit log
+    // Audit log — actor_type must match audit_log CHECK constraint
+    // ('public','admin','system'). An admin JWT triggered this call, so 'admin'.
     await supabase.from('audit_log').insert({
-      action: 'payment.refund_processed',
-      actor_type: 'user',
+      action: retry_mp_only ? 'payment.refund_retry_mp' : 'payment.refund_processed',
+      actor_type: 'admin',
       actor_email: user.email,
       target_table: 'registrations',
       target_id: registration_id,
       target_email: reg.email,
-      old_data: { payment_status: 'confirmed', ticket_price: reg.ticket_price },
-      new_data: { payment_status: 'cancelled', refund_amount: refund.amount, refund_percentage: refund.percentage },
+      old_data: { payment_status: reg.payment_status, ticket_price: reg.ticket_price },
+      new_data: retry_mp_only
+        ? { mp_refund_retry: true, refund_amount: refund.amount }
+        : { payment_status: 'cancelled', refund_amount: refund.amount, refund_percentage: refund.percentage },
       metadata: {
         full_name: reg.full_name,
         reason: refund.reason,
         mp_refund: mpRefundResult,
         needs_manual_refund: needsManualRefund,
-        team_cancelled: isTeam && isLeader,
+        team_cancelled: !retry_mp_only && isTeam && isLeader,
         triggered_by_leader: isLeader,
+        retry_mp_only: !!retry_mp_only,
       },
     })
 
