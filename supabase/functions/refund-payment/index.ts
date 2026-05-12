@@ -278,7 +278,7 @@ Deno.serve(async (req: Request) => {
     // Audit log
     await supabase.from('audit_log').insert({
       action: 'payment.refund_processed',
-      actor_type: 'user',
+      actor_type: 'admin',
       actor_email: user.email,
       target_table: 'registrations',
       target_id: registration_id,
