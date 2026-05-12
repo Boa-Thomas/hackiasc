@@ -100,14 +100,14 @@ Deno.serve(async (req: Request) => {
       const price = safeNewData.ticket_price
       const isVoucher = action === 'registration.create_voucher'
       const validVoucher = isVoucher && typeof price === 'number' && price > 0 && price <= 100000
-      if (!validVoucher && price !== 15000 && price !== 20000) {
+      if (!validVoucher && price !== 15000 && price !== 16000 && price !== 20000) {
         safeNewData.ticket_price = null
       }
     }
 
     const safeEntry = {
       action,
-      actor_type: 'anon' as const,
+      actor_type: 'public' as const,
       actor_email: typeof actor_email === 'string' ? actor_email : null,
       target_table: typeof target_table === 'string' ? target_table : null,
       target_id: typeof target_id === 'string' ? target_id : null,
