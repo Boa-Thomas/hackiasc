@@ -2,6 +2,12 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 
 // H1: Server-to-server webhook — no CORS needed
 
+// Tolerance (in cents) for floating-point rounding when comparing MP amount (BRL)
+// to ticket_price (cents). MP returns transaction_amount as a float in BRL, so a
+// 1-cent slop after `Math.round(x * 100)` is acceptable; anything larger is a
+// real discrepancy.
+const AMOUNT_TOLERANCE_CENTS = 1
+
 // C2: Verify Mercado Pago webhook signature
 async function verifyMpSignature(req: Request, body: { data?: { id?: string } }): Promise<boolean> {
   const secret = Deno.env.get('MP_WEBHOOK_SECRET')
@@ -141,7 +147,7 @@ Deno.serve(async (req: Request) => {
     // For team registrations, update all members with the same team_name
     const { data: registration } = await supabase
       .from('registrations')
-      .select('team_name, inscription_modality')
+      .select('id, team_name, inscription_modality, ticket_price, payment_status, email')
       .eq('id', registrationId)
       .single()
 
@@ -151,30 +157,159 @@ Deno.serve(async (req: Request) => {
       payment_notes: `mp_payment:${paymentId} | status:${payment.status}`,
     }
 
-    if (registration?.inscription_modality === 'team' && registration?.team_name) {
-      // Update all team members
-      await supabase
+    const isTeam = registration?.inscription_modality === 'team' && !!registration?.team_name
+
+    // #31: Validate transaction_amount against expected ticket_price total BEFORE
+    // any UPDATE that confirms the registration. This is the financial gate that
+    // prevents an attacker from manipulating the MP preference URL and paying R$1
+    // for a confirmed ticket.
+    //
+    // We use payment.transaction_amount (gross BRL paid by payer) rather than
+    // payment.transaction_details.net_received_amount because the latter has MP's
+    // marketplace fees already deducted — that would always be less than
+    // ticket_price and cause false mismatches. transaction_amount is the
+    // face-value the payer authorized, which is what our ticket_price represents.
+    if (paymentStatus === 'confirmed' && registration) {
+      // Build expected total in cents:
+      //   - team: sum of ticket_price of all active (non-cancelled) members of the team
+      //   - individual: this registration's ticket_price
+      let expectedCents = 0
+      let activeMemberCount = 0
+
+      if (isTeam) {
+        const { data: activeMembers, error: membersErr } = await supabase
+          .from('registrations')
+          .select('id, ticket_price, payment_status')
+          .eq('team_name', registration.team_name)
+          .neq('payment_status', 'cancelled')
+
+        if (membersErr) {
+          console.error('Failed to fetch team members for amount validation:', membersErr)
+          // Fail closed — don't confirm if we can't validate
+          await supabase.from('audit_log').insert({
+            action: 'payment.amount_validation_error',
+            actor_type: 'system',
+            target_table: 'registrations',
+            target_id: registrationId,
+            new_data: { mp_payment_id: paymentId, error: membersErr.message },
+            metadata: { team_name: registration.team_name },
+          })
+          return new Response('ok', { status: 200 })
+        }
+
+        activeMemberCount = activeMembers?.length ?? 0
+        expectedCents = (activeMembers ?? []).reduce(
+          (sum, m) => sum + (m.ticket_price ?? 0),
+          0
+        )
+      } else {
+        expectedCents = registration.ticket_price ?? 0
+        activeMemberCount = 1
+      }
+
+      // MP transaction_amount is in BRL (float). Convert to cents for comparison.
+      const receivedCents = Math.round((payment.transaction_amount ?? 0) * 100)
+      const diffCents = Math.abs(receivedCents - expectedCents)
+
+      if (diffCents > AMOUNT_TOLERANCE_CENTS) {
+        console.warn(
+          `Amount mismatch on payment ${paymentId}: expected ${expectedCents} cents, received ${receivedCents} cents (diff ${diffCents})`
+        )
+
+        // Audit log — but do NOT confirm. Return 200 so MP does not retry forever.
+        await supabase.from('audit_log').insert({
+          action: 'payment.amount_mismatch',
+          actor_type: 'system',
+          target_table: 'registrations',
+          target_id: registrationId,
+          target_email: registration.email ?? null,
+          new_data: {
+            mp_payment_id: paymentId,
+            mp_status: payment.status,
+            expected_cents: expectedCents,
+            received_cents: receivedCents,
+            diff_cents: diffCents,
+            transaction_amount_brl: payment.transaction_amount,
+          },
+          metadata: {
+            inscription_modality: registration.inscription_modality,
+            team_name: registration.team_name ?? null,
+            active_member_count: activeMemberCount,
+            reason: 'transaction_amount did not match sum of ticket_price for active members',
+          },
+        })
+
+        return new Response('ok', { status: 200 })
+      }
+    }
+
+    // #55: When confirming a team payment, never resurrect members who cancelled
+    // individually. The .neq('payment_status', 'cancelled') filter preserves
+    // cancellations regardless of how the leader's preference is paid.
+    //
+    // Edge case: if external_reference points at a registration whose own
+    // payment_status is already 'cancelled' (e.g. a member cancelled then their
+    // preference URL got paid somehow), the team UPDATE path still skips them
+    // because of the same .neq filter — they will not be revived. For the
+    // individual-update path below we add the same guard.
+    let affectedRows = 0
+    let updateError: { message: string } | null = null
+
+    if (isTeam) {
+      // Update all team members EXCEPT those who individually cancelled.
+      // .select() returns the affected rows so we can audit the count.
+      const { data: updated, error } = await supabase
         .from('registrations')
         .update(updateData)
-        .eq('team_name', registration.team_name)
+        .eq('team_name', registration!.team_name)
+        .neq('payment_status', 'cancelled')
+        .select('id')
+      affectedRows = updated?.length ?? 0
+      updateError = error
     } else {
-      // Update single registration
-      await supabase
+      // Individual update — also guard against confirming a cancelled record.
+      // For pending/confirmed → fine. For cancelled → leave alone (return 200).
+      const { data: updated, error } = await supabase
         .from('registrations')
         .update(updateData)
         .eq('id', registrationId)
+        .neq('payment_status', 'cancelled')
+        .select('id')
+      affectedRows = updated?.length ?? 0
+      updateError = error
     }
 
-    console.log(`Payment ${paymentId} → registration ${registrationId} → ${paymentStatus}`)
+    if (updateError) {
+      console.error(`Update failed for registration ${registrationId}:`, updateError)
+    }
 
-    // Audit log
+    console.log(
+      `Payment ${paymentId} → registration ${registrationId} → ${paymentStatus} (rows affected: ${affectedRows})`
+    )
+
+    // Audit log — record affected row count so admins can spot inconsistencies
+    // (e.g. team of 5 but only 4 rows updated means 1 member was cancelled and
+    // legitimately skipped).
     await supabase.from('audit_log').insert({
       action: paymentStatus === 'confirmed' ? 'payment.confirmed_webhook' : `payment.${paymentStatus}_webhook`,
       actor_type: 'system',
       target_table: 'registrations',
       target_id: registrationId,
-      new_data: { payment_status: paymentStatus, mp_payment_id: paymentId, mp_status: payment.status },
-      metadata: registration?.team_name ? { team_name: registration.team_name } : null,
+      target_email: registration?.email ?? null,
+      new_data: {
+        payment_status: paymentStatus,
+        mp_payment_id: paymentId,
+        mp_status: payment.status,
+        transaction_amount_brl: payment.transaction_amount ?? null,
+        affected_rows: affectedRows,
+      },
+      metadata: {
+        team_name: registration?.team_name ?? null,
+        inscription_modality: registration?.inscription_modality ?? null,
+        is_team_update: isTeam,
+        preserved_cancellations: isTeam, // filter was applied
+        update_error: updateError?.message ?? null,
+      },
     })
 
     return new Response('ok', { status: 200 })
