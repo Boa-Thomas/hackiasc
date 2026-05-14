@@ -48,6 +48,8 @@ export const sponsorshipStrings = {
       lyciaRole: 'Comercial & Parcerias',
       emailLabel: 'Email',
       siteLabel: 'Site',
+      soldBadge: 'COTA VENDIDA',
+      soldNote: 'Naming Rights já confirmado',
     },
     tiers: [
       {
@@ -56,6 +58,7 @@ export const sponsorshipStrings = {
         price: 'R$ 10.000',
         slots: '1 vaga exclusiva',
         highlight: true,
+        sold: true,
         tag: 'Máximo nível',
         benefits: [
           { title: 'Naming Rights', desc: 'O evento carrega o nome da sua empresa em todas as comunicações.' },
@@ -207,6 +210,8 @@ export const sponsorshipStrings = {
       lyciaRole: 'Sales & Partnerships',
       emailLabel: 'Email',
       siteLabel: 'Website',
+      soldBadge: 'SOLD OUT',
+      soldNote: 'Naming Rights already confirmed',
     },
     tiers: [
       {
@@ -215,6 +220,7 @@ export const sponsorshipStrings = {
         price: 'R$ 10,000',
         slots: '1 exclusive slot',
         highlight: true,
+        sold: true,
         tag: 'Top tier',
         benefits: [
           { title: 'Naming Rights', desc: 'The event carries your company\'s name across all communications.' },

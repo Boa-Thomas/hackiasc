@@ -29,7 +29,7 @@ function SectionLabel({ children }) {
   )
 }
 
-function TierCard({ tier, index }) {
+function TierCard({ tier, index, soldBadge, soldNote }) {
   const headerStyles = [
     'bg-gradient-to-r from-cyan/20 to-electric/20 border-b border-cyan/30',
     'bg-electric/15 border-b border-electric/20',
@@ -54,8 +54,21 @@ function TierCard({ tier, index }) {
     'bg-text-muted',
   ]
 
+  const isSold = tier.sold
+
   return (
-    <div className={`card-glass rounded-2xl overflow-hidden ${index === 0 ? 'glow-cyan' : ''}`}>
+    <div
+      className={`relative card-glass rounded-2xl overflow-hidden ${index === 0 && !isSold ? 'glow-cyan' : ''} ${isSold ? 'opacity-70 saturate-50' : ''}`}
+      aria-label={isSold ? soldBadge : undefined}
+    >
+      {isSold && (
+        <div className="absolute top-4 right-4 sm:top-5 sm:right-5 z-10 pointer-events-none">
+          <div className="px-3 py-1.5 bg-hot text-white text-[10px] sm:text-xs font-mono font-bold uppercase tracking-widest rounded-md shadow-lg border border-hot/50 rotate-3">
+            {soldBadge}
+          </div>
+        </div>
+      )}
+
       <div className={`p-6 sm:p-8 ${headerStyles[index]}`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
@@ -68,13 +81,15 @@ function TierCard({ tier, index }) {
             </h3>
           </div>
           <div className="text-right">
-            <div className={`font-mono text-xl sm:text-2xl font-bold ${accentColors[index]}`}>
+            <div className={`font-mono text-xl sm:text-2xl font-bold ${accentColors[index]} ${isSold ? 'line-through decoration-hot/70 decoration-2' : ''}`}>
               {tier.price}
             </div>
             {tier.priceNote && (
               <div className="text-xs text-text-muted">{tier.priceNote}</div>
             )}
-            <div className="text-xs text-text-muted mt-1">{tier.slots}</div>
+            <div className="text-xs text-text-muted mt-1">
+              {isSold ? soldNote : tier.slots}
+            </div>
           </div>
         </div>
       </div>
@@ -200,7 +215,13 @@ export default function SponsorshipPage({ onBack, lang = 'pt-BR' }) {
 
           <div className="space-y-6">
             {t.tiers.map((tier, i) => (
-              <TierCard key={tier.name} tier={tier} index={i} />
+              <TierCard
+                key={tier.name}
+                tier={tier}
+                index={i}
+                soldBadge={t.ui.soldBadge}
+                soldNote={t.ui.soldNote}
+              />
             ))}
           </div>
         </section>
