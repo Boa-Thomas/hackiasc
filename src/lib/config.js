@@ -11,7 +11,7 @@ export const EVENT_CONFIG = {
   maxCapacity: 100,
   earlyBirdLimit: 10,
   registrationStart: '2026-04-08T12:00:00-03:00',
-  registrationEnd: '2026-05-13T15:00:00-03:00',
+  registrationEnd: '2026-05-22T23:59:00-03:00',
   loteDeadline: '2026-04-30T23:59:00-03:00', // Virada de lote — early bird
   earlyAccessStart: '2026-04-08T11:30:00-03:00',
   earlyAccessCode: import.meta.env.VITE_EARLY_ACCESS_CODE || '',
