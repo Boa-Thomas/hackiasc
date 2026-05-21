@@ -21,23 +21,8 @@ function formatDate(isoString) {
   })
 }
 
-function computeStats(registrations) {
-  const total = registrations.length
-  const confirmed = registrations.filter((r) => r.payment_status === 'confirmed')
-  const pending = registrations.filter((r) => r.payment_status === 'pending')
-  const cancelled = registrations.filter((r) => r.payment_status === 'cancelled')
-
-  const revenueConfirmed = confirmed.reduce((sum, r) => sum + (r.ticket_price ?? 0), 0)
-  const revenuePending = pending.reduce((sum, r) => sum + (r.ticket_price ?? 0), 0)
-
-  const avgTicket = confirmed.length > 0 ? Math.round(revenueConfirmed / confirmed.length) : 0
-  const conversionRate = (confirmed.length + pending.length) > 0
-    ? Math.round((confirmed.length / (confirmed.length + pending.length)) * 100)
-    : 0
-
-  const earlyBirdUsed = confirmed.filter(r => r.ticket_tier === 'early_bird').length
-  const earlyBirdLeft = Math.max(0, (EVENT_CONFIG.earlyBirdLimit ?? 10) - earlyBirdUsed)
-
+// Demographic aggregations — applied to a filtered subset (by audience).
+function computeDemographics(registrations) {
   const byType = {
     hacker: registrations.filter((r) => r.occupation_type === 'hacker').length,
     hustler: registrations.filter((r) => r.occupation_type === 'hustler').length,
@@ -57,18 +42,6 @@ function computeStats(registrations) {
     team: registrations.filter((r) => r.inscription_modality === 'team').length,
   }
 
-  const recent = [...registrations]
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .slice(0, 5)
-
-  // Timeline: group by day
-  const timeline = {}
-  registrations.forEach(r => {
-    const day = r.created_at?.slice(0, 10)
-    if (day) timeline[day] = (timeline[day] ?? 0) + 1
-  })
-
-  // Dietary restrictions aggregation
   const dietaryMap = {}
   registrations.forEach(r => {
     const val = (r.dietary_restrictions ?? '').trim().toLowerCase()
@@ -76,10 +49,8 @@ function computeStats(registrations) {
       dietaryMap[val] = (dietaryMap[val] ?? 0) + 1
     }
   })
-  const dietarySorted = Object.entries(dietaryMap)
-    .sort((a, b) => b[1] - a[1])
+  const dietarySorted = Object.entries(dietaryMap).sort((a, b) => b[1] - a[1])
 
-  // PCD
   const pcdCount = registrations.filter(r => r.is_pcd).length
   const pcdTypes = {}
   registrations.forEach(r => {
@@ -89,7 +60,6 @@ function computeStats(registrations) {
     }
   })
 
-  // AI experience
   const aiLevels = {}
   registrations.forEach(r => {
     const lvl = r.ai_experience_level
@@ -99,7 +69,6 @@ function computeStats(registrations) {
     ? (registrations.reduce((s, r) => s + (Number(r.ai_experience_level) || 0), 0) / registrations.length).toFixed(1)
     : 0
 
-  // Economic axes
   const axesMap = {}
   registrations.forEach(r => {
     (r.economic_axes ?? []).forEach(ax => {
@@ -108,10 +77,50 @@ function computeStats(registrations) {
   })
   const axesSorted = Object.entries(axesMap).sort((a, b) => b[1] - a[1])
 
-  // Projects
   const withProject = registrations.filter(r => r.has_project).length
 
-  // Stale pending payments (> 3 days old)
+  return {
+    audienceSize: registrations.length,
+    byType,
+    byTier,
+    byModality,
+    dietarySorted,
+    pcdCount,
+    pcdTypes,
+    aiLevels,
+    aiAvg,
+    axesSorted,
+    withProject,
+  }
+}
+
+function computeStats(registrations) {
+  const total = registrations.length
+  const confirmed = registrations.filter((r) => r.payment_status === 'confirmed')
+  const pending = registrations.filter((r) => r.payment_status === 'pending')
+  const cancelled = registrations.filter((r) => r.payment_status === 'cancelled')
+
+  const revenueConfirmed = confirmed.reduce((sum, r) => sum + (r.ticket_price ?? 0), 0)
+  const revenuePending = pending.reduce((sum, r) => sum + (r.ticket_price ?? 0), 0)
+
+  const avgTicket = confirmed.length > 0 ? Math.round(revenueConfirmed / confirmed.length) : 0
+  const conversionRate = (confirmed.length + pending.length) > 0
+    ? Math.round((confirmed.length / (confirmed.length + pending.length)) * 100)
+    : 0
+
+  const earlyBirdUsed = confirmed.filter(r => r.ticket_tier === 'early_bird').length
+  const earlyBirdLeft = Math.max(0, (EVENT_CONFIG.earlyBirdLimit ?? 10) - earlyBirdUsed)
+
+  const recent = [...registrations]
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 5)
+
+  const timeline = {}
+  registrations.forEach(r => {
+    const day = r.created_at?.slice(0, 10)
+    if (day) timeline[day] = (timeline[day] ?? 0) + 1
+  })
+
   const threeDaysAgo = new Date(Date.now() - 3 * 86400000).toISOString()
   const stalePending = pending
     .filter(r => r.created_at < threeDaysAgo)
@@ -128,18 +137,8 @@ function computeStats(registrations) {
     conversionRate,
     earlyBirdLeft,
     earlyBirdUsed,
-    byType,
-    byTier,
-    byModality,
     recent,
     timeline,
-    dietarySorted,
-    pcdCount,
-    pcdTypes,
-    aiLevels,
-    aiAvg,
-    axesSorted,
-    withProject,
     stalePending,
   }
 }
@@ -563,7 +562,7 @@ function HorizontalBarChart({ title, items, color }) {
 
 // ─── AI Experience Histogram ────────────────────────────────────────────────
 
-function AIExperienceChart({ aiLevels, aiAvg }) {
+function AIExperienceChart({ aiLevels, aiAvg, audienceLabel }) {
   const levels = Array.from({ length: 10 }, (_, i) => i + 1)
   const max = Math.max(...levels.map(l => aiLevels[l] ?? 0), 1)
 
@@ -571,7 +570,7 @@ function AIExperienceChart({ aiLevels, aiAvg }) {
     <div className="card-glass rounded-xl p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-mono uppercase tracking-widest text-white/40">
-          Experiência em IA
+          Experiência em IA{audienceLabel ? ` — ${audienceLabel}` : ''}
         </h3>
         <span className="text-sm font-mono text-electric">
           Média: {aiAvg}
@@ -605,15 +604,22 @@ function AIExperienceChart({ aiLevels, aiAvg }) {
 
 // ─── Dietary & PCD Cards ────────────────────────────────────────────────────
 
-function DietaryCard({ dietarySorted, total }) {
+function DietaryCard({ dietarySorted, total, audienceLabel }) {
   const withRestrictions = dietarySorted.reduce((s, [, c]) => s + c, 0)
 
   return (
     <div className="card-glass rounded-xl p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-mono uppercase tracking-widest text-white/40">
-          Restrições alimentares
-        </h3>
+        <div className="flex flex-col">
+          <h3 className="text-xs font-mono uppercase tracking-widest text-white/40">
+            Restrições alimentares
+          </h3>
+          {audienceLabel && (
+            <span className="text-[10px] font-mono text-white/30 mt-0.5">
+              {audienceLabel}
+            </span>
+          )}
+        </div>
         <span className="text-sm font-mono" style={{ color: withRestrictions > 0 ? '#ffbe0b' : '#06d6a0' }}>
           {withRestrictions}/{total}
         </span>
@@ -636,13 +642,20 @@ function DietaryCard({ dietarySorted, total }) {
   )
 }
 
-function PCDCard({ pcdCount, pcdTypes, total }) {
+function PCDCard({ pcdCount, pcdTypes, total, audienceLabel }) {
   return (
     <div className="card-glass rounded-xl p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-mono uppercase tracking-widest text-white/40">
-          Acessibilidade (PCD)
-        </h3>
+        <div className="flex flex-col">
+          <h3 className="text-xs font-mono uppercase tracking-widest text-white/40">
+            Acessibilidade (PCD)
+          </h3>
+          {audienceLabel && (
+            <span className="text-[10px] font-mono text-white/30 mt-0.5">
+              {audienceLabel}
+            </span>
+          )}
+        </div>
         <span className="text-sm font-mono" style={{ color: pcdCount > 0 ? '#8338ec' : '#06d6a0' }}>
           {pcdCount}/{total}
         </span>
@@ -781,6 +794,64 @@ function AlertsSection({ stalePending, onViewAll, now }) {
   )
 }
 
+// ─── Audience Filter ───────────────────────────────────────────────────────
+
+const AUDIENCE_OPTIONS = [
+  { id: 'confirmed', label: 'Confirmados', hint: 'Quem efetivamente vai ao evento' },
+  { id: 'active', label: '+ Pendentes', hint: 'Confirmados + pagamentos em aberto' },
+  { id: 'all', label: 'Todos', hint: 'Inclui inscrições canceladas' },
+]
+
+function filterRegistrationsByAudience(registrations, audience) {
+  if (audience === 'confirmed') {
+    return registrations.filter(r => r.payment_status === 'confirmed')
+  }
+  if (audience === 'active') {
+    return registrations.filter(r => r.payment_status !== 'cancelled')
+  }
+  return registrations
+}
+
+function AudienceFilter({ audience, onChange, counts }) {
+  return (
+    <div className="card-glass rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
+        <span className="text-cyan text-lg">⌾</span>
+        <div>
+          <h3 className="text-xs font-mono uppercase tracking-widest text-white/60">
+            Audiência dos gráficos demográficos
+          </h3>
+          <p className="text-white/40 text-[11px] font-mono mt-0.5">
+            Afeta perfil, modalidade, tier, IA, eixos, restrições alimentares e PCD.
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1 border border-white/10">
+        {AUDIENCE_OPTIONS.map(opt => {
+          const active = audience === opt.id
+          return (
+            <button
+              key={opt.id}
+              onClick={() => onChange(opt.id)}
+              title={opt.hint}
+              className={`px-3 py-1.5 rounded-md text-xs font-mono uppercase tracking-wider transition-colors ${
+                active
+                  ? 'bg-cyan/20 text-cyan border border-cyan/30'
+                  : 'text-white/50 hover:text-white/80 border border-transparent'
+              }`}
+            >
+              {opt.label}
+              <span className="ml-1.5 text-[10px] opacity-60">
+                ({counts[opt.id]})
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ─── Auto-refresh / Live Indicator ─────────────────────────────────────────
 
 function RefreshBar({ lastUpdated, autoRefresh, onToggle, isLive }) {
@@ -833,6 +904,14 @@ export default function AdminDashboard({ onViewRegistration }) {
   const [feeData, setFeeData] = useState(null)
   const [syncStatus, setSyncStatus] = useState(null)
   const [syncing, setSyncing] = useState(false)
+  const [audience, setAudience] = useState(() => {
+    try { return localStorage.getItem('admin.dashboard.audience') ?? 'confirmed' } catch { return 'confirmed' }
+  })
+
+  const updateAudience = useCallback((next) => {
+    setAudience(next)
+    try { localStorage.setItem('admin.dashboard.audience', next) } catch { /* storage opcional */ }
+  }, [])
 
   const fetchRegistrations = useCallback(async () => {
     if (!supabase) return
@@ -907,6 +986,19 @@ export default function AdminDashboard({ onViewRegistration }) {
   }, [autoRefresh, fetchRegistrations])
 
   const stats = useMemo(() => computeStats(registrations), [registrations])
+
+  const audienceCounts = useMemo(() => ({
+    confirmed: stats.confirmedCount,
+    active: stats.confirmedCount + stats.pendingCount,
+    all: stats.total,
+  }), [stats.confirmedCount, stats.pendingCount, stats.total])
+
+  const demographics = useMemo(
+    () => computeDemographics(filterRegistrationsByAudience(registrations, audience)),
+    [registrations, audience]
+  )
+
+  const audienceLabel = AUDIENCE_OPTIONS.find(o => o.id === audience)?.label ?? 'Confirmados'
 
   if (loading) {
     return (
@@ -1048,16 +1140,22 @@ export default function AdminDashboard({ onViewRegistration }) {
           sub={`${stats.earlyBirdUsed}/${EVENT_CONFIG.earlyBirdLimit ?? 10} usados`}
           color={stats.earlyBirdLeft <= 2 ? '#ff006e' : '#ffbe0b'}
         />
+      </div>
+
+      {/* Audience filter for demographic sections */}
+      <AudienceFilter audience={audience} onChange={updateAudience} counts={audienceCounts} />
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           label="Com projeto"
-          value={stats.withProject}
-          sub={`de ${stats.total} inscritos`}
+          value={demographics.withProject}
+          sub={`de ${demographics.audienceSize} (${audienceLabel.toLowerCase()})`}
           color="#8338ec"
         />
         <MetricCard
           label="Nível IA médio"
-          value={stats.aiAvg}
-          sub="Escala 1-10"
+          value={demographics.aiAvg}
+          sub={`Escala 1-10 (${audienceLabel.toLowerCase()})`}
           color="#3a86ff"
         />
       </div>
@@ -1075,20 +1173,20 @@ export default function AdminDashboard({ onViewRegistration }) {
       {/* Donut + Breakdowns */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <DonutChart
-          title="Distribuição por perfil"
+          title={`Distribuição por perfil — ${audienceLabel}`}
           data={[
-            { label: 'Hacker', value: stats.byType.hacker, color: '#3a86ff' },
-            { label: 'Hustler', value: stats.byType.hustler, color: '#06d6a0' },
-            { label: 'Hipster', value: stats.byType.hipster, color: '#8338ec' },
-            { label: 'Enthusiast', value: stats.byType.enthusiast, color: '#ffbe0b' },
+            { label: 'Hacker', value: demographics.byType.hacker, color: '#3a86ff' },
+            { label: 'Hustler', value: demographics.byType.hustler, color: '#06d6a0' },
+            { label: 'Hipster', value: demographics.byType.hipster, color: '#8338ec' },
+            { label: 'Enthusiast', value: demographics.byType.enthusiast, color: '#ffbe0b' },
           ]}
         />
         <DonutChart
-          title="Por modalidade"
+          title={`Por modalidade — ${audienceLabel}`}
           data={[
-            { label: 'Time (form)', value: stats.byModality.individual_form_team, color: '#8338ec' },
-            { label: 'Individual', value: stats.byModality.individual_own, color: '#06d6a0' },
-            { label: 'Time próprio', value: stats.byModality.team, color: '#3a86ff' },
+            { label: 'Time (form)', value: demographics.byModality.individual_form_team, color: '#8338ec' },
+            { label: 'Individual', value: demographics.byModality.individual_own, color: '#06d6a0' },
+            { label: 'Time próprio', value: demographics.byModality.team, color: '#3a86ff' },
           ]}
         />
       </div>
@@ -1096,48 +1194,57 @@ export default function AdminDashboard({ onViewRegistration }) {
       {/* Breakdown sections */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <BreakdownGroup
-          title="Por perfil"
+          title={`Por perfil — ${audienceLabel}`}
           items={[
-            { label: 'Hacker', count: stats.byType.hacker, color: '#3a86ff' },
-            { label: 'Hustler', count: stats.byType.hustler, color: '#06d6a0' },
-            { label: 'Hipster', count: stats.byType.hipster, color: '#8338ec' },
-            { label: 'Enthusiast', count: stats.byType.enthusiast, color: '#ffbe0b' },
+            { label: 'Hacker', count: demographics.byType.hacker, color: '#3a86ff' },
+            { label: 'Hustler', count: demographics.byType.hustler, color: '#06d6a0' },
+            { label: 'Hipster', count: demographics.byType.hipster, color: '#8338ec' },
+            { label: 'Enthusiast', count: demographics.byType.enthusiast, color: '#ffbe0b' },
           ]}
         />
         <BreakdownGroup
-          title="Por tier"
+          title={`Por tier — ${audienceLabel}`}
           items={[
-            { label: 'Early Bird', count: stats.byTier.early_bird, color: '#ffbe0b' },
-            { label: 'Regular', count: stats.byTier.regular, color: '#3a86ff' },
-            { label: 'DATI', count: stats.byTier.dati, color: '#8338ec' },
+            { label: 'Early Bird', count: demographics.byTier.early_bird, color: '#ffbe0b' },
+            { label: 'Regular', count: demographics.byTier.regular, color: '#3a86ff' },
+            { label: 'DATI', count: demographics.byTier.dati, color: '#8338ec' },
           ]}
         />
         <BreakdownGroup
-          title="Por modalidade"
+          title={`Por modalidade — ${audienceLabel}`}
           items={[
-            { label: 'Time (form)', count: stats.byModality.individual_form_team, color: '#8338ec' },
-            { label: 'Individual', count: stats.byModality.individual_own, color: '#06d6a0' },
-            { label: 'Time próprio', count: stats.byModality.team, color: '#3a86ff' },
+            { label: 'Time (form)', count: demographics.byModality.individual_form_team, color: '#8338ec' },
+            { label: 'Individual', count: demographics.byModality.individual_own, color: '#06d6a0' },
+            { label: 'Time próprio', count: demographics.byModality.team, color: '#3a86ff' },
           ]}
         />
       </div>
 
       {/* AI Experience Histogram */}
-      <AIExperienceChart aiLevels={stats.aiLevels} aiAvg={stats.aiAvg} />
+      <AIExperienceChart aiLevels={demographics.aiLevels} aiAvg={demographics.aiAvg} audienceLabel={audienceLabel} />
 
       {/* Economic Axes */}
-      {stats.axesSorted.length > 0 && (
+      {demographics.axesSorted.length > 0 && (
         <HorizontalBarChart
-          title="Eixos econômicos mais populares"
-          items={stats.axesSorted.map(([label, value]) => ({ label, value }))}
+          title={`Eixos econômicos mais populares — ${audienceLabel}`}
+          items={demographics.axesSorted.map(([label, value]) => ({ label, value }))}
           color="#8338ec"
         />
       )}
 
       {/* Dietary & PCD */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <DietaryCard dietarySorted={stats.dietarySorted} total={stats.total} />
-        <PCDCard pcdCount={stats.pcdCount} pcdTypes={stats.pcdTypes} total={stats.total} />
+        <DietaryCard
+          dietarySorted={demographics.dietarySorted}
+          total={demographics.audienceSize}
+          audienceLabel={audienceLabel}
+        />
+        <PCDCard
+          pcdCount={demographics.pcdCount}
+          pcdTypes={demographics.pcdTypes}
+          total={demographics.audienceSize}
+          audienceLabel={audienceLabel}
+        />
       </div>
 
       {/* Recent registrations */}
