@@ -1,0 +1,151 @@
+import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
+
+export default function AdminMentors({ readOnly = false }) {
+  const [mentors, setMentors] = useState([])
+  const [teams, setTeams] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
+  const [teamId, setTeamId] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [generatedCode, setGeneratedCode] = useState(null)
+
+  async function fetchData() {
+    if (!supabase) { setError('Supabase não configurado.'); setLoading(false); return }
+    setError(null)
+    const [{ data: ms, error: mErr }, { data: ts, error: tErr }] = await Promise.all([
+      supabase.from('mentors').select('id, email, name, team_id').order('created_at', { ascending: true }),
+      supabase.from('teams').select('id, name').order('name', { ascending: true }),
+    ])
+    if (mErr) setError(mErr.message)
+    else if (tErr) setError(tErr.message)
+    else { setMentors(ms ?? []); setTeams(ts ?? []) }
+    setLoading(false)
+  }
+
+  useEffect(() => { fetchData() }, []) // eslint-disable-line react-hooks/set-state-in-effect
+
+  const teamName = (id) => teams.find(t => t.id === id)?.name || '—'
+
+  async function createMentor(e) {
+    e.preventDefault()
+    if (!supabase || !email.trim()) return
+    setCreating(true); setGeneratedCode(null); setError(null)
+    const { data, error: err } = await supabase.rpc('admin_create_mentor', {
+      p_email: email.trim(), p_name: name.trim(), p_team_id: teamId || null,
+    })
+    setCreating(false)
+    if (err) {
+      setError(err.message?.includes('email_already_exists') ? 'Já existe mentor com esse email.' : `Erro: ${err.message}`)
+      return
+    }
+    setGeneratedCode({ email: email.trim(), code: data.code })
+    setEmail(''); setName(''); setTeamId('')
+    await fetchData()
+  }
+
+  async function reassign(id, newTeamId) {
+    if (!supabase) return
+    const { error: err } = await supabase.from('mentors').update({ team_id: newTeamId || null }).eq('id', id)
+    if (err) { alert(`Erro: ${err.message}`); return }
+    await fetchData()
+  }
+
+  async function resetCode(id, mEmail) {
+    if (!supabase || !window.confirm(`Gerar novo código para ${mEmail}?`)) return
+    const { data, error: err } = await supabase.rpc('admin_reset_mentor_code', { p_mentor_id: id })
+    if (err) { alert(`Erro: ${err.message}`); return }
+    setGeneratedCode({ email: mEmail, code: data.code })
+  }
+
+  async function removeMentor(id, mEmail) {
+    if (!supabase || !window.confirm(`Remover o mentor ${mEmail}?`)) return
+    const { error: err } = await supabase.from('mentors').delete().eq('id', id)
+    if (err) { alert(`Erro: ${err.message}`); return }
+    await fetchData()
+  }
+
+  if (loading) return <p className="text-white/60 font-mono">Carregando...</p>
+
+  return (
+    <div className="space-y-6">
+      {error && <div className="bg-hot/10 border border-hot/30 rounded-lg px-4 py-2.5 text-hot text-sm">{error}</div>}
+
+      {generatedCode && (
+        <div className="bg-cyan/10 border border-cyan/30 rounded-xl px-4 py-3">
+          <p className="text-sm text-white">
+            Código de <strong>{generatedCode.email}</strong>:
+            <span className="font-mono text-2xl text-cyan tracking-[0.3em] ml-3">{generatedCode.code}</span>
+          </p>
+          <p className="text-xs text-white/50 mt-1">
+            Anote e repasse ao mentor — não será exibido de novo. O mentor entra em <span className="font-mono">/#mentor</span> com email + código.
+          </p>
+        </div>
+      )}
+
+      {!readOnly && (
+        <form onSubmit={createMentor} className="bg-white/5 border border-white/10 rounded-xl p-4 grid sm:grid-cols-4 gap-3 items-end">
+          <div>
+            <label className="block text-xs text-white/60 mb-1">Email</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan/50" placeholder="mentor@email.com" />
+          </div>
+          <div>
+            <label className="block text-xs text-white/60 mb-1">Nome</label>
+            <input value={name} onChange={e => setName(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan/50" placeholder="Nome do mentor" />
+          </div>
+          <div>
+            <label className="block text-xs text-white/60 mb-1">Equipe</label>
+            <select value={teamId} onChange={e => setTeamId(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan/50">
+              <option value="">Sem equipe</option>
+              {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </div>
+          <button type="submit" disabled={creating || !email.trim()} className="px-4 py-2 rounded-lg text-sm font-semibold bg-cyan/20 text-cyan border border-cyan/40 hover:bg-cyan/30 disabled:opacity-50 disabled:cursor-not-allowed">
+            {creating ? 'Criando...' : 'Adicionar mentor'}
+          </button>
+        </form>
+      )}
+
+      <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-white/5 text-white/60 text-xs uppercase">
+            <tr>
+              <th className="text-left px-4 py-2">Mentor</th>
+              <th className="text-left px-4 py-2">Equipe</th>
+              {!readOnly && <th className="text-right px-4 py-2">Ações</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {mentors.map(m => (
+              <tr key={m.id} className="border-t border-white/5">
+                <td className="px-4 py-2">
+                  <div className="text-white">{m.name || '—'}</div>
+                  <div className="text-white/50 text-xs">{m.email}</div>
+                </td>
+                <td className="px-4 py-2">
+                  {readOnly ? teamName(m.team_id) : (
+                    <select value={m.team_id || ''} onChange={e => reassign(m.id, e.target.value)} className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:border-cyan/50">
+                      <option value="">Sem equipe</option>
+                      {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </select>
+                  )}
+                </td>
+                {!readOnly && (
+                  <td className="px-4 py-2 text-right whitespace-nowrap">
+                    <button onClick={() => resetCode(m.id, m.email)} className="text-xs text-electric hover:underline mr-3">novo código</button>
+                    <button onClick={() => removeMentor(m.id, m.email)} className="text-xs text-hot hover:underline">remover</button>
+                  </td>
+                )}
+              </tr>
+            ))}
+            {!mentors.length && (
+              <tr><td colSpan={readOnly ? 2 : 3} className="px-4 py-6 text-center text-white/40">Nenhum mentor cadastrado.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}

@@ -1447,3 +1447,46 @@ BEGIN
 END; $$;
 
 GRANT EXECUTE ON FUNCTION mentor_delete_note(UUID, UUID) TO anon;
+
+-- ============================================================
+-- ADMIN: cadastro de mentores (gera código de 4 dígitos)
+-- ============================================================
+-- Cria a conta do mentor pelo painel admin (sem Supabase Auth): gera o código,
+-- hasheia (pgcrypto) e retorna o código em claro UMA vez para o admin repassar.
+CREATE OR REPLACE FUNCTION admin_create_mentor(p_email TEXT, p_name TEXT, p_team_id UUID)
+RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_code TEXT;
+  v_id UUID;
+BEGIN
+  IF NOT is_admin() THEN RAISE EXCEPTION 'unauthorized'; END IF;
+  IF p_email IS NULL OR length(trim(p_email)) = 0 THEN RAISE EXCEPTION 'email_required'; END IF;
+
+  v_code := lpad((floor(random() * 10000))::int::text, 4, '0');
+
+  INSERT INTO mentors (email, name, team_id, access_code_hash)
+  VALUES (LOWER(TRIM(p_email)), NULLIF(TRIM(COALESCE(p_name, '')), ''), p_team_id, crypt(v_code, gen_salt('bf')))
+  RETURNING id INTO v_id;
+
+  RETURN json_build_object('id', v_id, 'code', v_code);
+EXCEPTION
+  WHEN unique_violation THEN RAISE EXCEPTION 'email_already_exists';
+END; $$;
+
+GRANT EXECUTE ON FUNCTION admin_create_mentor(TEXT, TEXT, UUID) TO authenticated;
+
+CREATE OR REPLACE FUNCTION admin_reset_mentor_code(p_mentor_id UUID)
+RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE v_code TEXT;
+BEGIN
+  IF NOT is_admin() THEN RAISE EXCEPTION 'unauthorized'; END IF;
+  v_code := lpad((floor(random() * 10000))::int::text, 4, '0');
+  UPDATE mentors
+  SET access_code_hash = crypt(v_code, gen_salt('bf')),
+      failed_login_count = 0, failed_login_until = NULL
+  WHERE id = p_mentor_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'mentor_not_found'; END IF;
+  RETURN json_build_object('code', v_code);
+END; $$;
+
+GRANT EXECUTE ON FUNCTION admin_reset_mentor_code(UUID) TO authenticated;
