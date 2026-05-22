@@ -40,7 +40,7 @@ export default function AdminDeliverables({ readOnly = false }) {
   }
   useEffect(() => { fetchData() }, []) // eslint-disable-line react-hooks/set-state-in-effect
 
-  const memberCount = (teamId) => members.filter(m => m.team_id === teamId).length
+  const memberCount = (teamId) => members.filter(m => m.team_id === teamId && m.payment_status === 'confirmed').length
   const notesFor = (teamId) => notes.filter(n => n.team_id === teamId)
   const evalsFor = (teamId) => evals.filter(ev => ev.team_id === teamId)
   const selected = teams.find(t => t.id === selectedId) || null
