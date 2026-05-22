@@ -28,10 +28,14 @@ export default function AdminMentors({ readOnly = false }) {
   useEffect(() => { fetchData() }, []) // eslint-disable-line react-hooks/set-state-in-effect
 
   const teamName = (id) => teams.find(t => t.id === id)?.name || '—'
+  // Mentor↔equipe é 1:1 por design. Retorna outro mentor já pareado à equipe (se houver).
+  const teamOccupant = (tid, exceptId) => (tid ? mentors.find(m => m.id !== exceptId && m.team_id === tid) : null)
 
   async function createMentor(e) {
     e.preventDefault()
     if (!supabase || !email.trim()) return
+    const occ = teamOccupant(teamId, null)
+    if (occ && !window.confirm(`Essa equipe já tem o mentor ${occ.name || occ.email}. Adicionar outro mentor a ela?`)) return
     setCreating(true); setGeneratedCode(null); setError(null)
     const { data, error: err } = await supabase.rpc('admin_create_mentor', {
       p_email: email.trim(), p_name: name.trim(), p_team_id: teamId || null,
@@ -48,6 +52,11 @@ export default function AdminMentors({ readOnly = false }) {
 
   async function reassign(id, newTeamId) {
     if (!supabase) return
+    const occ = teamOccupant(newTeamId, id)
+    if (occ && !window.confirm(`Essa equipe já tem o mentor ${occ.name || occ.email}. Atribuir este mentor também?`)) {
+      await fetchData() // reverte o <select> ao valor salvo
+      return
+    }
     const { error: err } = await supabase.from('mentors').update({ team_id: newTeamId || null }).eq('id', id)
     if (err) { alert(`Erro: ${err.message}`); return }
     await fetchData()
