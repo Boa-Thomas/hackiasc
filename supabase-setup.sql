@@ -604,13 +604,14 @@ DECLARE
   v_members JSON;
   v_pending_requests JSON;
   v_my_requests JSON;
+  v_team JSON;
 BEGIN
   v_reg_id := participant_session_owner(p_token);
 
   SELECT id, full_name, email, phone, birth_date, linkedin_url, cpf,
          occupation_type, ai_experience_level, dietary_restrictions,
          is_pcd, pcd_type, has_project, project_name, economic_axes,
-         inscription_modality, team_name, is_team_leader, is_remote,
+         inscription_modality, team_name, team_id, is_team_leader, is_remote,
          payment_status, payment_method, ticket_tier, ticket_price,
          created_at, checked_in_at
   INTO v_reg
@@ -622,7 +623,8 @@ BEGIN
       'profile', row_to_json(v_reg),
       'team_members', '[]'::JSON,
       'pending_requests', '[]'::JSON,
-      'my_requests', '[]'::JSON
+      'my_requests', '[]'::JSON,
+      'team', NULL
     );
   END IF;
 
@@ -669,11 +671,28 @@ BEGIN
       AND created_at > now() - interval '30 days'
   ) q;
 
+  IF v_reg.team_id IS NOT NULL THEN
+    SELECT json_build_object(
+      'id', t.id,
+      'name', t.name,
+      'hypotheses_canvas', t.hypotheses_canvas,
+      'slc_ia_canvas', t.slc_ia_canvas,
+      'learning_diary', t.learning_diary,
+      'final_deliverables', t.final_deliverables,
+      'updated_at', t.updated_at,
+      'updated_by_name', (SELECT full_name FROM registrations WHERE id = t.updated_by)
+    ) INTO v_team
+    FROM teams t WHERE t.id = v_reg.team_id;
+  ELSE
+    v_team := NULL;
+  END IF;
+
   RETURN json_build_object(
     'profile', row_to_json(v_reg),
     'team_members', COALESCE(v_members, '[]'::JSON),
     'pending_requests', COALESCE(v_pending_requests, '[]'::JSON),
-    'my_requests', COALESCE(v_my_requests, '[]'::JSON)
+    'my_requests', COALESCE(v_my_requests, '[]'::JSON),
+    'team', v_team
   );
 END;
 $$;
@@ -1167,3 +1186,40 @@ DROP TRIGGER IF EXISTS trg_cascade_team_rename ON teams;
 CREATE TRIGGER trg_cascade_team_rename
   AFTER UPDATE OF name ON teams
   FOR EACH ROW EXECUTE FUNCTION cascade_team_rename();
+
+-- 5. RPC: salvar um entregável da equipe (qualquer membro confirmado edita)
+CREATE OR REPLACE FUNCTION participant_save_team_deliverable(p_token UUID, p_field TEXT, p_data JSONB)
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_reg_id UUID;
+  v_team_id UUID;
+BEGIN
+  v_reg_id := participant_session_owner_confirmed(p_token);
+
+  IF p_field NOT IN ('hypotheses_canvas','slc_ia_canvas','learning_diary','final_deliverables') THEN
+    RAISE EXCEPTION 'invalid_field';
+  END IF;
+
+  IF p_data IS NULL OR length(p_data::text) > 65536 THEN
+    RAISE EXCEPTION 'invalid_payload';
+  END IF;
+
+  SELECT team_id INTO v_team_id FROM registrations WHERE id = v_reg_id;
+  IF v_team_id IS NULL THEN
+    RAISE EXCEPTION 'not_in_team';
+  END IF;
+
+  UPDATE teams SET
+    hypotheses_canvas  = CASE WHEN p_field = 'hypotheses_canvas'  THEN p_data ELSE hypotheses_canvas  END,
+    slc_ia_canvas      = CASE WHEN p_field = 'slc_ia_canvas'      THEN p_data ELSE slc_ia_canvas      END,
+    learning_diary     = CASE WHEN p_field = 'learning_diary'     THEN p_data ELSE learning_diary     END,
+    final_deliverables = CASE WHEN p_field = 'final_deliverables' THEN p_data ELSE final_deliverables END,
+    updated_at = now(),
+    updated_by = v_reg_id
+  WHERE id = v_team_id;
+
+  RETURN true;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION participant_save_team_deliverable(UUID, TEXT, JSONB) TO anon;

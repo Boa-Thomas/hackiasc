@@ -87,6 +87,7 @@ export function useParticipantAuth() {
     teamMembers: me?.team_members ?? [],
     pendingRequests: me?.pending_requests ?? [],
     myRequests: me?.my_requests ?? [],
+    team: me?.team ?? null,
     loading,
     error,
     isAuthenticated: !!token && !!me,
