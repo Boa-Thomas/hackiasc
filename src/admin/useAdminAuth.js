@@ -45,15 +45,21 @@ export function useAdminAuth() {
 
   // --- Core auth logic ---
 
-  const performLogout = useCallback(async () => {
+  // UI-only teardown. Does NOT call signOut(), so it is safe to invoke from the
+  // onAuthStateChange SIGNED_OUT handler without triggering an infinite loop.
+  const clearAuthState = useCallback(() => {
     stopActivityTracking()
-    if (supabase) {
-      await supabase.auth.signOut()
-    }
     setIsAuthenticated(false)
     setRole(null)
     window.location.hash = '#admin-login'
   }, [stopActivityTracking])
+
+  const performLogout = useCallback(async () => {
+    if (supabase) {
+      await supabase.auth.signOut()
+    }
+    clearAuthState()
+  }, [clearAuthState])
 
   const checkSession = useCallback(async () => {
     if (!supabase) {
@@ -84,9 +90,12 @@ export function useAdminAuth() {
 
     let authSubscription = null
     if (supabase) {
-      const { data } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_OUT' || (!session && event === 'TOKEN_REFRESHED')) {
-          performLogout()
+      const { data } = supabase.auth.onAuthStateChange((event) => {
+        // Session revoked/expired elsewhere (logout, token revocation, expiry).
+        // Only do UI cleanup here — calling signOut() would re-fire SIGNED_OUT
+        // and loop forever.
+        if (event === 'SIGNED_OUT') {
+          clearAuthState()
         }
       })
       authSubscription = data?.subscription

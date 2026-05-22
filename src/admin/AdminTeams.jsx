@@ -1167,7 +1167,7 @@ export default function AdminTeams({ readOnly }) {
       p_team_name: teamName,
       p_new_leader_id: member.id,
     })
-    if (rpcErr) { alert(`Erro ao promover líder: ${rpcErr.message}`); return }
+    if (rpcErr) { console.error(rpcErr); alert('Ocorreu um erro. Tente novamente.'); return }
     audit({
       action: 'team.promote_leader',
       actorType: 'admin',

@@ -17,7 +17,19 @@ function isAuthFailure(rpcError) {
 
 export function useParticipantAuth() {
   const [token, setToken] = useState(() => {
-    try { return localStorage.getItem(TOKEN_KEY) } catch { return null }
+    try {
+      const existing = localStorage.getItem(TOKEN_KEY)
+      if (existing) return existing
+      // One-time migration: pre-localStorage sessions stored the token in
+      // sessionStorage. Carry them over so existing users aren't logged out.
+      const legacy = sessionStorage.getItem(TOKEN_KEY)
+      if (legacy) {
+        localStorage.setItem(TOKEN_KEY, legacy)
+        sessionStorage.removeItem(TOKEN_KEY)
+        return legacy
+      }
+      return null
+    } catch { return null }
   })
   const [me, setMe] = useState(null)
   const [loading, setLoading] = useState(!!token)
@@ -35,14 +47,15 @@ export function useParticipantAuth() {
     const useToken = t ?? token
     if (!useToken || !supabase) return null
     const { data, error: rpcError } = await supabase.rpc('participant_get_me', { p_token: useToken })
+    // Transient network/timeout error: keep the session, don't log the user out.
+    if (rpcError && !isAuthFailure(rpcError)) {
+      return null
+    }
+    // Genuine server-side rejection (auth error or null payload): clear the session.
     if (rpcError || !data) {
-      // Only clear the session for genuine server-side auth rejection.
-      // Transient network errors (no structured code) keep the token intact.
-      if (isAuthFailure(rpcError) || !data) {
-        persistToken(null)
-        setToken(null)
-        setMe(null)
-      }
+      persistToken(null)
+      setToken(null)
+      setMe(null)
       return null
     }
     setMe(data)
