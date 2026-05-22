@@ -255,19 +255,29 @@ Deno.serve(async (req: Request) => {
     const isLeader = reg.is_team_leader === true
 
     if (isTeam && isLeader) {
-      // #99/#138: Split the update to preserve each member's individual payment_notes
-      // (which hold their own mp_payment:<id>).
+      // #99: Split the update so the leader's refund note does not clobber the
+      // payment_notes of every team member.
       // Step 1: cancel all team members — do NOT touch payment_notes
-      await supabase
+      const { error: step1Error } = await supabase
         .from('registrations')
         .update({ payment_status: 'cancelled' as const })
         .eq('team_name', reg.team_name)
 
+      if (step1Error) {
+        console.error('Team cancellation (step 1) failed:', step1Error)
+        throw step1Error
+      }
+
       // Step 2: append refund note ONLY to the leader's row
-      await supabase
+      const { error: step2Error } = await supabase
         .from('registrations')
         .update({ payment_notes: refundNote })
         .eq('id', registration_id)
+
+      if (step2Error) {
+        console.error('Leader note update (step 2) failed:', step2Error)
+        throw step2Error
+      }
     } else {
       // Individual cancellation or non-leader team member cancels only themselves
       await supabase

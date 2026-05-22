@@ -160,8 +160,12 @@ Deno.serve(async (req: Request) => {
 
     // #34: Guard-based idempotency — if the row is already at the target status,
     // skip the UPDATE and skip writing a duplicate audit_log entry.
-    // Combined with the #131 guards below, reprocessing is a true no-op.
-    if (registration?.payment_status === paymentStatus) {
+    // ONLY short-circuit for non-team registrations: the SELECT reads a single row,
+    // so for a team a stale member (e.g. still pending after an admin correction or
+    // a late-added member) must NOT be skipped just because the leader matches.
+    // The team UPDATE relies on the #131 WHERE guards below, which already make
+    // rows already at target status a safe no-op.
+    if (registration?.payment_status === paymentStatus && registration?.inscription_modality !== 'team') {
       console.log(`Payment ${paymentId} already at status "${paymentStatus}" for registration ${registrationId} — skipping (idempotent)`)
       return new Response('ok', { status: 200 })
     }
@@ -183,7 +187,7 @@ Deno.serve(async (req: Request) => {
 
       if (paymentStatus === 'pending') {
         // #131: Late webhook must not downgrade an already-confirmed or cancelled row
-        teamQuery = teamQuery.not('payment_status', 'in', '("confirmed","cancelled")')
+        teamQuery = teamQuery.not('payment_status', 'in', '(confirmed,cancelled)')
       } else if (paymentStatus === 'confirmed') {
         // Allow upgrade to confirmed, but never resurrect an admin-cancelled row
         teamQuery = teamQuery.neq('payment_status', 'cancelled')
@@ -202,7 +206,7 @@ Deno.serve(async (req: Request) => {
 
       if (paymentStatus === 'pending') {
         // #131: Late webhook must not downgrade an already-confirmed or cancelled row
-        singleQuery = singleQuery.not('payment_status', 'in', '("confirmed","cancelled")')
+        singleQuery = singleQuery.not('payment_status', 'in', '(confirmed,cancelled)')
       } else if (paymentStatus === 'confirmed') {
         // Allow upgrade to confirmed, but never resurrect an admin-cancelled row
         singleQuery = singleQuery.neq('payment_status', 'cancelled')
