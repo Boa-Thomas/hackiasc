@@ -422,7 +422,7 @@ DECLARE
 BEGIN
   v_reg_id := participant_session_owner(p_token);
 
-  SELECT id, full_name, email, phone, birth_date, linkedin_url, cpf,
+  SELECT id, full_name, email, phone, birth_date, linkedin_url,
          occupation_type, ai_experience_level, dietary_restrictions,
          is_pcd, pcd_type, has_project, project_name, economic_axes,
          inscription_modality, team_name, team_id, is_team_leader, is_remote,

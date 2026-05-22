@@ -223,7 +223,7 @@ BEGIN
   IF NEW.team_name IS NOT NULL THEN
     SELECT COUNT(*) INTO v_count
     FROM registrations
-    WHERE team_name = NEW.team_name;
+    WHERE team_name = NEW.team_name AND payment_status <> 'cancelled';
     IF v_count >= 6 THEN
       RAISE EXCEPTION 'Team size cannot exceed 6 members';
     END IF;
@@ -449,7 +449,7 @@ DECLARE v_count INTEGER;
 BEGIN
   IF NEW.team_name IS NOT NULL
      AND (OLD.team_name IS NULL OR OLD.team_name <> NEW.team_name) THEN
-    SELECT COUNT(*) INTO v_count FROM registrations WHERE team_name = NEW.team_name;
+    SELECT COUNT(*) INTO v_count FROM registrations WHERE team_name = NEW.team_name AND payment_status <> 'cancelled';
     IF v_count >= 6 THEN
       RAISE EXCEPTION 'Team size cannot exceed 6 members';
     END IF;
@@ -543,6 +543,13 @@ BEGIN
     RETURN NULL;
   END IF;
 
+  -- Lockout has expired: reset counter so a single wrong CPF doesn't immediately re-lock
+  IF v_reg.failed_login_until IS NOT NULL AND v_reg.failed_login_until <= v_now THEN
+    UPDATE registrations
+    SET failed_login_count = 0, failed_login_until = NULL
+    WHERE id = v_reg.id;
+  END IF;
+
   -- Verify CPF
   IF NOT EXISTS (
     SELECT 1 FROM registrations
@@ -608,7 +615,7 @@ DECLARE
 BEGIN
   v_reg_id := participant_session_owner(p_token);
 
-  SELECT id, full_name, email, phone, birth_date, linkedin_url, cpf,
+  SELECT id, full_name, email, phone, birth_date, linkedin_url,
          occupation_type, ai_experience_level, dietary_restrictions,
          is_pcd, pcd_type, has_project, project_name, economic_axes,
          inscription_modality, team_name, team_id, is_team_leader, is_remote,
@@ -719,7 +726,7 @@ LANGUAGE plpgsql SECURITY DEFINER
 AS $$
 DECLARE v_reg_id UUID;
 BEGIN
-  v_reg_id := participant_session_owner(p_token);
+  v_reg_id := participant_session_owner_confirmed(p_token);
 
   UPDATE registrations SET
     phone = COALESCE(NULLIF(TRIM(p_phone), ''), phone),
@@ -865,18 +872,19 @@ DECLARE
   v_leader_is_leader BOOLEAN;
   v_request RECORD;
   v_team_count INTEGER;
+  v_requester_team TEXT;
 BEGIN
   v_reg_id := participant_session_owner_confirmed(p_token);
 
   SELECT team_name, is_team_leader INTO v_leader_team, v_leader_is_leader
-  FROM registrations WHERE id = v_reg_id;
+  FROM registrations WHERE id = v_reg_id FOR UPDATE;
 
   IF NOT v_leader_is_leader OR v_leader_team IS NULL THEN
     RAISE EXCEPTION 'not_team_leader';
   END IF;
 
   SELECT requester_id, team_name, status INTO v_request
-  FROM team_join_requests WHERE id = p_request_id;
+  FROM team_join_requests WHERE id = p_request_id FOR UPDATE;
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'request_not_found';
@@ -896,6 +904,12 @@ BEGIN
 
   IF v_team_count >= 6 THEN
     RAISE EXCEPTION 'team_full';
+  END IF;
+
+  -- Re-check requester's current team to prevent joining multiple teams
+  SELECT team_name INTO v_requester_team FROM registrations WHERE id = v_request.requester_id FOR UPDATE;
+  IF v_requester_team IS NOT NULL THEN
+    RAISE EXCEPTION 'requester_already_in_team';
   END IF;
 
   UPDATE registrations
@@ -1073,14 +1087,22 @@ BEGIN
     RAISE EXCEPTION 'cannot_transfer_to_self';
   END IF;
 
-  SELECT team_name, is_team_leader INTO v_team, v_is_leader
-  FROM registrations WHERE id = v_reg_id;
+  -- Lock both rows in deterministic id order to prevent deadlocks
+  IF v_reg_id < p_new_leader_id THEN
+    SELECT team_name, is_team_leader INTO v_team, v_is_leader
+    FROM registrations WHERE id = v_reg_id FOR UPDATE;
+    SELECT team_name INTO v_new_leader_team
+    FROM registrations WHERE id = p_new_leader_id FOR UPDATE;
+  ELSE
+    SELECT team_name INTO v_new_leader_team
+    FROM registrations WHERE id = p_new_leader_id FOR UPDATE;
+    SELECT team_name, is_team_leader INTO v_team, v_is_leader
+    FROM registrations WHERE id = v_reg_id FOR UPDATE;
+  END IF;
 
   IF NOT v_is_leader OR v_team IS NULL THEN
     RAISE EXCEPTION 'not_team_leader';
   END IF;
-
-  SELECT team_name INTO v_new_leader_team FROM registrations WHERE id = p_new_leader_id;
 
   IF v_new_leader_team IS NULL OR v_new_leader_team <> v_team THEN
     RAISE EXCEPTION 'new_leader_not_in_team';

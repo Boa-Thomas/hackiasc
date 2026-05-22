@@ -192,7 +192,6 @@ export default function EditProfile({ auth }) {
         <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
           <ReadOnly label="Nome completo" value={profile?.full_name} />
           <ReadOnly label="Email" value={profile?.email} />
-          <ReadOnly label="CPF" value={profile?.cpf} />
           <ReadOnly label="Data de nascimento" value={profile?.birth_date} />
           <ReadOnly label="Perfil" value={profile?.occupation_type} />
           <ReadOnly label="Nível IA" value={profile?.ai_experience_level && `${profile.ai_experience_level}/10`} />
