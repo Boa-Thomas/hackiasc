@@ -1223,3 +1223,103 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION participant_save_team_deliverable(UUID, TEXT, JSONB) TO anon;
+
+-- ============================================================
+-- MENTOR LOGIN — Email + código de 4 dígitos (token custom)
+-- ============================================================
+-- Mentores NÃO usam Supabase Auth: mesmo molde dos participantes (RPC +
+-- mentor_sessions). O admin cadastra o mentor e gera o código (Fase 6).
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE IF NOT EXISTS mentors (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT UNIQUE NOT NULL,
+  name TEXT,
+  team_id UUID REFERENCES teams(id) ON DELETE SET NULL,
+  access_code_hash TEXT NOT NULL,
+  failed_login_count INTEGER NOT NULL DEFAULT 0,
+  failed_login_until TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS mentor_sessions (
+  token UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  mentor_id UUID NOT NULL REFERENCES mentors(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '7 days'),
+  last_used_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_mentor_sessions_mentor ON mentor_sessions(mentor_id);
+
+ALTER TABLE mentors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mentor_sessions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Admin can read mentors" ON mentors;
+CREATE POLICY "Admin can read mentors" ON mentors
+  FOR SELECT TO authenticated USING (is_admin_or_viewer());
+DROP POLICY IF EXISTS "Admin can manage mentors" ON mentors;
+CREATE POLICY "Admin can manage mentors" ON mentors
+  FOR ALL TO authenticated USING (is_admin()) WITH CHECK (is_admin());
+DROP POLICY IF EXISTS "Admin can read mentor sessions" ON mentor_sessions;
+CREATE POLICY "Admin can read mentor sessions" ON mentor_sessions
+  FOR SELECT TO authenticated USING (is_admin_or_viewer());
+
+-- Helper: valida token de mentor, refresca last_used_at, retorna mentor_id
+CREATE OR REPLACE FUNCTION mentor_session_owner(p_token UUID)
+RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE v_id UUID;
+BEGIN
+  SELECT mentor_id INTO v_id FROM mentor_sessions
+  WHERE token = p_token AND expires_at > now() LIMIT 1;
+  IF v_id IS NULL THEN RAISE EXCEPTION 'invalid_or_expired_session'; END IF;
+  UPDATE mentor_sessions SET last_used_at = now() WHERE token = p_token;
+  RETURN v_id;
+END; $$;
+
+-- Login: email + código; lockout de 1h após 10 tentativas (espelha participant_login)
+CREATE OR REPLACE FUNCTION mentor_login(p_email TEXT, p_code TEXT)
+RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_mentor RECORD;
+  v_token UUID;
+  v_now TIMESTAMPTZ := now();
+  v_max CONSTANT INTEGER := 10;
+  v_lockout CONSTANT INTERVAL := interval '1 hour';
+BEGIN
+  IF p_email IS NULL OR p_email = '' OR p_code IS NULL OR p_code = '' THEN
+    RETURN NULL;
+  END IF;
+
+  SELECT id, access_code_hash, failed_login_until, failed_login_count
+  INTO v_mentor FROM mentors WHERE LOWER(email) = LOWER(TRIM(p_email)) LIMIT 1;
+
+  IF NOT FOUND THEN RETURN NULL; END IF;
+
+  IF v_mentor.failed_login_until IS NOT NULL AND v_mentor.failed_login_until > v_now THEN
+    RETURN NULL;
+  END IF;
+
+  IF crypt(p_code, v_mentor.access_code_hash) <> v_mentor.access_code_hash THEN
+    UPDATE mentors
+    SET failed_login_count = failed_login_count + 1,
+        failed_login_until = CASE
+          WHEN failed_login_count + 1 >= v_max THEN v_now + v_lockout
+          ELSE failed_login_until END
+    WHERE id = v_mentor.id;
+    RETURN NULL;
+  END IF;
+
+  UPDATE mentors SET failed_login_count = 0, failed_login_until = NULL WHERE id = v_mentor.id;
+  INSERT INTO mentor_sessions (mentor_id) VALUES (v_mentor.id) RETURNING token INTO v_token;
+  RETURN json_build_object('token', v_token, 'expires_at', v_now + interval '7 days');
+END; $$;
+
+GRANT EXECUTE ON FUNCTION mentor_login(TEXT, TEXT) TO anon;
+
+CREATE OR REPLACE FUNCTION mentor_logout(p_token UUID)
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  DELETE FROM mentor_sessions WHERE token = p_token;
+  RETURN true;
+END; $$;
+
+GRANT EXECUTE ON FUNCTION mentor_logout(UUID) TO anon;
