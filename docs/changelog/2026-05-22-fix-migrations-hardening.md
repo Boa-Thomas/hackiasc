@@ -43,12 +43,17 @@ silently fails or leaks a plaintext service key.
 ## Technical decisions
 
 - **is_admin() ordering**: Both `security_fixes.sql` and `create_audit_log.sql` now reference
-  `is_admin()`, which is defined in `fix_admin_rls_policies.sql`. Dependency comments were
-  added to each site. The files are operator-applied in known order; no auto-migration runner
-  is involved.
+  `is_admin()`, which is defined in `fix_admin_rls_policies.sql`. Since migrations lack numeric
+  prefixes, operators must ensure `fix_admin_rls_policies.sql` is applied before
+  `security_fixes.sql`/`create_audit_log.sql`, or the `CREATE POLICY ... WITH CHECK (is_admin())`
+  statements fail. This is acceptable for the manual-apply workflow but must be stated.
+- **Idempotent re-apply**: The patched `CREATE POLICY` statements are preceded by
+  `DROP POLICY IF EXISTS` so re-running the files on an environment that already has the
+  policies does not error with `policy already exists`.
 - **Vault vs template**: No `vault.decrypted_secrets` usage existed in the project. The cron
-  file uses Vault at schedule time (fail-fast guard + Vault retrieval in `format()`), with a
-  comment noting the key still ends up in `cron.job.command` and must be ACL-protected.
+  file uses Vault at each cron execution (fail-fast guard + Vault retrieval embedded via
+  `format()`), with a comment clarifying that only the Vault subquery SQL — not the raw key —
+  is stored in `cron.job.command`, and that `cron.job` SELECT must be superuser-restricted.
 - **create_audit_log.sql caveat**: This file runs before `fix_admin_rls_policies.sql` on a
   fresh DB. A comment warns operators to apply `fix_admin_rls_policies.sql` immediately after
   if bootstrapping from scratch; `fix_admin_rls_policies.sql` drops and recreates all

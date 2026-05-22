@@ -125,6 +125,7 @@ $$;
 DROP POLICY IF EXISTS "Allow audit log insert" ON audit_log;
 
 -- Only authenticated admins can insert directly; service_role bypasses RLS automatically
+DROP POLICY IF EXISTS "Authenticated can insert audit log" ON audit_log;
 CREATE POLICY "Authenticated can insert audit log"
   ON audit_log FOR INSERT TO authenticated WITH CHECK (is_admin());
 

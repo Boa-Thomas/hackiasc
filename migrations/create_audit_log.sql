@@ -25,6 +25,7 @@ CREATE POLICY "Allow audit log insert" ON audit_log FOR INSERT TO anon WITH CHEC
 -- DEPENDENCY: is_admin() must exist (defined in fix_admin_rls_policies.sql).
 -- If applying this file standalone on a fresh DB before fix_admin_rls_policies.sql,
 -- temporarily use WITH CHECK (true) and re-run fix_admin_rls_policies.sql immediately after.
+DROP POLICY IF EXISTS "Allow auth audit log insert" ON audit_log;
 CREATE POLICY "Allow auth audit log insert" ON audit_log FOR INSERT TO authenticated WITH CHECK (is_admin());
 -- Admin read — uses is_admin_or_viewer() once fix_admin_rls_policies.sql is applied;
 -- note: fix_admin_rls_policies.sql drops this policy and recreates with is_admin_or_viewer()

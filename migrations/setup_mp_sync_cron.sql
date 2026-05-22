@@ -32,9 +32,12 @@ END;
 $$;
 
 -- Schedule sync every 15 minutes using Vault-stored service key (#128)
--- The service key is read from Vault at schedule time and embedded in cron.job.command.
--- WARNING: Even with Vault, the decrypted key ends up stored in cron.job.command.
--- Mitigate by restricting SELECT on cron.job to superuser/postgres role only,
+-- The service key is read from Vault at each cron execution, not at schedule time.
+-- WARNING: format() only substitutes the URL. What is stored in cron.job.command is
+-- the Vault subquery SQL text (NOT the raw key); the key is fetched fresh on each tick.
+-- However, an attacker holding BOTH SELECT on cron.job AND SELECT on
+-- vault.decrypted_secrets could extract the key by running the embedded query.
+-- Mitigate by restricting SELECT on cron.job to the superuser/postgres role only,
 -- and rotating the service key regularly.
 -- Alternative: use a dedicated, scoped edge function key with minimal permissions.
 SELECT cron.schedule(
