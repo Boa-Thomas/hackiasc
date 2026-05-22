@@ -3,9 +3,33 @@ import { supabase } from '../lib/supabase'
 
 const TOKEN_KEY = 'hackiasc_participant_token'
 
+// A Postgres/Supabase error has a structured `code` field (e.g. 'PGRST301', 'P0001').
+// A network/timeout failure surfaces as a plain object without `code` or with no response.
+function isAuthFailure(rpcError) {
+  if (!rpcError) return false
+  // If the error has a structured Postgres/PostgREST code it came from the server
+  if (rpcError.code) return true
+  // Supabase client may also set a numeric status for HTTP errors
+  if (rpcError.status && rpcError.status < 500) return true
+  // Otherwise treat as transient (network/timeout/proxy)
+  return false
+}
+
 export function useParticipantAuth() {
   const [token, setToken] = useState(() => {
-    try { return sessionStorage.getItem(TOKEN_KEY) } catch { return null }
+    try {
+      const existing = localStorage.getItem(TOKEN_KEY)
+      if (existing) return existing
+      // One-time migration: pre-localStorage sessions stored the token in
+      // sessionStorage. Carry them over so existing users aren't logged out.
+      const legacy = sessionStorage.getItem(TOKEN_KEY)
+      if (legacy) {
+        localStorage.setItem(TOKEN_KEY, legacy)
+        sessionStorage.removeItem(TOKEN_KEY)
+        return legacy
+      }
+      return null
+    } catch { return null }
   })
   const [me, setMe] = useState(null)
   const [loading, setLoading] = useState(!!token)
@@ -14,8 +38,8 @@ export function useParticipantAuth() {
 
   const persistToken = (t) => {
     try {
-      if (t) sessionStorage.setItem(TOKEN_KEY, t)
-      else sessionStorage.removeItem(TOKEN_KEY)
+      if (t) localStorage.setItem(TOKEN_KEY, t)
+      else localStorage.removeItem(TOKEN_KEY)
     } catch { /* ignore quota / private mode errors */ }
   }
 
@@ -23,6 +47,11 @@ export function useParticipantAuth() {
     const useToken = t ?? token
     if (!useToken || !supabase) return null
     const { data, error: rpcError } = await supabase.rpc('participant_get_me', { p_token: useToken })
+    // Transient network/timeout error: keep the session, don't log the user out.
+    if (rpcError && !isAuthFailure(rpcError)) {
+      return null
+    }
+    // Genuine server-side rejection (auth error or null payload): clear the session.
     if (rpcError || !data) {
       persistToken(null)
       setToken(null)

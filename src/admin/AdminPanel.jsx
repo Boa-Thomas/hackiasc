@@ -16,7 +16,7 @@ const ALL_TABS = [
   { id: 'deliverables', label: 'Entregas', icon: '📦' },
   { id: 'mentors', label: 'Mentores', icon: '🎓', adminOnly: true },
   { id: 'financeiro', label: 'Financeiro', icon: '💰' },
-  { id: 'bulk', label: 'Empresarial', icon: '🏢' },
+  { id: 'bulk', label: 'Empresarial', icon: '🏢', adminOnly: true },
   { id: 'checkin', label: 'Check-in', icon: '✅', adminOnly: true },
   { id: 'logs', label: 'Logs', icon: '📜', adminOnly: true },
 ]

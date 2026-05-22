@@ -1163,17 +1163,11 @@ export default function AdminTeams({ readOnly }) {
     if (!supabase) return
     const teamName = member.team_name
     if (!teamName) return
-    const { error: demoteErr } = await supabase
-      .from('registrations')
-      .update({ is_team_leader: false })
-      .eq('team_name', teamName)
-      .eq('is_team_leader', true)
-    if (demoteErr) { alert(`Erro ao rebaixar líder atual: ${demoteErr.message}`); return }
-    const { error: promoteErr } = await supabase
-      .from('registrations')
-      .update({ is_team_leader: true, team_name: teamName, inscription_modality: 'team' })
-      .eq('id', member.id)
-    if (promoteErr) { alert(`Erro ao promover: ${promoteErr.message}`); return }
+    const { error: rpcErr } = await supabase.rpc('admin_promote_leader', {
+      p_team_name: teamName,
+      p_new_leader_id: member.id,
+    })
+    if (rpcErr) { console.error(rpcErr); alert('Ocorreu um erro. Tente novamente.'); return }
     audit({
       action: 'team.promote_leader',
       actorType: 'admin',

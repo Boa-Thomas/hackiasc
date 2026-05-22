@@ -550,7 +550,7 @@ BEGIN
   FROM (
     SELECT
       bv.id,
-      bv.code,
+      CASE WHEN is_admin() THEN bv.code ELSE NULL END AS code,
       bv.status,
       bv.created_at,
       bv.redeemed_at,
