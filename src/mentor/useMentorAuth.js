@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
-const TOKEN_KEY = 'hackiasc_participant_token'
+const TOKEN_KEY = 'hackiasc_mentor_token'
 
-export function useParticipantAuth() {
+// Auth do mentor por token custom (email + código), espelhando useParticipantAuth.
+export function useMentorAuth() {
   const [token, setToken] = useState(() => {
     try { return sessionStorage.getItem(TOKEN_KEY) } catch { return null }
   })
@@ -22,7 +23,7 @@ export function useParticipantAuth() {
   const refreshMe = useCallback(async (t) => {
     const useToken = t ?? token
     if (!useToken || !supabase) return null
-    const { data, error: rpcError } = await supabase.rpc('participant_get_me', { p_token: useToken })
+    const { data, error: rpcError } = await supabase.rpc('mentor_get_me', { p_token: useToken })
     if (rpcError || !data) {
       persistToken(null)
       setToken(null)
@@ -43,16 +44,16 @@ export function useParticipantAuth() {
     }
   }, [token, refreshMe])
 
-  const login = useCallback(async (email, cpf) => {
+  const login = useCallback(async (email, code) => {
     setError(null)
     if (!supabase) {
       setError('Sistema indisponível. Tente novamente mais tarde.')
       return false
     }
     setLoading(true)
-    const { data, error: rpcError } = await supabase.rpc('participant_login', {
+    const { data, error: rpcError } = await supabase.rpc('mentor_login', {
       p_email: email.trim().toLowerCase(),
-      p_cpf: cpf.trim(),
+      p_code: code.trim(),
     })
     if (rpcError) {
       setError('Erro de conexão. Tente novamente.')
@@ -60,7 +61,7 @@ export function useParticipantAuth() {
       return false
     }
     if (!data) {
-      setError('Email ou CPF inválidos. Após várias tentativas o acesso é bloqueado por 1 hora.')
+      setError('Email ou código inválidos. Após várias tentativas o acesso é bloqueado por 1 hora.')
       setLoading(false)
       return false
     }
@@ -73,7 +74,7 @@ export function useParticipantAuth() {
 
   const logout = useCallback(async () => {
     if (token && supabase) {
-      try { await supabase.rpc('participant_logout', { p_token: token }) } catch { /* best-effort */ }
+      try { await supabase.rpc('mentor_logout', { p_token: token }) } catch { /* best-effort */ }
     }
     persistToken(null)
     setToken(null)
@@ -83,11 +84,9 @@ export function useParticipantAuth() {
   return {
     token,
     me,
-    profile: me?.profile ?? null,
-    teamMembers: me?.team_members ?? [],
-    pendingRequests: me?.pending_requests ?? [],
-    myRequests: me?.my_requests ?? [],
+    mentor: me?.mentor ?? null,
     team: me?.team ?? null,
+    notes: me?.notes ?? [],
     loading,
     error,
     isAuthenticated: !!token && !!me,

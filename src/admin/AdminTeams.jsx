@@ -1037,7 +1037,7 @@ export default function AdminTeams({ readOnly }) {
     const [{ data: regs, error: regErr }, { data: reqs, error: reqErr }] = await Promise.all([
       supabase
         .from('registrations')
-        .select('id, full_name, email, phone, occupation_type, ai_experience_level, team_name, is_team_leader, inscription_modality, payment_status, ticket_price, ticket_tier, payment_method, payment_confirmed_at, transferred_to_id, transferred_from_id, transferred_at, created_at, is_remote')
+        .select('id, full_name, email, phone, occupation_type, ai_experience_level, team_name, team_id, is_team_leader, inscription_modality, payment_status, ticket_price, ticket_tier, payment_method, payment_confirmed_at, transferred_to_id, transferred_from_id, transferred_at, created_at, is_remote')
         .order('full_name', { ascending: true }),
       supabase
         .from('team_join_requests')
@@ -1208,23 +1208,20 @@ export default function AdminTeams({ readOnly }) {
 
   async function renameTeam(oldName, newName) {
     if (!supabase) return
-    const { error: regErr } = await supabase
-      .from('registrations')
-      .update({ team_name: newName })
-      .eq('team_name', oldName)
-    if (regErr) { alert(`Erro ao renomear: ${regErr.message}`); return }
-    const { error: reqErr } = await supabase
-      .from('team_join_requests')
-      .update({ team_name: newName })
-      .eq('team_name', oldName)
-      .eq('status', 'pending')
-    if (reqErr) {
-      console.warn('[AdminTeams] Erro ao renomear pedidos pendentes:', reqErr.message)
-    }
+    // Renomeia via teams.name; o trigger cascade_team_rename propaga para
+    // registrations.team_name e team_join_requests (preservando teams.id).
+    const teamId = teamsMap[oldName]?.[0]?.team_id
+    if (!teamId) { alert('Erro ao renomear: time sem identificador (team_id). Aplique a migração de teams.'); return }
+    const { error: teamErr } = await supabase
+      .from('teams')
+      .update({ name: newName })
+      .eq('id', teamId)
+    if (teamErr) { alert(`Erro ao renomear: ${teamErr.message}`); return }
     audit({
       action: 'team.rename',
       actorType: 'admin',
-      targetTable: 'registrations',
+      targetTable: 'teams',
+      targetId: teamId,
       oldData: { team_name: oldName },
       newData: { team_name: newName },
     })

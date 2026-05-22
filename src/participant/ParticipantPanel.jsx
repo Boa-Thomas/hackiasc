@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import TeamSection from './TeamSection'
 import EditProfile from './EditProfile'
-import ComingSoon from './ComingSoon'
+import DeliverablesSection from './DeliverablesSection'
 
 const ALL_TABS = [
   { id: 'team', label: 'Equipe', icon: 'team' },
   { id: 'profile', label: 'Meus Dados', icon: 'profile' },
-  { id: 'event', label: 'Em Breve', icon: 'event' },
+  { id: 'event', label: 'Entregáveis', icon: 'event' },
 ]
 
 const UNPAID_TABS = ALL_TABS.filter(t => t.id === 'profile')
@@ -119,7 +119,7 @@ export default function ParticipantPanel({ auth }) {
         {/* Content */}
         {tab === 'team' && isPaid && <TeamSection auth={auth} />}
         {tab === 'profile' && <EditProfile auth={auth} />}
-        {tab === 'event' && isPaid && <ComingSoon />}
+        {tab === 'event' && isPaid && <DeliverablesSection auth={auth} goToTeam={() => setTab('team')} />}
       </main>
     </div>
   )
