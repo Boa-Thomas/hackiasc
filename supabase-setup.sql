@@ -538,16 +538,16 @@ BEGIN
     RETURN NULL;
   END IF;
 
+  -- Cancelled registration: behave like not-found
+  IF v_reg.payment_status = 'cancelled' THEN
+    RETURN NULL;
+  END IF;
+
   -- Lockout has expired: reset counter so a single wrong CPF doesn't immediately re-lock
   IF v_reg.failed_login_until IS NOT NULL AND v_reg.failed_login_until <= v_now THEN
     UPDATE registrations
     SET failed_login_count = 0, failed_login_until = NULL
     WHERE id = v_reg.id;
-  END IF;
-
-  -- Cancelled registration: behave like not-found
-  IF v_reg.payment_status = 'cancelled' THEN
-    RETURN NULL;
   END IF;
 
   -- Verify CPF

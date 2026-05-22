@@ -9,7 +9,7 @@
 
 ## O que foi feito
 
-Six security fixes applied to participant-facing PostgreSQL RPCs:
+Seven security fixes applied to participant-facing PostgreSQL RPCs:
 
 1. **#90 — CPF removed from `participant_get_me` payload**: CPF is the second auth factor in `participant_login`; returning it in the profile payload enabled account takeover. Removed from the SELECT column list in both `supabase-setup.sql` and `migrations/add_team_and_mentors.sql`. `row_to_json(v_reg)` now serializes the record without CPF.
 
