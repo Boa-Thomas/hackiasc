@@ -1069,3 +1069,101 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION participant_transfer_leadership(UUID, UUID) TO anon;
+
+-- ============================================================
+-- TEAM DELIVERABLES + MENTOR SYSTEM
+-- ============================================================
+-- Fundação: tabela `teams` com id estável que carrega os entregáveis da
+-- metodologia (e, adiante, as ponderações dos mentores). `team_name` segue
+-- canônico para PERTENÇA (escrito direto pelo admin); `registrations.team_id`
+-- é um espelho derivado, mantido por trigger. Renomear via `teams.name`
+-- (cascade AFTER UPDATE) preserva o id e o conteúdo.
+-- Migração equivalente p/ banco existente: migrations/add_team_and_mentors.sql
+
+-- 1. Tabela de equipes (identidade estável + entregáveis em JSONB)
+CREATE TABLE IF NOT EXISTS teams (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  hypotheses_canvas  JSONB NOT NULL DEFAULT '{}'::jsonb,  -- Fase 1: Canvas de Hipóteses
+  slc_ia_canvas      JSONB NOT NULL DEFAULT '{}'::jsonb,  -- Fase 2: Canvas SLC-IA
+  learning_diary     JSONB NOT NULL DEFAULT '{}'::jsonb,  -- Fase 2: Diário de Aprendizado
+  final_deliverables JSONB NOT NULL DEFAULT '{}'::jsonb,  -- Fase 3: Entregas finais
+  updated_by UUID REFERENCES registrations(id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_teams_name ON teams(name);
+
+ALTER TABLE registrations ADD COLUMN IF NOT EXISTS team_id UUID REFERENCES teams(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_registrations_team_id ON registrations(team_id);
+
+ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Admin can read teams" ON teams;
+CREATE POLICY "Admin can read teams" ON teams
+  FOR SELECT TO authenticated USING (is_admin_or_viewer());
+DROP POLICY IF EXISTS "Admin can update teams" ON teams;
+CREATE POLICY "Admin can update teams" ON teams
+  FOR UPDATE TO authenticated USING (is_admin()) WITH CHECK (is_admin());
+DROP POLICY IF EXISTS "Admin can insert teams" ON teams;
+CREATE POLICY "Admin can insert teams" ON teams
+  FOR INSERT TO authenticated WITH CHECK (is_admin());
+
+-- 2. Backfill idempotente: 1 teams-row por team_name distinto; popula team_id
+INSERT INTO teams (name)
+SELECT DISTINCT team_name FROM registrations
+WHERE team_name IS NOT NULL AND payment_status <> 'cancelled'
+ON CONFLICT (name) DO NOTHING;
+
+UPDATE registrations r SET team_id = t.id
+FROM teams t WHERE r.team_name = t.name AND r.team_id IS DISTINCT FROM t.id;
+
+-- 3. Trigger: mantém registrations.team_id em sincronia com team_name (find-or-create)
+CREATE OR REPLACE FUNCTION sync_registration_team_id()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE v_team_id UUID;
+BEGIN
+  IF NEW.team_name IS NULL THEN
+    NEW.team_id := NULL;
+    RETURN NEW;
+  END IF;
+  SELECT id INTO v_team_id FROM teams WHERE name = NEW.team_name;
+  IF v_team_id IS NULL THEN
+    INSERT INTO teams (name) VALUES (NEW.team_name)
+    ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+    RETURNING id INTO v_team_id;
+  END IF;
+  NEW.team_id := v_team_id;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_sync_team_id_ins ON registrations;
+CREATE TRIGGER trg_sync_team_id_ins
+  BEFORE INSERT ON registrations
+  FOR EACH ROW EXECUTE FUNCTION sync_registration_team_id();
+
+DROP TRIGGER IF EXISTS trg_sync_team_id_upd ON registrations;
+CREATE TRIGGER trg_sync_team_id_upd
+  BEFORE UPDATE OF team_name ON registrations
+  FOR EACH ROW EXECUTE FUNCTION sync_registration_team_id();
+
+-- 4. Trigger: renomear teams.name cascateia p/ membros e pedidos.
+--    AFTER UPDATE (não BEFORE): o sync interno precisa enxergar o nome já
+--    persistido, senão criaria uma teams-row órfã.
+CREATE OR REPLACE FUNCTION cascade_team_rename()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  IF NEW.name IS DISTINCT FROM OLD.name THEN
+    UPDATE registrations SET team_name = NEW.name
+      WHERE team_id = NEW.id AND team_name IS DISTINCT FROM NEW.name;
+    UPDATE team_join_requests SET team_name = NEW.name, updated_at = now()
+      WHERE team_name = OLD.name AND status = 'pending';
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_cascade_team_rename ON teams;
+CREATE TRIGGER trg_cascade_team_rename
+  AFTER UPDATE OF name ON teams
+  FOR EACH ROW EXECUTE FUNCTION cascade_team_rename();
