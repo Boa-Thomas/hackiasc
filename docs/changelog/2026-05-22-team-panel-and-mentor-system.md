@@ -40,8 +40,17 @@ O painel do participante já existia mas não tinha os entregáveis da metodolog
 - **Ação de deploy obrigatória**: aplicar `migrations/add_team_and_mentors.sql` no Supabase SQL Editor antes de qualquer teste — nada funciona sem isso.
 - `pgcrypto` necessário (já usado pelo login de participante).
 
+## Correções pós-revisão (security-auditor + code-reviewer)
+
+Dois agentes de verificação convergiram em achados; corrigidos antes do PR:
+
+- **[fix] Vazamento de notas privadas entre co-mentores** (`mentor_get_me`, ambos os arquivos SQL): a query de notas filtrava só por `team_id`. Como `mentors.team_id` não tem UNIQUE e o reassign do admin permite dois mentores na mesma equipe, o mentor A via as ponderações **privadas** do mentor B. Adicionado `AND n.mentor_id = v_mentor_id` — "Minhas ponderações" agora retorna só as do próprio mentor (as públicas continuam chegando à equipe pelo caminho separado `participant_get_me.public_notes`).
+- **[fix] Código de 4 dígitos com PRNG não-cripto** (`admin_create_mentor`/`admin_reset_mentor_code`): trocado `floor(random()*10000)` por `gen_random_bytes(4)` (CSPRNG do pgcrypto, sem viés de módulo relevante). O lockout 10/1h continua sendo o controle principal.
+- **[fix] `MentorNotes.remove()` engolia erro** silenciosamente; agora exibe feedback como o `save()`.
+
 ## Próximos passos
 
+- **Exclusividade mentor↔equipe no admin**: o `reassign` em `AdminMentors.jsx` não avisa se a equipe já tem mentor. O fix acima torna o estado multi-mentor seguro para leitura, mas um aviso ("essa equipe já tem mentor X") ataca a origem. Follow-up.
 - Visualização das ponderações privadas na banca/jurados (RLS de leitura admin já existe).
 - Extrair estilos de input duplicados (`INPUT`/`LBL`) para `_styles.js` — follow-up barato pós-evento.
 - `mentor_notes` tem `ON DELETE CASCADE`: remover um mentor apaga suas ponderações. Preferir reatribuir a equipe a remover, se quiser preservar histórico.

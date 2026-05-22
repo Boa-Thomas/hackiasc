@@ -286,7 +286,7 @@ BEGIN
         'id', n.id, 'phase', n.phase, 'body', n.body,
         'is_public', n.is_public, 'updated_at', n.updated_at
       ) ORDER BY n.created_at)
-      FROM mentor_notes n WHERE n.team_id = v_mentor.team_id
+      FROM mentor_notes n WHERE n.team_id = v_mentor.team_id AND n.mentor_id = v_mentor_id
     ), '[]'::json)
   );
 END; $$;
@@ -368,11 +368,14 @@ RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
   v_code TEXT;
   v_id UUID;
+  v_rand BYTEA;
 BEGIN
   IF NOT is_admin() THEN RAISE EXCEPTION 'unauthorized'; END IF;
   IF p_email IS NULL OR length(trim(p_email)) = 0 THEN RAISE EXCEPTION 'email_required'; END IF;
 
-  v_code := lpad((floor(random() * 10000))::int::text, 4, '0');
+  -- CSPRNG (pgcrypto) em vez de random(): código de auth não deve usar PRNG seedado
+  v_rand := gen_random_bytes(4);
+  v_code := lpad(((get_byte(v_rand, 0)::bigint * 16777216 + get_byte(v_rand, 1) * 65536 + get_byte(v_rand, 2) * 256 + get_byte(v_rand, 3)) % 10000)::text, 4, '0');
 
   INSERT INTO mentors (email, name, team_id, access_code_hash)
   VALUES (LOWER(TRIM(p_email)), NULLIF(TRIM(COALESCE(p_name, '')), ''), p_team_id, crypt(v_code, gen_salt('bf')))
@@ -387,10 +390,11 @@ GRANT EXECUTE ON FUNCTION admin_create_mentor(TEXT, TEXT, UUID) TO authenticated
 
 CREATE OR REPLACE FUNCTION admin_reset_mentor_code(p_mentor_id UUID)
 RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE v_code TEXT;
+DECLARE v_code TEXT; v_rand BYTEA;
 BEGIN
   IF NOT is_admin() THEN RAISE EXCEPTION 'unauthorized'; END IF;
-  v_code := lpad((floor(random() * 10000))::int::text, 4, '0');
+  v_rand := gen_random_bytes(4);
+  v_code := lpad(((get_byte(v_rand, 0)::bigint * 16777216 + get_byte(v_rand, 1) * 65536 + get_byte(v_rand, 2) * 256 + get_byte(v_rand, 3)) % 10000)::text, 4, '0');
   UPDATE mentors
   SET access_code_hash = crypt(v_code, gen_salt('bf')),
       failed_login_count = 0, failed_login_until = NULL

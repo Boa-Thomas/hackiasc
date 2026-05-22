@@ -36,7 +36,7 @@ export default function MentorNotes({ phase, phaseLabel, notes, auth }) {
   async function remove(id) {
     if (!supabase || !window.confirm('Remover esta ponderação?')) return
     const { error: err } = await supabase.rpc('mentor_delete_note', { p_token: auth.token, p_note_id: id })
-    if (err) return
+    if (err) return setError('Erro ao remover. Tente novamente.')
     if (editingId === id) resetForm()
     await auth.refreshMe()
   }
