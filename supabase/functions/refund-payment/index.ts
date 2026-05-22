@@ -250,26 +250,29 @@ Deno.serve(async (req: Request) => {
       !mpPaymentId && refund.amount > 0 ? 'refund_method:manual' : null,
     ].filter(Boolean).join(' | ')
 
-    const updateData = {
-      payment_status: 'cancelled' as const,
-      payment_notes: refundNote,
-    }
-
     // M4: Team refund — only the team leader triggers the full team cancellation
     const isTeam = reg.inscription_modality === 'team' && !!reg.team_name
     const isLeader = reg.is_team_leader === true
 
     if (isTeam && isLeader) {
-      // Leader cancels → cancel the entire team
+      // #99/#138: Split the update to preserve each member's individual payment_notes
+      // (which hold their own mp_payment:<id>).
+      // Step 1: cancel all team members — do NOT touch payment_notes
       await supabase
         .from('registrations')
-        .update(updateData)
+        .update({ payment_status: 'cancelled' as const })
         .eq('team_name', reg.team_name)
+
+      // Step 2: append refund note ONLY to the leader's row
+      await supabase
+        .from('registrations')
+        .update({ payment_notes: refundNote })
+        .eq('id', registration_id)
     } else {
       // Individual cancellation or non-leader team member cancels only themselves
       await supabase
         .from('registrations')
-        .update(updateData)
+        .update({ payment_status: 'cancelled' as const, payment_notes: refundNote })
         .eq('id', registration_id)
     }
 

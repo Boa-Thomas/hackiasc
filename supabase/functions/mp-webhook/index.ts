@@ -138,31 +138,80 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
+    // #59: Validate registrationId is a UUID before touching the DB
+    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+    if (!uuidRegex.test(registrationId)) {
+      console.error('Invalid registrationId format (not a UUID):', registrationId, 'for payment:', paymentId)
+      return new Response('ok', { status: 200 })
+    }
+
     // For team registrations, update all members with the same team_name
-    const { data: registration } = await supabase
+    // #34: Include payment_status for idempotency check
+    // #59: Destructure error from SELECT
+    const { data: registration, error: regSelectError } = await supabase
       .from('registrations')
-      .select('team_name, inscription_modality')
+      .select('team_name, inscription_modality, payment_status')
       .eq('id', registrationId)
       .single()
 
+    if (regSelectError) {
+      console.error('Error fetching registration:', registrationId, regSelectError)
+    }
+
+    // #34: Guard-based idempotency — if the row is already at the target status,
+    // skip the UPDATE and skip writing a duplicate audit_log entry.
+    // Combined with the #131 guards below, reprocessing is a true no-op.
+    if (registration?.payment_status === paymentStatus) {
+      console.log(`Payment ${paymentId} already at status "${paymentStatus}" for registration ${registrationId} — skipping (idempotent)`)
+      return new Response('ok', { status: 200 })
+    }
+
+    // #58: Only include payment_confirmed_at when confirming — never null it out
+    // #131: Conditional WHERE guards prevent confirmed→pending downgrade
     const updateData = {
       payment_status: paymentStatus,
-      payment_confirmed_at: paymentStatus === 'confirmed' ? new Date().toISOString() : null,
+      ...(paymentStatus === 'confirmed' ? { payment_confirmed_at: new Date().toISOString() } : {}),
       payment_notes: `mp_payment:${paymentId} | status:${payment.status}`,
     }
 
     if (registration?.inscription_modality === 'team' && registration?.team_name) {
       // Update all team members
-      await supabase
+      let teamQuery = supabase
         .from('registrations')
         .update(updateData)
         .eq('team_name', registration.team_name)
+
+      if (paymentStatus === 'pending') {
+        // #131: Late webhook must not downgrade an already-confirmed or cancelled row
+        teamQuery = teamQuery.not('payment_status', 'in', '("confirmed","cancelled")')
+      } else if (paymentStatus === 'confirmed') {
+        // Allow upgrade to confirmed, but never resurrect an admin-cancelled row
+        teamQuery = teamQuery.neq('payment_status', 'cancelled')
+      } else {
+        // paymentStatus === 'cancelled' — apply to all (except already cancelled)
+        teamQuery = teamQuery.neq('payment_status', 'cancelled')
+      }
+
+      await teamQuery
     } else {
       // Update single registration
-      await supabase
+      let singleQuery = supabase
         .from('registrations')
         .update(updateData)
         .eq('id', registrationId)
+
+      if (paymentStatus === 'pending') {
+        // #131: Late webhook must not downgrade an already-confirmed or cancelled row
+        singleQuery = singleQuery.not('payment_status', 'in', '("confirmed","cancelled")')
+      } else if (paymentStatus === 'confirmed') {
+        // Allow upgrade to confirmed, but never resurrect an admin-cancelled row
+        singleQuery = singleQuery.neq('payment_status', 'cancelled')
+      } else {
+        // paymentStatus === 'cancelled' — apply unless already cancelled
+        singleQuery = singleQuery.neq('payment_status', 'cancelled')
+      }
+
+      await singleQuery
     }
 
     console.log(`Payment ${paymentId} → registration ${registrationId} → ${paymentStatus}`)
