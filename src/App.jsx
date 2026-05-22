@@ -17,17 +17,22 @@ import { useAdminAuth } from './admin/useAdminAuth'
 import ParticipantLogin from './participant/ParticipantLogin'
 import ParticipantPanel from './participant/ParticipantPanel'
 import { useParticipantAuth } from './participant/useParticipantAuth'
+import MentorLogin from './mentor/MentorLogin'
+import MentorPanel from './mentor/MentorPanel'
+import { useMentorAuth } from './mentor/useMentorAuth'
 import CountdownFloat from './components/CountdownFloat'
 import ScrollToTop from './components/ScrollToTop'
 
 const PAYMENT_HASHES = ['#pagamento-sucesso', '#pagamento-erro', '#pagamento-pendente']
 const ADMIN_HASHES = ['#admin', '#admin-login']
 const PARTICIPANT_HASHES = ['#participante', '#participante-login']
+const MENTOR_HASHES = ['#mentor', '#mentor-login']
 
 export default function App() {
   const [page, setPage] = useState(window.location.hash)
   const { isAuthenticated, role, loading: authLoading, error: authError, login, logout } = useAdminAuth()
   const participantAuth = useParticipantAuth()
+  const mentorAuth = useMentorAuth()
 
   useEffect(() => {
     const onHashChange = () => setPage(window.location.hash)
@@ -44,7 +49,8 @@ export default function App() {
       page !== '#sponsorship' &&
       !PAYMENT_HASHES.includes(page) &&
       !ADMIN_HASHES.includes(page) &&
-      !PARTICIPANT_HASHES.includes(page)
+      !PARTICIPANT_HASHES.includes(page) &&
+      !MENTOR_HASHES.includes(page)
     ) {
       if (!/^#[a-zA-Z][\w-]*$/.test(page)) return
       setTimeout(() => {
@@ -92,6 +98,23 @@ export default function App() {
     }
 
     return <ParticipantPanel auth={participantAuth} />
+  }
+
+  // Mentor routes
+  if (MENTOR_HASHES.includes(page)) {
+    if (mentorAuth.loading) {
+      return (
+        <div className="min-h-screen bg-dark flex items-center justify-center">
+          <p className="text-white/60 font-mono">Carregando...</p>
+        </div>
+      )
+    }
+
+    if (!mentorAuth.isAuthenticated) {
+      return <MentorLogin onLogin={mentorAuth.login} error={mentorAuth.error} loading={mentorAuth.loading} />
+    }
+
+    return <MentorPanel auth={mentorAuth} />
   }
 
   if (page === '#privacidade') {

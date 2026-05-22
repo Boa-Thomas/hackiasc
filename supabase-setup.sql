@@ -1323,3 +1323,49 @@ BEGIN
 END; $$;
 
 GRANT EXECUTE ON FUNCTION mentor_logout(UUID) TO anon;
+
+-- mentor_get_me: dados do mentor + equipe pareada (entregáveis em leitura + membros)
+CREATE OR REPLACE FUNCTION mentor_get_me(p_token UUID)
+RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_mentor_id UUID;
+  v_mentor RECORD;
+  v_team JSON;
+BEGIN
+  v_mentor_id := mentor_session_owner(p_token);
+  SELECT id, name, email, team_id INTO v_mentor FROM mentors WHERE id = v_mentor_id;
+
+  IF v_mentor.team_id IS NOT NULL THEN
+    SELECT json_build_object(
+      'id', t.id, 'name', t.name,
+      'hypotheses_canvas', t.hypotheses_canvas,
+      'slc_ia_canvas', t.slc_ia_canvas,
+      'learning_diary', t.learning_diary,
+      'final_deliverables', t.final_deliverables,
+      'updated_at', t.updated_at,
+      'updated_by_name', (SELECT full_name FROM registrations WHERE id = t.updated_by),
+      'members', COALESCE((
+        SELECT json_agg(json_build_object(
+          'full_name', r.full_name, 'email', r.email,
+          'is_team_leader', r.is_team_leader, 'occupation_type', r.occupation_type,
+          'is_remote', r.is_remote
+        ) ORDER BY r.is_team_leader DESC, r.created_at)
+        FROM registrations r
+        WHERE r.team_id = t.id AND r.payment_status <> 'cancelled'
+      ), '[]'::json)
+    ) INTO v_team
+    FROM teams t WHERE t.id = v_mentor.team_id;
+  ELSE
+    v_team := NULL;
+  END IF;
+
+  RETURN json_build_object(
+    'mentor', json_build_object(
+      'id', v_mentor.id, 'name', v_mentor.name,
+      'email', v_mentor.email, 'team_id', v_mentor.team_id
+    ),
+    'team', v_team
+  );
+END; $$;
+
+GRANT EXECUTE ON FUNCTION mentor_get_me(UUID) TO anon;
