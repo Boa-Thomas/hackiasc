@@ -412,6 +412,14 @@ BEGIN
     RAISE EXCEPTION 'invalid_email';
   END IF;
 
+  -- LGPD and code-IP consent are mandatory (#109)
+  IF NOT COALESCE((p_data->>'accept_lgpd')::BOOLEAN, false) THEN
+    RAISE EXCEPTION 'lgpd_consent_required';
+  END IF;
+  IF NOT COALESCE((p_data->>'accept_code_ip')::BOOLEAN, false) THEN
+    RAISE EXCEPTION 'code_ip_consent_required';
+  END IF;
+
   -- Insere registration
   INSERT INTO registrations (
     full_name, email, phone, birth_date, linkedin_url, cpf,

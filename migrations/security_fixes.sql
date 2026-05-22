@@ -116,15 +116,22 @@ BEGIN
 END;
 $$;
 
--- H5: Restrict audit_log — remove anon INSERT, keep authenticated + service role
+-- H5: Restrict audit_log — remove anon INSERT, keep authenticated admin + service role
+-- DEPENDENCY: is_admin() must be defined before this policy is created.
+-- is_admin() is defined in fix_admin_rls_policies.sql. If applying security_fixes.sql
+-- standalone, ensure fix_admin_rls_policies.sql has already been applied.
+-- NOTE: All edge functions insert into audit_log using SUPABASE_SERVICE_ROLE_KEY,
+-- which bypasses RLS entirely — this policy only affects direct authenticated inserts.
 DROP POLICY IF EXISTS "Allow audit log insert" ON audit_log;
 
--- Only authenticated (admin) and service_role can insert
--- Service role bypasses RLS automatically, so we only need authenticated policy
+-- Only authenticated admins can insert directly; service_role bypasses RLS automatically
+DROP POLICY IF EXISTS "Authenticated can insert audit log" ON audit_log;
 CREATE POLICY "Authenticated can insert audit log"
-  ON audit_log FOR INSERT TO authenticated WITH CHECK (true);
+  ON audit_log FOR INSERT TO authenticated WITH CHECK (is_admin());
 
 -- M7: LGPD data anonymization
+-- DEPENDENCY: is_admin() must be defined before this function is created.
+-- is_admin() is defined in fix_admin_rls_policies.sql.
 CREATE OR REPLACE FUNCTION anonymize_user_data(p_email TEXT)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -133,6 +140,11 @@ AS $$
 DECLARE
   v_count INTEGER;
 BEGIN
+  -- Only admins can anonymize data
+  IF NOT is_admin() THEN
+    RAISE EXCEPTION 'forbidden: admin role required';
+  END IF;
+
   SELECT COUNT(*) INTO v_count
   FROM registrations
   WHERE LOWER(email) = LOWER(p_email);
