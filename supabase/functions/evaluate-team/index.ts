@@ -1,6 +1,6 @@
 // Stub do IA Evaluator. Estrutura pronta; o agente de IA ainda não está conectado.
 // A rubrica do edital fica embutida como fonte de verdade para quando o agente for plugado.
-import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 
 const EDITAL_RUBRIC = {
   version: 'edital_v1',
@@ -27,7 +27,7 @@ const cors = {
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
 
-serve(async (req) => {
+Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405)
 
