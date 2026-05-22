@@ -3,10 +3,17 @@
 // Compartilhado entre o painel da equipe (edição) e o painel do mentor (leitura).
 
 export const PHASES = [
-  { id: 'hypotheses', label: 'Hipóteses', phase: 'Fase 1 · Ignição',      field: 'hypotheses_canvas' },
-  { id: 'slc',        label: 'SLC-IA',    phase: 'Fase 2 · Construção',   field: 'slc_ia_canvas' },
-  { id: 'diary',      label: 'Diário BML', phase: 'Fase 2 · Construção',  field: 'learning_diary' },
-  { id: 'final',      label: 'Entregas',  phase: 'Fase 3 · Apresentação', field: 'final_deliverables' },
+  { id: 'hypotheses', label: 'Hipóteses', phase: 'Fase 1 · Ignição',      field: 'hypotheses_canvas',  methodPhase: 'ignicao' },
+  { id: 'slc',        label: 'SLC-IA',    phase: 'Fase 2 · Construção',   field: 'slc_ia_canvas',      methodPhase: 'construcao' },
+  { id: 'diary',      label: 'Diário BML', phase: 'Fase 2 · Construção',  field: 'learning_diary',     methodPhase: 'construcao' },
+  { id: 'final',      label: 'Entregas',  phase: 'Fase 3 · Apresentação', field: 'final_deliverables', methodPhase: 'apresentacao' },
+]
+
+// Fases da metodologia (âncora das ponderações do mentor)
+export const METHOD_PHASES = [
+  { id: 'ignicao',      label: 'Fase 1 · Ignição' },
+  { id: 'construcao',   label: 'Fase 2 · Construção' },
+  { id: 'apresentacao', label: 'Fase 3 · Apresentação' },
 ]
 
 export const HYPOTHESES_FIELDS = [

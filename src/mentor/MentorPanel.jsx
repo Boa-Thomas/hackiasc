@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { PHASES, HYPOTHESES_FIELDS, SLC_IA_FIELDS, FINAL_FIELDS } from '../participant/deliverableFields'
+import { PHASES, HYPOTHESES_FIELDS, SLC_IA_FIELDS, FINAL_FIELDS, METHOD_PHASES } from '../participant/deliverableFields'
 import DeliverableForm from '../participant/DeliverableForm'
 import LearningDiary from '../participant/LearningDiary'
+import MentorNotes from './MentorNotes'
 import { relativeTime } from '../lib/relativeTime'
 
 export default function MentorPanel({ auth }) {
@@ -86,6 +87,19 @@ export default function MentorPanel({ auth }) {
             {sub === 'slc' && <DeliverableForm readOnly eyebrow="Fase 2 · Construção" title="Canvas SLC-IA" fields={SLC_IA_FIELDS} value={team.slc_ia_canvas} />}
             {sub === 'diary' && <LearningDiary readOnly value={team.learning_diary} />}
             {sub === 'final' && <DeliverableForm readOnly eyebrow="Fase 3 · Apresentação" title="Entregas finais" fields={FINAL_FIELDS} value={team.final_deliverables} gridClass="grid grid-cols-1 sm:grid-cols-2 gap-4" />}
+
+            <div className="card-glass rounded-2xl p-6 space-y-4">
+              <div>
+                <p className="text-xs font-mono text-violet uppercase tracking-wider">Minhas ponderações</p>
+                <h3 className="text-lg font-bold text-white mt-1">Acompanhamento por fase</h3>
+                <p className="text-sm text-text-muted mt-1">
+                  Ponderações privadas ficam visíveis só para a organização. As públicas aparecem para a equipe.
+                </p>
+              </div>
+              {METHOD_PHASES.map(mp => (
+                <MentorNotes key={mp.id} phase={mp.id} phaseLabel={mp.label} notes={auth.notes} auth={auth} />
+              ))}
+            </div>
           </>
         )}
       </main>

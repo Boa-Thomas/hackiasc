@@ -680,7 +680,13 @@ BEGIN
       'learning_diary', t.learning_diary,
       'final_deliverables', t.final_deliverables,
       'updated_at', t.updated_at,
-      'updated_by_name', (SELECT full_name FROM registrations WHERE id = t.updated_by)
+      'updated_by_name', (SELECT full_name FROM registrations WHERE id = t.updated_by),
+      'public_notes', COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', n.id, 'phase', n.phase, 'body', n.body, 'updated_at', n.updated_at
+        ) ORDER BY n.created_at)
+        FROM mentor_notes n WHERE n.team_id = t.id AND n.is_public = true
+      ), '[]'::json)
     ) INTO v_team
     FROM teams t WHERE t.id = v_reg.team_id;
   ELSE
@@ -1364,8 +1370,80 @@ BEGIN
       'id', v_mentor.id, 'name', v_mentor.name,
       'email', v_mentor.email, 'team_id', v_mentor.team_id
     ),
-    'team', v_team
+    'team', v_team,
+    'notes', COALESCE((
+      SELECT json_agg(json_build_object(
+        'id', n.id, 'phase', n.phase, 'body', n.body,
+        'is_public', n.is_public, 'updated_at', n.updated_at
+      ) ORDER BY n.created_at)
+      FROM mentor_notes n WHERE n.team_id = v_mentor.team_id
+    ), '[]'::json)
   );
 END; $$;
 
 GRANT EXECUTE ON FUNCTION mentor_get_me(UUID) TO anon;
+
+-- ============================================================
+-- MENTOR NOTES — ponderações por fase (públicas e privadas)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS mentor_notes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  mentor_id UUID NOT NULL REFERENCES mentors(id) ON DELETE CASCADE,
+  phase TEXT NOT NULL CHECK (phase IN ('ignicao','construcao','apresentacao')),
+  body TEXT NOT NULL,
+  is_public BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_mentor_notes_team ON mentor_notes(team_id);
+
+ALTER TABLE mentor_notes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Admin can read mentor notes" ON mentor_notes;
+CREATE POLICY "Admin can read mentor notes" ON mentor_notes
+  FOR SELECT TO authenticated USING (is_admin_or_viewer());
+
+-- Salvar (inserir/editar) uma ponderação — só o mentor autor, na sua equipe
+CREATE OR REPLACE FUNCTION mentor_save_note(p_token UUID, p_phase TEXT, p_body TEXT, p_is_public BOOLEAN, p_note_id UUID DEFAULT NULL)
+RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_mentor_id UUID;
+  v_team_id UUID;
+  v_note_id UUID;
+BEGIN
+  v_mentor_id := mentor_session_owner(p_token);
+  IF p_phase NOT IN ('ignicao','construcao','apresentacao') THEN RAISE EXCEPTION 'invalid_phase'; END IF;
+  IF p_body IS NULL OR length(trim(p_body)) = 0 THEN RAISE EXCEPTION 'empty_body'; END IF;
+  IF length(p_body) > 5000 THEN RAISE EXCEPTION 'body_too_long'; END IF;
+
+  SELECT team_id INTO v_team_id FROM mentors WHERE id = v_mentor_id;
+  IF v_team_id IS NULL THEN RAISE EXCEPTION 'not_paired'; END IF;
+
+  IF p_note_id IS NULL THEN
+    INSERT INTO mentor_notes (team_id, mentor_id, phase, body, is_public)
+    VALUES (v_team_id, v_mentor_id, p_phase, p_body, COALESCE(p_is_public, false))
+    RETURNING id INTO v_note_id;
+  ELSE
+    UPDATE mentor_notes
+    SET phase = p_phase, body = p_body, is_public = COALESCE(p_is_public, false), updated_at = now()
+    WHERE id = p_note_id AND mentor_id = v_mentor_id
+    RETURNING id INTO v_note_id;
+    IF v_note_id IS NULL THEN RAISE EXCEPTION 'note_not_found'; END IF;
+  END IF;
+  RETURN v_note_id;
+END; $$;
+
+GRANT EXECUTE ON FUNCTION mentor_save_note(UUID, TEXT, TEXT, BOOLEAN, UUID) TO anon;
+
+CREATE OR REPLACE FUNCTION mentor_delete_note(p_token UUID, p_note_id UUID)
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE v_mentor_id UUID; v_deleted INTEGER;
+BEGIN
+  v_mentor_id := mentor_session_owner(p_token);
+  DELETE FROM mentor_notes WHERE id = p_note_id AND mentor_id = v_mentor_id;
+  GET DIAGNOSTICS v_deleted = ROW_COUNT;
+  IF v_deleted = 0 THEN RAISE EXCEPTION 'note_not_found'; END IF;
+  RETURN true;
+END; $$;
+
+GRANT EXECUTE ON FUNCTION mentor_delete_note(UUID, UUID) TO anon;

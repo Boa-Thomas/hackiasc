@@ -79,6 +79,28 @@ export default function DeliverablesSection({ auth, goToTeam }) {
           gridClass="grid grid-cols-1 sm:grid-cols-2 gap-4" saveLabel="Salvar Entregas"
         />
       )}
+
+      <PublicMentorNotes
+        notes={team.public_notes}
+        phase={PHASES.find(p => p.id === sub)?.methodPhase}
+      />
+    </div>
+  )
+}
+
+function PublicMentorNotes({ notes, phase }) {
+  const list = (notes || []).filter(n => n.phase === phase)
+  if (!list.length) return null
+  return (
+    <div className="card-glass rounded-2xl p-6">
+      <p className="text-xs font-mono text-violet uppercase tracking-wider mb-3">Comentários do mentor</p>
+      <div className="space-y-3">
+        {list.map(n => (
+          <div key={n.id} className="rounded-lg border border-violet/20 bg-violet/5 p-3">
+            <p className="text-sm text-white whitespace-pre-wrap">{n.body}</p>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
