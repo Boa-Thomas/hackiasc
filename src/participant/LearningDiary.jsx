@@ -54,8 +54,8 @@ export default function LearningDiary({ value, onSave, readOnly = false, updated
 
   const filledCount = cycles.filter(c => Object.values(c).some(v => v && v.trim())).length
 
-  return (
-    <form onSubmit={onSubmit} className="card-glass rounded-2xl p-6 space-y-5">
+  const content = (
+    <>
       <div>
         <p className="text-xs font-mono text-electric uppercase tracking-wider">Fase 2 · Construção</p>
         <h3 className="text-lg font-bold text-white mt-1">Diário de Aprendizado</h3>
@@ -119,6 +119,13 @@ export default function LearningDiary({ value, onSave, readOnly = false, updated
           )}
         </div>
       )}
-    </form>
+    </>
+  )
+
+  if (readOnly) {
+    return <div className="card-glass rounded-2xl p-6 space-y-5">{content}</div>
+  }
+  return (
+    <form onSubmit={onSubmit} className="card-glass rounded-2xl p-6 space-y-5">{content}</form>
   )
 }
