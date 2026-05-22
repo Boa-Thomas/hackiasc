@@ -252,8 +252,15 @@ function exportTeamReport(data) {
 
 // ─── Export Dropdown ──────────────────────────────────────────────────────────
 
-function ExportDropdown({ filtered }) {
+function ExportDropdown({ filtered, readOnly }) {
   const [open, setOpen] = useState(false)
+
+  const items = [
+    ...(!readOnly ? [{ label: 'CSV', action: () => exportCSV(filtered) }] : []),
+    { label: 'Lista de presença', action: () => exportAttendanceList(filtered) },
+    { label: 'Crachás', action: () => exportBadges(filtered) },
+    { label: 'Relatório de times', action: () => exportTeamReport(filtered) },
+  ]
 
   return (
     <div className="relative">
@@ -267,12 +274,7 @@ function ExportDropdown({ filtered }) {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-full mt-1 z-50 card-glass rounded-xl border border-white/10 py-1 min-w-[200px] shadow-xl">
-            {[
-              { label: 'CSV', action: () => exportCSV(filtered) },
-              { label: 'Lista de presença', action: () => exportAttendanceList(filtered) },
-              { label: 'Crachás', action: () => exportBadges(filtered) },
-              { label: 'Relatório de times', action: () => exportTeamReport(filtered) },
-            ].map(item => (
+            {items.map(item => (
               <button
                 key={item.label}
                 onClick={() => { item.action(); setOpen(false) }}
@@ -461,7 +463,8 @@ function DetailView({ registration, registrations, onBack, onRefetch, readOnly, 
       .update({ [field]: value })
       .eq('id', r.id)
     if (error) {
-      alert(`Erro ao salvar: ${error.message}`)
+      console.error(error)
+      alert('Ocorreu um erro. Tente novamente.')
       return
     }
     audit({
@@ -485,7 +488,7 @@ function DetailView({ registration, registrations, onBack, onRefetch, readOnly, 
       .from('registrations')
       .update({ payment_status: 'confirmed', payment_confirmed_at: now })
       .eq('id', r.id)
-    if (error) { alert(`Erro ao salvar: ${error.message}`); return }
+    if (error) { console.error(error); alert('Ocorreu um erro. Tente novamente.'); return }
     audit({
       action: 'payment.confirm',
       actorType: 'admin',
@@ -510,7 +513,8 @@ function DetailView({ registration, registrations, onBack, onRefetch, readOnly, 
       if (error) throw error
       setRefundInfo(data)
     } catch (err) {
-      alert(`Erro ao calcular reembolso: ${err.message}`)
+      console.error(err)
+      alert('Ocorreu um erro. Tente novamente.')
     } finally {
       setRefundLoading(false)
     }
@@ -555,7 +559,8 @@ function DetailView({ registration, registrations, onBack, onRefetch, readOnly, 
       setRefundInfo(null)
       onRefetch()
     } catch (err) {
-      alert(`Erro ao processar reembolso: ${err.message}`)
+      console.error(err)
+      alert('Ocorreu um erro. Tente novamente.')
     } finally {
       setRefundLoading(false)
     }
@@ -911,7 +916,7 @@ function ListView({ registrations, onSelect, onRefetch, loading, readOnly }) {
       .from('registrations')
       .update({ payment_status: 'confirmed', payment_confirmed_at: now })
       .eq('id', r.id)
-    if (error) { alert(`Erro: ${error.message}`); return }
+    if (error) { console.error(error); alert('Ocorreu um erro. Tente novamente.'); return }
     audit({
       action: 'payment.confirm',
       actorType: 'admin',
@@ -932,7 +937,7 @@ function ListView({ registrations, onSelect, onRefetch, loading, readOnly }) {
       const { data: preview, error: previewErr } = await supabase.functions.invoke('refund-payment', {
         body: { registration_id: r.id, dry_run: true },
       })
-      if (previewErr) { alert(`Erro: ${previewErr.message}`); return }
+      if (previewErr) { console.error(previewErr); alert('Ocorreu um erro. Tente novamente.'); return }
 
       const amountStr = `R$ ${(preview.refund_amount / 100).toFixed(2).replace('.', ',')}`
       const msg = `Cancelar inscrição de ${r.full_name}?\n\nReembolso: ${amountStr} (${preview.refund_percentage}%)\n${preview.reason}`
@@ -941,7 +946,7 @@ function ListView({ registrations, onSelect, onRefetch, loading, readOnly }) {
       const { data, error } = await supabase.functions.invoke('refund-payment', {
         body: { registration_id: r.id, dry_run: false },
       })
-      if (error) { alert(`Erro no reembolso: ${error.message}`); return }
+      if (error) { console.error(error); alert('Ocorreu um erro. Tente novamente.'); return }
 
       audit({
         action: 'payment.refund',
@@ -964,7 +969,7 @@ function ListView({ registrations, onSelect, onRefetch, loading, readOnly }) {
         .from('registrations')
         .update({ payment_status: 'cancelled' })
         .eq('id', r.id)
-      if (error) { alert(`Erro: ${error.message}`); return }
+      if (error) { console.error(error); alert('Ocorreu um erro. Tente novamente.'); return }
       audit({
         action: 'registration.cancel',
         actorType: 'admin',
@@ -1026,7 +1031,7 @@ function ListView({ registrations, onSelect, onRefetch, loading, readOnly }) {
           <option value="team" className="text-dark bg-white">Time</option>
         </select>
 
-        <ExportDropdown filtered={filtered} />
+        <ExportDropdown filtered={filtered} readOnly={readOnly} />
       </div>
 
       {/* Stats row */}

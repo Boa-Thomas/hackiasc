@@ -191,7 +191,7 @@ function RevenueCard({ label, amount, color }) {
         {label}
       </span>
       <span className="text-2xl font-bold font-mono" style={{ color }}>
-        {formatBRL(amount)}
+        {amount == null ? '—' : formatBRL(amount)}
       </span>
     </div>
   )
@@ -1099,7 +1099,7 @@ export default function AdminDashboard({ onViewRegistration }) {
         />
         <RevenueCard
           label="Receita líquida"
-          amount={feeData ? feeData.total_net : stats.revenueConfirmed}
+          amount={feeData ? feeData.total_net : null}
           color="#3a86ff"
         />
         <RevenueCard
@@ -1121,7 +1121,7 @@ export default function AdminDashboard({ onViewRegistration }) {
         />
         <MetricCard
           label="Receita projetada"
-          value={formatBRL((feeData ? feeData.total_net : stats.revenueConfirmed) + stats.revenuePending)}
+          value={feeData ? formatBRL(feeData.total_net + stats.revenuePending) : '—'}
           sub="Líquida + pendentes"
           color="#8338ec"
         />

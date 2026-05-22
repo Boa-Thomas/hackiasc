@@ -81,7 +81,21 @@ export function useAdminAuth() {
 
   useEffect(() => {
     checkSession()
-    return () => stopActivityTracking()
+
+    let authSubscription = null
+    if (supabase) {
+      const { data } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_OUT' || (!session && event === 'TOKEN_REFRESHED')) {
+          performLogout()
+        }
+      })
+      authSubscription = data?.subscription
+    }
+
+    return () => {
+      stopActivityTracking()
+      authSubscription?.unsubscribe()
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- Rate limiting ---

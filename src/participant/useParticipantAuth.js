@@ -3,9 +3,21 @@ import { supabase } from '../lib/supabase'
 
 const TOKEN_KEY = 'hackiasc_participant_token'
 
+// A Postgres/Supabase error has a structured `code` field (e.g. 'PGRST301', 'P0001').
+// A network/timeout failure surfaces as a plain object without `code` or with no response.
+function isAuthFailure(rpcError) {
+  if (!rpcError) return false
+  // If the error has a structured Postgres/PostgREST code it came from the server
+  if (rpcError.code) return true
+  // Supabase client may also set a numeric status for HTTP errors
+  if (rpcError.status && rpcError.status < 500) return true
+  // Otherwise treat as transient (network/timeout/proxy)
+  return false
+}
+
 export function useParticipantAuth() {
   const [token, setToken] = useState(() => {
-    try { return sessionStorage.getItem(TOKEN_KEY) } catch { return null }
+    try { return localStorage.getItem(TOKEN_KEY) } catch { return null }
   })
   const [me, setMe] = useState(null)
   const [loading, setLoading] = useState(!!token)
@@ -14,8 +26,8 @@ export function useParticipantAuth() {
 
   const persistToken = (t) => {
     try {
-      if (t) sessionStorage.setItem(TOKEN_KEY, t)
-      else sessionStorage.removeItem(TOKEN_KEY)
+      if (t) localStorage.setItem(TOKEN_KEY, t)
+      else localStorage.removeItem(TOKEN_KEY)
     } catch { /* ignore quota / private mode errors */ }
   }
 
@@ -24,9 +36,13 @@ export function useParticipantAuth() {
     if (!useToken || !supabase) return null
     const { data, error: rpcError } = await supabase.rpc('participant_get_me', { p_token: useToken })
     if (rpcError || !data) {
-      persistToken(null)
-      setToken(null)
-      setMe(null)
+      // Only clear the session for genuine server-side auth rejection.
+      // Transient network errors (no structured code) keep the token intact.
+      if (isAuthFailure(rpcError) || !data) {
+        persistToken(null)
+        setToken(null)
+        setMe(null)
+      }
       return null
     }
     setMe(data)
