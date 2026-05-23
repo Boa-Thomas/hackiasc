@@ -892,7 +892,7 @@ export default function RegistrationForm() {
               </p>
             ) : registrationEnded ? (
               <p className="mt-6 text-lg text-white font-semibold">
-                Inscrições encerradas em 13/05 às 15h. Dúvidas:{' '}
+                Inscrições encerradas em 27/05 às 23:59. Dúvidas:{' '}
                 <a href="mailto:contato@hackiasc.com" className="text-electric underline">
                   contato@hackiasc.com
                 </a>
