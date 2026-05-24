@@ -12,6 +12,27 @@ const TIE_ORDER = ['tecnica_ia', 'validacao_problema', 'escala_negocio']
 const avg = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null)
 const round1 = (n) => (n == null ? null : Math.round(n * 10) / 10)
 
+function escapeCSV(v) {
+  if (v == null) return ''
+  const s = String(v)
+  return s.includes(',') || s.includes('"') || s.includes('\n')
+    ? `"${s.replace(/"/g, '""')}"`
+    : s
+}
+
+function downloadCSV(rows, filename) {
+  const BOM = '﻿'
+  const blob = new Blob([BOM + rows.map(r => r.map(escapeCSV).join(',')).join('\r\n')], {
+    type: 'text/csv;charset=utf-8;',
+  })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 function critScore(ev, key) {
   const s = Array.isArray(ev.scores) ? ev.scores.find(x => x.criterion_key === key) : null
   return s && Number.isFinite(Number(s.score)) ? Number(s.score) : null
@@ -86,6 +107,29 @@ export default function AdminRanking() {
   const scoredCount = rows.filter(r => r.officialScore != null).length
   const medalFor = (i) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}º`)
 
+  function exportRankingCSV() {
+    const today = new Date().toISOString().slice(0, 10)
+    const critHeaders = EDITAL_RUBRIC.criteria.map(c => c.label)
+    const header = [
+      'Posicao', 'Equipe',
+      'Nota Oficial (media jurados)',
+      'Nº Jurados',
+      ...critHeaders,
+      'Votos Eliminado',
+      'Nota IA Evaluator',
+    ]
+    const dataRows = ranked.map((r, i) => [
+      r.officialScore != null ? i + 1 : '',
+      r.team.name,
+      r.officialScore != null ? r.officialScore : '',
+      r.jurorsScored,
+      ...EDITAL_RUBRIC.criteria.map(c => r.critAverages[c.key] != null ? r.critAverages[c.key] : ''),
+      r.eliminatedVotes,
+      r.aiScore != null ? r.aiScore : '',
+    ])
+    downloadCSV([header, ...dataRows], `ranking-hackia-${today}.csv`)
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -96,7 +140,10 @@ export default function AdminRanking() {
             desempate: Técnica → Validação → Escala
           </p>
         </div>
-        <button onClick={fetchData} className="px-4 py-2 rounded-lg text-sm font-semibold bg-electric/20 text-electric border border-electric/40 hover:bg-electric/30">Atualizar</button>
+        <div className="flex gap-2">
+          <button onClick={fetchData} className="px-4 py-2 rounded-lg text-sm font-semibold bg-electric/20 text-electric border border-electric/40 hover:bg-electric/30">Atualizar</button>
+          <button onClick={exportRankingCSV} disabled={!ranked.length} className="px-4 py-2 rounded-lg text-sm font-semibold bg-cyan/20 text-cyan border border-cyan/40 hover:bg-cyan/30 disabled:opacity-40 disabled:cursor-not-allowed">Exportar notas (CSV)</button>
+        </div>
       </div>
 
       <div className="bg-gold/5 border border-gold/20 rounded-xl px-4 py-3 text-sm text-gold/90">

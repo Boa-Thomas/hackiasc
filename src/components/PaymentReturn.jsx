@@ -1,5 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
+import { QRCodeSVG } from 'qrcode.react'
 import { EVENT_CONFIG } from '../lib/config'
+
+// UUID v4 regex — validates that the scanned/parsed value is a proper registration id
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const STATUS_CONFIG = {
   success: {
@@ -61,6 +65,14 @@ const STATUS_CONFIG = {
 export default function PaymentReturn({ status, onBack }) {
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.pending
 
+  // Mercado Pago appends query params to the redirect URL including external_reference
+  // (which holds the registrations.id UUID). Parse it from window.location.search.
+  const registrationId = useMemo(() => {
+    const params = new URLSearchParams(window.location.search)
+    const ref = params.get('external_reference') ?? ''
+    return UUID_RE.test(ref) ? ref : null
+  }, [])
+
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [])
@@ -113,6 +125,25 @@ export default function PaymentReturn({ status, onBack }) {
               ))}
             </ol>
           </div>
+
+          {/* QR Code for check-in — only shown on confirmed payment with a valid registration id */}
+          {status === 'success' && registrationId && (
+            <div className="card-glass rounded-2xl p-6 mb-2 flex flex-col items-center gap-4">
+              <p className="text-sm font-semibold text-white">Seu QR de credenciamento</p>
+              <div className="bg-white p-4 rounded-xl">
+                <QRCodeSVG
+                  value={registrationId}
+                  size={180}
+                  level="M"
+                  marginSize={1}
+                />
+              </div>
+              <p className="text-xs text-white/50 text-center max-w-xs">
+                Apresente este QR no credenciamento na sexta-feira.
+                Salve ou tire um print desta página.
+              </p>
+            </div>
+          )}
 
           {/* WhatsApp group */}
           <a
