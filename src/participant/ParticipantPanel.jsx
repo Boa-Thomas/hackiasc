@@ -151,8 +151,22 @@ function EventInfoSection({ profile }) {
               <p className="text-lg font-bold text-white">{profile.full_name}</p>
               {profile.team_name && <p className="text-sm text-text-muted mt-1">Equipe: {profile.team_name}</p>}
               <p className="text-xs text-text-muted mt-3 leading-relaxed">
-                Mostre este QR no credenciamento, na entrada do evento. Ele identifica sua inscrição e agiliza o check-in.
+                No credenciamento, na entrada do evento, apresente os dois itens abaixo. O QR identifica sua inscrição e agiliza o check-in.
               </p>
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center gap-2 text-sm text-white">
+                  <svg className="w-4 h-4 flex-shrink-0 text-cyan" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm12 0h2m-2 4h2m2-4v6m-6-6h2v2h-2v-2z" />
+                  </svg>
+                  Este QR code (na tela ou impresso)
+                </div>
+                <div className="flex items-center gap-2 text-sm text-white">
+                  <svg className="w-4 h-4 flex-shrink-0 text-gold" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 9h3m-3 3h3m-3 3h2M6 9.5a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 18a3 3 0 0 1 6 0M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" />
+                  </svg>
+                  Documento oficial com foto (RG ou CNH)
+                </div>
+              </div>
             </div>
           </div>
         </div>
