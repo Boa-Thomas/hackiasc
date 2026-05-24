@@ -1,5 +1,9 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { Html5Qrcode } from 'html5-qrcode'
 import { supabase } from '../lib/supabase'
+
+// UUID v4 regex — validates the scanned string before using it as a query key
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -189,6 +193,141 @@ function IdentityConfirmModal({ registration, onConfirm, onCancel, busy }) {
   )
 }
 
+// ─── QR Scanner Modal ────────────────────────────────────────────────────────
+
+/**
+ * Opens the device camera, scans for a QR code, and returns the scanned value
+ * via onScan(registrationId). Calls onClose when dismissed or after a successful
+ * scan. Requires HTTPS or localhost (getUserMedia constraint).
+ *
+ * html5-qrcode fires the success callback repeatedly while the QR is in frame,
+ * so we use a `scannedRef` flag to guarantee single-shot behaviour and avoid
+ * calling onScan more than once per open.
+ */
+function QrScannerModal({ onScan, onClose }) {
+  const containerId = 'qr-reader-container'
+  const scannerRef = useRef(null)
+  const scannedRef = useRef(false)
+  const [cameraError, setCameraError] = useState(null)
+  const [hint, setHint] = useState('Aponte a câmera para o QR do participante')
+
+  const stopScanner = useCallback(async () => {
+    if (scannerRef.current) {
+      try {
+        const state = scannerRef.current.getState()
+        // State 2 = SCANNING, 3 = PAUSED — only stop when active
+        if (state === 2 || state === 3) {
+          await scannerRef.current.stop()
+        }
+        await scannerRef.current.clear()
+      } catch {
+        // ignore — may already be stopped
+      }
+      scannerRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    const scanner = new Html5Qrcode(containerId)
+    scannerRef.current = scanner
+
+    const config = {
+      fps: 10,
+      qrbox: { width: 220, height: 220 },
+      aspectRatio: 1.0,
+      disableFlip: false,
+    }
+
+    const onSuccess = (decodedText) => {
+      if (scannedRef.current) return   // guard against repeated fires
+      const text = decodedText.trim()
+      if (!UUID_RE.test(text)) {
+        setHint('QR inválido — tente outro código')
+        return
+      }
+      scannedRef.current = true
+      stopScanner()
+      onScan(text)
+    }
+
+    const onError = () => {
+      // Called on every frame where no QR is found — not a real error, ignore
+    }
+
+    scanner.start(
+      { facingMode: 'environment' },
+      config,
+      onSuccess,
+      onError,
+    ).catch((err) => {
+      const msg = err?.message ?? String(err)
+      if (/permission|notallowed/i.test(msg)) {
+        setCameraError('Permissão de câmera negada. Autorize o acesso nas configurações do navegador.')
+      } else if (/notfound|devicenotfound/i.test(msg)) {
+        setCameraError('Nenhuma câmera encontrada neste dispositivo.')
+      } else {
+        setCameraError(`Erro ao iniciar câmera: ${msg}`)
+      }
+    })
+
+    return () => {
+      stopScanner()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="card-glass rounded-2xl p-6 w-full max-w-sm flex flex-col gap-4"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-mono uppercase tracking-wider text-white/40">Escanear QR</span>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Camera view or error */}
+        {cameraError ? (
+          <div className="rounded-xl bg-hot/10 border border-hot/30 p-4 text-sm text-hot/80 text-center">
+            {cameraError}
+            {/permiss|autorize/i.test(cameraError) && (
+              <p className="mt-2 text-xs text-white/40">
+                No Chrome: clique no ícone de câmera na barra de endereços e permita o acesso.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div
+            id={containerId}
+            className="w-full rounded-xl overflow-hidden bg-black min-h-[260px]"
+          />
+        )}
+
+        {/* Hint */}
+        {!cameraError && (
+          <p className="text-xs text-white/40 text-center font-mono">{hint}</p>
+        )}
+
+        <p className="text-xs text-white/25 text-center">
+          Requer HTTPS ou localhost (câmera bloqueada em HTTP puro)
+        </p>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function AdminCheckin() {
@@ -199,6 +338,7 @@ export default function AdminCheckin() {
   const [filter, setFilter] = useState('all') // 'all' | 'pending' | 'checked_in'
   const [busyId, setBusyId] = useState(null)
   const [confirming, setConfirming] = useState(null) // registration pending identity confirmation
+  const [scannerOpen, setScannerOpen] = useState(false)
 
   async function fetchData() {
     if (!supabase) {
@@ -304,6 +444,23 @@ export default function AdminCheckin() {
     setBusyId(null)
   }
 
+  // Called by QrScannerModal after a successful scan.
+  // Looks up the registration in the already-loaded list and opens the SAME
+  // identity-confirmation modal used by the manual search flow.
+  function handleQrScan(id) {
+    setScannerOpen(false)
+    const reg = registrations.find(r => r.id === id)
+    if (!reg) {
+      alert('Inscrição não encontrada. Verifique se o pagamento foi confirmado.')
+      return
+    }
+    if (reg.checked_in_at) {
+      alert(`${reg.full_name} já fez check-in às ${formatTime(reg.checked_in_at)}.`)
+      return
+    }
+    setConfirming(reg) // opens IdentityConfirmModal — same path as the manual flow
+  }
+
   // ─── Render ─────────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -343,6 +500,19 @@ export default function AdminCheckin() {
           placeholder="Buscar por nome, email ou time..."
           className="flex-1 min-w-[200px] bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 pl-10 text-white text-sm placeholder-white/30 focus:outline-none focus:border-cyan/50 focus:ring-1 focus:ring-cyan/30 transition-colors"
         />
+
+        {/* QR scanner shortcut */}
+        <button
+          onClick={() => setScannerOpen(true)}
+          title="Escanear QR do participante"
+          className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium bg-violet/20 text-violet border border-violet/30 hover:bg-violet/30 transition-colors whitespace-nowrap"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75ZM6.75 16.5h.75v.75h-.75v-.75ZM16.5 6.75h.75v.75h-.75v-.75ZM13.5 13.5h.75v.75h-.75v-.75ZM13.5 18.75h.75v.75h-.75v-.75ZM18.75 13.5h.75v.75h-.75v-.75ZM18.75 18.75h.75v.75h-.75v-.75ZM16.5 16.5h.75v.75h-.75v-.75Z" />
+          </svg>
+          Escanear QR
+        </button>
 
         <div className="flex gap-1">
           {[
@@ -397,6 +567,13 @@ export default function AdminCheckin() {
         onCancel={() => setConfirming(null)}
         busy={busyId === confirming?.id}
       />
+
+      {scannerOpen && (
+        <QrScannerModal
+          onScan={handleQrScan}
+          onClose={() => setScannerOpen(false)}
+        />
+      )}
     </div>
   )
 }
