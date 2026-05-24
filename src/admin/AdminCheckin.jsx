@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
-import { audit } from '../lib/auditLog'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -16,6 +15,25 @@ const OCCUPATION_COLORS = {
 function formatTime(iso) {
   if (!iso) return ''
   return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+}
+
+// Formats a DATE column ("YYYY-MM-DD") to "DD/MM/YYYY" without timezone shift.
+function formatBirthDate(value) {
+  if (!value) return '—'
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value)
+  if (match) {
+    const [, y, m, d] = match
+    return `${d}/${m}/${y}`
+  }
+  return value
+}
+
+// Formats a CPF to "000.000.000-00". Returns the raw value if it isn't 11 digits.
+function formatCPF(value) {
+  if (!value) return '—'
+  const digits = String(value).replace(/\D/g, '')
+  if (digits.length !== 11) return value
+  return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -41,7 +59,7 @@ function CheckinProgressBar({ checkedIn, total }) {
   )
 }
 
-function CheckinRow({ registration, onCheckin, onUndo, busy }) {
+function CheckinRow({ registration, onRequestCheckin, onUndo, busy }) {
   const isCheckedIn = !!registration.checked_in_at
   const occ = OCCUPATION_COLORS[registration.occupation_type] ?? { bg: 'bg-white/10', text: 'text-white/50', border: 'border-white/10', label: registration.occupation_type }
 
@@ -90,13 +108,83 @@ function CheckinRow({ registration, onCheckin, onUndo, busy }) {
         </button>
       ) : (
         <button
-          onClick={() => onCheckin(registration.id)}
+          onClick={() => onRequestCheckin(registration)}
           disabled={busy}
           className="px-4 py-1.5 rounded-lg text-sm font-medium bg-cyan/20 text-cyan border border-cyan/30 hover:bg-cyan/30 disabled:opacity-30 transition-colors whitespace-nowrap"
         >
           Check-in
         </button>
       )}
+    </div>
+  )
+}
+
+function IdentityConfirmModal({ registration, onConfirm, onCancel, busy }) {
+  const [verified, setVerified] = useState(false)
+
+  if (!registration) return null
+
+  const occ = OCCUPATION_COLORS[registration.occupation_type] ?? { bg: 'bg-white/10', text: 'text-white/50', border: 'border-white/10', label: registration.occupation_type }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      onClick={onCancel}
+    >
+      <div
+        className="card-glass rounded-2xl p-6 w-full max-w-md flex flex-col gap-5"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-mono uppercase tracking-wider text-white/40">Conferir identidade</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-lg font-display font-bold text-white">{registration.full_name}</h3>
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono border ${occ.bg} ${occ.text} ${occ.border}`}>
+              {occ.label}
+            </span>
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-white/[0.03] border border-white/10 divide-y divide-white/5">
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-xs font-mono uppercase tracking-wider text-white/40">CPF</span>
+            <span className="text-base font-mono text-white tabular-nums">{formatCPF(registration.cpf)}</span>
+          </div>
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-xs font-mono uppercase tracking-wider text-white/40">Nascimento</span>
+            <span className="text-base font-mono text-white tabular-nums">{formatBirthDate(registration.birth_date)}</span>
+          </div>
+        </div>
+
+        <label className="flex items-start gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={verified}
+            onChange={e => setVerified(e.target.checked)}
+            className="mt-0.5 w-5 h-5 rounded border-white/20 bg-white/5 text-cyan focus:ring-cyan/40 cursor-pointer accent-cyan"
+          />
+          <span className="text-sm text-white/70 leading-snug">
+            Conferi o CPF e a data de nascimento com um documento de identificação do participante.
+          </span>
+        </label>
+
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onCancel}
+            disabled={busy}
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 hover:text-white/80 disabled:opacity-30 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={() => onConfirm(registration.id)}
+            disabled={!verified || busy}
+            className="px-5 py-2 rounded-lg text-sm font-medium bg-cyan/20 text-cyan border border-cyan/30 hover:bg-cyan/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            Confirmar check-in
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -110,6 +198,7 @@ export default function AdminCheckin() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all') // 'all' | 'pending' | 'checked_in'
   const [busyId, setBusyId] = useState(null)
+  const [confirming, setConfirming] = useState(null) // registration pending identity confirmation
 
   async function fetchData() {
     if (!supabase) {
@@ -119,7 +208,7 @@ export default function AdminCheckin() {
     }
     const { data, error: err } = await supabase
       .from('registrations')
-      .select('id, full_name, email, occupation_type, team_name, payment_status, checked_in_at')
+      .select('id, full_name, email, cpf, birth_date, occupation_type, team_name, payment_status, checked_in_at')
       .eq('payment_status', 'confirmed')
       .order('full_name', { ascending: true })
 
@@ -184,29 +273,20 @@ export default function AdminCheckin() {
 
   // ─── Actions ────────────────────────────────────────────────────────────────
 
+  // Presence is toggled through the set_checkin() RPC. It runs SECURITY DEFINER,
+  // so it both restricts the write to checked_in_at and records the audit entry
+  // with the operator's email taken from the JWT (works for admin and checkin roles).
   async function handleCheckin(id) {
     if (!supabase) return
     setBusyId(id)
-    const now = new Date().toISOString()
-    const { error: err } = await supabase
-      .from('registrations')
-      .update({ checked_in_at: now })
-      .eq('id', id)
+    const { data, error: err } = await supabase.rpc('set_checkin', { p_id: id, p_present: true })
     if (err) alert(`Erro: ${err.message}`)
     else {
-      const reg = registrations.find(r => r.id === id)
-      audit({
-        action: 'checkin.in',
-        actorType: 'admin',
-        targetTable: 'registrations',
-        targetId: id,
-        targetEmail: reg?.email,
-        newData: { checked_in_at: now },
-        metadata: { full_name: reg?.full_name },
-      })
+      const ts = data ?? new Date().toISOString()
       setRegistrations(prev => prev.map(r =>
-        r.id === id ? { ...r, checked_in_at: now } : r
+        r.id === id ? { ...r, checked_in_at: ts } : r
       ))
+      setConfirming(null)
     }
     setBusyId(null)
   }
@@ -214,22 +294,9 @@ export default function AdminCheckin() {
   async function handleUndo(id) {
     if (!supabase) return
     setBusyId(id)
-    const { error: err } = await supabase
-      .from('registrations')
-      .update({ checked_in_at: null })
-      .eq('id', id)
+    const { error: err } = await supabase.rpc('set_checkin', { p_id: id, p_present: false })
     if (err) alert(`Erro: ${err.message}`)
     else {
-      const reg = registrations.find(r => r.id === id)
-      audit({
-        action: 'checkin.undo',
-        actorType: 'admin',
-        targetTable: 'registrations',
-        targetId: id,
-        targetEmail: reg?.email,
-        oldData: { checked_in_at: reg?.checked_in_at },
-        metadata: { full_name: reg?.full_name },
-      })
       setRegistrations(prev => prev.map(r =>
         r.id === id ? { ...r, checked_in_at: null } : r
       ))
@@ -315,13 +382,21 @@ export default function AdminCheckin() {
             <CheckinRow
               key={reg.id}
               registration={reg}
-              onCheckin={handleCheckin}
+              onRequestCheckin={setConfirming}
               onUndo={handleUndo}
               busy={busyId === reg.id}
             />
           ))}
         </div>
       )}
+
+      <IdentityConfirmModal
+        key={confirming?.id ?? 'closed'}
+        registration={confirming}
+        onConfirm={handleCheckin}
+        onCancel={() => setConfirming(null)}
+        busy={busyId === confirming?.id}
+      />
     </div>
   )
 }
