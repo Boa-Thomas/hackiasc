@@ -4,6 +4,7 @@ import DeliverableForm from '../participant/DeliverableForm'
 import LearningDiary from '../participant/LearningDiary'
 import { PHASES, HYPOTHESES_FIELDS, SLC_IA_FIELDS, FINAL_FIELDS } from '../participant/deliverableFields'
 import { relativeTime } from '../lib/relativeTime'
+import { buildEvaluationPrompt, parseEvaluation, EDITAL_RUBRIC } from '../lib/iaEvaluator'
 
 const STATUS = [
   { id: 'draft', label: 'Rascunho', cls: 'bg-white/5 text-white/50 border-white/10' },
@@ -23,15 +24,24 @@ export default function AdminDeliverables({ readOnly = false }) {
   const [error, setError] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
   const [sub, setSub] = useState('hypotheses')
+  // IA Evaluator (human-in-the-loop) — estado por equipe selecionada
+  const [pitchNotes, setPitchNotes] = useState('')
+  const [jsonInput, setJsonInput] = useState('')
+  const [packageText, setPackageText] = useState('')
+  const [evalError, setEvalError] = useState(null)
+  const [evalSaving, setEvalSaving] = useState(false)
+  const [copied, setCopied] = useState(false)
+  // Limpa o fluxo de avaliação ao trocar de equipe
+  useEffect(() => { setPitchNotes(''); setJsonInput(''); setPackageText(''); setEvalError(null); setCopied(false) }, [selectedId]) // eslint-disable-line react-hooks/set-state-in-effect
 
   async function fetchData() {
     if (!supabase) { setError('Supabase não configurado.'); setLoading(false); return }
     setError(null)
     const [t, r, n, e] = await Promise.all([
       supabase.from('teams').select('id, name, status, hypotheses_canvas, slc_ia_canvas, learning_diary, final_deliverables, updated_at, updated_by').order('name', { ascending: true }),
-      supabase.from('registrations').select('team_id, full_name, is_team_leader, payment_status'),
+      supabase.from('registrations').select('team_id, full_name, is_team_leader, payment_status, occupation_type, economic_axes, project_name'),
       supabase.from('mentor_notes').select('id, team_id, phase, body, is_public, created_at, mentors(name, email)').order('created_at', { ascending: false }),
-      supabase.from('team_evaluations').select('id, team_id, evaluator_type, rubric_version, total_score, eliminated, summary, status, created_at').order('created_at', { ascending: false }),
+      supabase.from('team_evaluations').select('id, team_id, evaluator_type, rubric_version, total_score, eliminated, summary, scores, model, status, created_at').order('created_at', { ascending: false }),
     ])
     const firstErr = [t, r, n, e].find(x => x.error)
     if (firstErr) { setError(firstErr.error.message); setLoading(false); return }
@@ -50,6 +60,49 @@ export default function AdminDeliverables({ readOnly = false }) {
     const { error: err } = await supabase.from('teams').update({ status }).eq('id', teamId)
     if (err) { alert(`Erro: ${err.message}`); return }
     setTeams(ts => ts.map(t => t.id === teamId ? { ...t, status } : t))
+  }
+
+  async function copyPackage(team) {
+    setEvalError(null)
+    const teamMembers = members.filter(m => m.team_id === team.id && m.payment_status === 'confirmed')
+    const teamNotes = notes.filter(n => n.team_id === team.id && n.is_public)
+    const pkg = buildEvaluationPrompt({ team, members: teamMembers, mentorNotes: teamNotes, pitchNotes })
+    try {
+      await navigator.clipboard.writeText(pkg)
+      setCopied(true)
+      setPackageText('')
+      setTimeout(() => setCopied(false), 2500)
+    } catch {
+      // Sem permissão de clipboard — expõe o texto para cópia manual
+      setPackageText(pkg)
+    }
+  }
+
+  async function saveEvaluation(team) {
+    setEvalError(null)
+    let parsed
+    try {
+      parsed = parseEvaluation(jsonInput)
+    } catch (e) {
+      setEvalError(e.message)
+      return
+    }
+    setEvalSaving(true)
+    const { error: err } = await supabase.from('team_evaluations').insert({
+      team_id: team.id,
+      evaluator_type: 'ai',
+      rubric_version: EDITAL_RUBRIC.version,
+      scores: parsed.scores,
+      total_score: parsed.total_score,
+      eliminated: parsed.eliminated,
+      summary: parsed.summary,
+      model: parsed.model,
+      status: 'done',
+    })
+    setEvalSaving(false)
+    if (err) { setEvalError(`Erro ao gravar: ${err.message}`); return }
+    setJsonInput(''); setPitchNotes(''); setPackageText('')
+    await fetchData()
   }
 
   function exportCSV() {
@@ -139,21 +192,68 @@ export default function AdminDeliverables({ readOnly = false }) {
           ))}
         </div>
 
-        <div className="card-glass rounded-2xl p-6 space-y-3">
-          <p className="text-xs font-mono text-gold uppercase tracking-wider">Avaliação por IA</p>
-          {!tevals.length ? (
-            <p className="text-sm text-text-muted">Estrutura pronta — agente de avaliação ainda não conectado. As avaliações aparecerão aqui (rubrica do edital: Técnica 30% · Validação 25% · Escala 25% · Pitch 20%).</p>
-          ) : (
-            tevals.map(ev => (
-              <div key={ev.id} className="border border-dark-border rounded-xl p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-white">{ev.evaluator_type === 'ai' ? 'IA' : 'Humano'} · {ev.rubric_version}</span>
-                  <span className="text-sm font-mono text-gold">{ev.total_score != null ? `${ev.total_score} pts` : ev.status}</span>
-                </div>
-                {ev.eliminated && <span className="text-xs text-hot">Eliminado (critério técnico)</span>}
-                {ev.summary && <p className="text-sm text-white/80 mt-2 whitespace-pre-wrap">{ev.summary}</p>}
+        <div className="card-glass rounded-2xl p-6 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <p className="text-xs font-mono text-gold uppercase tracking-wider">Avaliação — IA Evaluator</p>
+            <span className="text-[10px] text-text-muted font-mono">{EDITAL_RUBRIC.version} · Técnica 30% (elim.) · Validação 25% · Escala 25% · Pitch 20%</span>
+          </div>
+
+          {!tevals.length && <p className="text-sm text-text-muted">Nenhuma avaliação registrada ainda.</p>}
+          {tevals.map(ev => (
+            <div key={ev.id} className="border border-dark-border rounded-xl p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-white">{ev.evaluator_type === 'ai' ? 'IA Evaluator' : 'Humano'}{ev.model ? ` · ${ev.model}` : ''}</span>
+                <span className="text-sm font-mono text-gold">{ev.total_score != null ? `${ev.total_score} / 100` : ev.status}</span>
               </div>
-            ))
+              {ev.eliminated && <span className="inline-block text-xs text-hot border border-hot/30 bg-hot/10 rounded px-2 py-0.5">Eliminado (critério técnico)</span>}
+              {Array.isArray(ev.scores) && ev.scores.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                  {ev.scores.map(s => (
+                    <div key={s.criterion_key} className="bg-white/5 rounded-lg p-2">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-white/70">{s.label} <span className="text-white/40">({s.weight}%)</span></span>
+                        <span className="font-mono text-cyan">{s.score}</span>
+                      </div>
+                      {s.justification && <p className="text-[11px] text-text-muted mt-1 whitespace-pre-wrap">{s.justification}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {ev.summary && <p className="text-sm text-white/80 mt-1 whitespace-pre-wrap">{ev.summary}</p>}
+            </div>
+          ))}
+
+          {!readOnly && (
+            <div className="border-t border-dark-border pt-4 space-y-3">
+              <p className="text-xs font-mono text-electric uppercase tracking-wider">Avaliar com o Claude</p>
+              <div>
+                <label className="text-xs text-text-muted">Observações do pitch / demo ao vivo (opcional — entram no pacote)</label>
+                <textarea value={pitchNotes} onChange={e => setPitchNotes(e.target.value)} rows={3}
+                  placeholder="O que você viu no pitch e na demo: a IA rodou de verdade? evidências de tração mostradas? clareza e respostas aos jurados?"
+                  className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan/50" />
+              </div>
+              <button onClick={() => copyPackage(selected)} className="px-4 py-2 rounded-lg text-sm font-semibold bg-electric/20 text-electric border border-electric/40 hover:bg-electric/30">
+                {copied ? '✓ Pacote copiado' : '1. Copiar pacote para o Claude'}
+              </button>
+              {packageText && (
+                <div>
+                  <p className="text-[11px] text-text-muted mb-1">Cópia automática bloqueada — selecione tudo e copie manualmente:</p>
+                  <textarea readOnly value={packageText} rows={5} onFocus={e => e.target.select()}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/70 text-xs font-mono" />
+                </div>
+              )}
+              <div>
+                <label className="text-xs text-text-muted">2. Cole o JSON que o Claude devolveu</label>
+                <textarea value={jsonInput} onChange={e => setJsonInput(e.target.value)} rows={6}
+                  placeholder={'{ "scores": [...], "eliminated": false, "summary": "...", "model": "..." }'}
+                  className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-cyan/50" />
+              </div>
+              {evalError && <div className="bg-hot/10 border border-hot/30 rounded-lg px-3 py-2 text-hot text-sm">{evalError}</div>}
+              <button onClick={() => saveEvaluation(selected)} disabled={evalSaving || !jsonInput.trim()}
+                className="px-4 py-2 rounded-lg text-sm font-semibold bg-cyan/20 text-cyan border border-cyan/40 hover:bg-cyan/30 disabled:opacity-40 disabled:cursor-not-allowed">
+                {evalSaving ? 'Gravando...' : '3. Processar e gravar avaliação'}
+              </button>
+            </div>
           )}
         </div>
       </div>

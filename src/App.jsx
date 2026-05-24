@@ -22,11 +22,15 @@ import MentorPanel from './mentor/MentorPanel'
 import { useMentorAuth } from './mentor/useMentorAuth'
 import CountdownFloat from './components/CountdownFloat'
 import ScrollToTop from './components/ScrollToTop'
+import JurorPanel from './juror/JurorPanel'
+import WallParticipant from './wall/WallParticipant'
+import WallScreen from './wall/WallScreen'
 
 const PAYMENT_HASHES = ['#pagamento-sucesso', '#pagamento-erro', '#pagamento-pendente']
 const ADMIN_HASHES = ['#admin', '#admin-login']
 const PARTICIPANT_HASHES = ['#participante', '#participante-login']
 const MENTOR_HASHES = ['#mentor', '#mentor-login']
+const WALL_HASHES = ['#muro', '#telao']
 
 export default function App() {
   const [page, setPage] = useState(window.location.hash)
@@ -50,7 +54,9 @@ export default function App() {
       !PAYMENT_HASHES.includes(page) &&
       !ADMIN_HASHES.includes(page) &&
       !PARTICIPANT_HASHES.includes(page) &&
-      !MENTOR_HASHES.includes(page)
+      !MENTOR_HASHES.includes(page) &&
+      !WALL_HASHES.includes(page) &&
+      !page.startsWith('#jurado')
     ) {
       if (!/^#[a-zA-Z][\w-]*$/.test(page)) return
       setTimeout(() => {
@@ -115,6 +121,19 @@ export default function App() {
     }
 
     return <MentorPanel auth={mentorAuth} />
+  }
+
+  // Juror routes — token na querystring do hash: #jurado?t=<uuid> (sem login)
+  if (page.startsWith('#jurado')) {
+    return <JurorPanel />
+  }
+
+  // Muro de Dores / Telão — telas fullscreen, sem login
+  if (page === '#muro') {
+    return <WallParticipant />
+  }
+  if (page === '#telao') {
+    return <WallScreen />
   }
 
   if (page === '#privacidade') {
