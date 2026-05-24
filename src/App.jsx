@@ -29,7 +29,6 @@ import WallScreen from './wall/WallScreen'
 const PAYMENT_HASHES = ['#pagamento-sucesso', '#pagamento-erro', '#pagamento-pendente']
 const ADMIN_HASHES = ['#admin', '#admin-login']
 const PARTICIPANT_HASHES = ['#participante', '#participante-login']
-const MENTOR_HASHES = ['#mentor', '#mentor-login']
 const WALL_HASHES = ['#muro', '#telao']
 
 export default function App() {
@@ -54,7 +53,7 @@ export default function App() {
       !PAYMENT_HASHES.includes(page) &&
       !ADMIN_HASHES.includes(page) &&
       !PARTICIPANT_HASHES.includes(page) &&
-      !MENTOR_HASHES.includes(page) &&
+      !page.startsWith('#mentor') &&
       !WALL_HASHES.includes(page) &&
       !page.startsWith('#jurado')
     ) {
@@ -106,8 +105,9 @@ export default function App() {
     return <ParticipantPanel auth={participantAuth} />
   }
 
-  // Mentor routes
-  if (MENTOR_HASHES.includes(page)) {
+  // Mentor routes — sessao (email+codigo via #mentor / #mentor-login) OU
+  // link secreto (token na querystring do hash: #mentor?t=<uuid>, sem login).
+  if (page.startsWith('#mentor')) {
     if (mentorAuth.loading) {
       return (
         <div className="min-h-screen bg-dark flex items-center justify-center">
