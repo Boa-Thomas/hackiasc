@@ -3,6 +3,7 @@ import TeamSection from './TeamSection'
 import EditProfile from './EditProfile'
 import DeliverablesSection from './DeliverablesSection'
 import { EVENT_CONFIG } from '../lib/config'
+import { QRCodeSVG } from 'qrcode.react'
 
 const ALL_TABS = [
   { id: 'team', label: 'Equipe', icon: 'team' },
@@ -127,7 +128,7 @@ export default function ParticipantPanel({ auth }) {
 
         {/* Content */}
         {tab === 'team' && isPaid && <TeamSection auth={auth} />}
-        {tab === 'event' && isPaid && <EventInfoSection />}
+        {tab === 'event' && isPaid && <EventInfoSection profile={profile} />}
         {tab === 'deliverables' && isPaid && <DeliverablesSection auth={auth} goToTeam={() => setTab('team')} />}
         {tab === 'profile' && <EditProfile auth={auth} />}
       </main>
@@ -135,9 +136,28 @@ export default function ParticipantPanel({ auth }) {
   )
 }
 
-function EventInfoSection() {
+function EventInfoSection({ profile }) {
   return (
     <div className="space-y-4">
+      {/* Credencial de check-in (QR) */}
+      {profile?.id && (
+        <div className="card-glass rounded-2xl p-6 border border-cyan/30">
+          <p className="text-xs font-mono text-cyan uppercase tracking-wider mb-4">Sua credencial — apresente no check-in</p>
+          <div className="flex flex-col sm:flex-row items-center gap-5">
+            <div className="bg-white p-3 rounded-xl flex-shrink-0">
+              <QRCodeSVG value={profile.id} size={160} level="M" />
+            </div>
+            <div className="text-center sm:text-left">
+              <p className="text-lg font-bold text-white">{profile.full_name}</p>
+              {profile.team_name && <p className="text-sm text-text-muted mt-1">Equipe: {profile.team_name}</p>}
+              <p className="text-xs text-text-muted mt-3 leading-relaxed">
+                Mostre este QR no credenciamento, na entrada do evento. Ele identifica sua inscrição e agiliza o check-in.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Local e datas */}
       <div className="card-glass rounded-2xl p-6">
         <p className="text-xs font-mono text-cyan uppercase tracking-wider mb-4">Informações do Evento</p>
