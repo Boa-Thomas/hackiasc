@@ -18,7 +18,7 @@ const DAYS = [
     time: '09:00 - 22:00',
     color: 'electric',
     events: [
-      { time: '09:00', title: 'Café da Manhã e Trabalho', desc: 'Espaço pode abrir às 7h (confirmado via WhatsApp).' },
+      { time: '09:00', title: 'Café da Manhã e Trabalho', desc: 'Horário de abertura a confirmar — detalhes por e-mail e WhatsApp.' },
       { time: '10:00', title: 'Sessão Hard 2 — O seu problema é real?', desc: 'Validação de problema. Se não é validado, você perde pontos.' },
       { time: '11:00', title: 'Working Time', desc: 'Continue criando a sua solução.' },
       { time: '12:00', title: 'Almoço e Trabalho', desc: 'Alimentação completa inclusa.' },
@@ -34,7 +34,7 @@ const DAYS = [
     time: '09:00 - 20:00',
     color: 'violet',
     events: [
-      { time: '09:00', title: 'Café da Manhã', desc: 'Espaço pode abrir às 7h (confirmado via WhatsApp).' },
+      { time: '09:00', title: 'Café da Manhã', desc: 'Horário de abertura a confirmar — detalhes por e-mail e WhatsApp.' },
       { time: '10:00', title: 'Sessão Hard 4 — Pitch de Alta Performance', desc: 'Construção de um pitch que impressiona.' },
       { time: '10:30', title: 'Pitch de Guerrilha 2', desc: 'Última rodada de validação cruzada entre equipes.' },
       { time: '14:00', title: 'Banca de Pré-Pitch 1', desc: 'Primeira rodada de avaliação prévia.' },

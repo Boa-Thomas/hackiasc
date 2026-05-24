@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { formatCPF, validateCPF } from '../lib/cpf'
+import { EVENT_CONFIG } from '../lib/config'
 
 export default function ParticipantLogin({ onLogin, error: authError, loading }) {
   const [email, setEmail] = useState('')
@@ -55,8 +56,14 @@ export default function ParticipantLogin({ onLogin, error: authError, loading })
           </div>
 
           {(localError || authError) && (
-            <div className="bg-hot/10 border border-hot/30 rounded-lg px-4 py-2.5 text-hot text-sm">
-              {localError || authError}
+            <div className="bg-hot/10 border border-hot/30 rounded-lg px-4 py-2.5 text-hot text-sm space-y-1">
+              <p>{localError || authError}</p>
+              <a
+                href={`mailto:${EVENT_CONFIG.organizer.email}?subject=${encodeURIComponent('[HackIA SC] Problema para acessar o painel')}`}
+                className="inline-block text-xs text-hot/70 hover:text-hot underline transition-colors"
+              >
+                Problemas para acessar? Fale com a organização
+              </a>
             </div>
           )}
 

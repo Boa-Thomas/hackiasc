@@ -97,8 +97,8 @@ export default function CountdownFloat() {
         }} />
 
         {/* Corpo da barra */}
-        <div 
-          className="flex flex-col md:flex-row items-center justify-center md:justify-between gap-3 md:gap-4 p-4 md:py-3 md:px-8 lg:px-14 relative overflow-hidden"
+        <div
+          className="flex flex-row items-center justify-between gap-2 px-3 py-2 md:gap-4 md:justify-between md:py-3 md:px-8 lg:px-14 relative overflow-hidden"
           style={{
             /* gradiente vibrante que rompe com o dark do site */
             background: 'linear-gradient(100deg, #1a0533 0%, #2d0a5e 30%, #1e0b45 60%, #0f1535 100%)',
@@ -112,8 +112,8 @@ export default function CountdownFloat() {
             background: 'radial-gradient(ellipse 60% 120% at 50% 100%, rgba(131,56,236,0.18) 0%, transparent 70%)',
           }} />
 
-          {/* ── ESQUERDA: Mensagem de urgência ── */}
-          <div className="flex flex-col items-center md:items-start gap-1 shrink-0 z-10">
+          {/* ── ESQUERDA: Mensagem de urgência — oculto em mobile ── */}
+          <div className="hidden md:flex flex-col items-start gap-1 shrink-0 z-10">
             <div className="flex items-center gap-2">
               {/* Dot pulsante */}
               <span style={{
@@ -127,40 +127,47 @@ export default function CountdownFloat() {
               <span style={{
                 fontFamily: 'Sora, sans-serif',
                 fontWeight: 900,
-                fontSize: 'clamp(13px, 1.5vw, 19px)',
+                fontSize: 'clamp(12px, 1.5vw, 19px)',
                 color: '#fff',
                 letterSpacing: '0.3px',
                 whiteSpace: 'nowrap',
               }}>
-                🔥 Virada de Lote em:
+                <span className="md:hidden">🔥 Lote em:</span>
+                <span className="hidden md:inline">🔥 Virada de Lote em:</span>
               </span>
             </div>
-            {/* Preço atual */}
-            <div className="flex items-center justify-center md:justify-start gap-1 md:pl-[17px]">
+            {/* Promoção — só desktop */}
+            <div className="hidden md:flex items-center gap-1 md:pl-[17px]">
               <span style={{
                 fontFamily: 'Sora, sans-serif',
                 fontSize: 'clamp(11px, 1.2vw, 14px)',
                 color: '#06d6a0',
                 fontWeight: 700,
               }}>
-                Lote atual: R$ 200,00
+                Promoção termina em breve
               </span>
             </div>
           </div>
 
           {/* ── CENTRO: Countdown ── */}
-          <div className="flex items-start gap-1 sm:gap-2 shrink-0 z-10">
+          <div
+            role="timer"
+            aria-live="polite"
+            aria-atomic="false"
+            aria-label="Contagem regressiva para virada de lote"
+            className="flex items-start gap-1 sm:gap-2 shrink-0 z-10"
+          >
             <Digit value={days}    label="dias"     />
-            <span className="text-white/30 text-xl md:text-3xl font-black pt-1 md:pt-1.5 leading-none font-mono">:</span>
+            <span className="text-white/30 text-xl md:text-3xl font-black pt-1 md:pt-1.5 leading-none font-mono" aria-hidden="true">:</span>
             <Digit value={hours}   label="horas"    />
-            <span className="text-white/30 text-xl md:text-3xl font-black pt-1 md:pt-1.5 leading-none font-mono">:</span>
+            <span className="text-white/30 text-xl md:text-3xl font-black pt-1 md:pt-1.5 leading-none font-mono" aria-hidden="true">:</span>
             <Digit value={minutes} label="min"      />
-            <span className="text-white/30 text-xl md:text-3xl font-black pt-1 md:pt-1.5 leading-none font-mono">:</span>
+            <span className="text-white/30 text-xl md:text-3xl font-black pt-1 md:pt-1.5 leading-none font-mono" aria-hidden="true">:</span>
             <Digit value={seconds} label="seg"      />
           </div>
 
           {/* ── DIREITA: CTA de conversão ── */}
-          <div className="flex flex-col items-center gap-1.5 shrink-0 z-10 w-full md:w-auto">
+          <div className="flex flex-col items-center gap-1 shrink-0 z-10">
             <a
               href="#inscricao"
               onClick={() => setDismissed(true)}
@@ -189,6 +196,7 @@ export default function CountdownFloat() {
             </a>
             <button
               onClick={() => setDismissed(true)}
+              aria-label="Fechar barra de contagem regressiva"
               style={{
                 background: 'none',
                 border: 'none',

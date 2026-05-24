@@ -83,7 +83,6 @@ export default function TeamSection({ auth }) {
           members={teamMembers}
           busy={busy}
           onLeave={async () => {
-            if (!confirm('Tem certeza que quer sair da equipe?')) return
             const ok = await callRpc('participant_leave_team', {})
             if (ok) { flash('Você saiu da equipe.'); await refreshMe() }
           }}
@@ -126,6 +125,7 @@ export default function TeamSection({ auth }) {
 function CurrentTeamView({ profile, members, busy, onLeave, onTransfer }) {
   const [transferOpen, setTransferOpen] = useState(false)
   const [selectedNewLeader, setSelectedNewLeader] = useState('')
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false)
   const teammates = members.filter(m => m.id !== profile.id)
   const isLeaderAlone = profile.is_team_leader && members.length === 1
 
@@ -152,7 +152,7 @@ function CurrentTeamView({ profile, members, busy, onLeave, onTransfer }) {
           )}
           <button
             type="button"
-            onClick={onLeave}
+            onClick={() => setLeaveConfirmOpen(true)}
             disabled={busy || (profile.is_team_leader && !isLeaderAlone)}
             className="px-4 py-2 rounded-xl text-sm font-semibold border border-hot/30 bg-hot/10 text-hot hover:bg-hot/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             title={profile.is_team_leader && !isLeaderAlone ? 'Transfira a liderança primeiro' : ''}
@@ -235,6 +235,46 @@ function CurrentTeamView({ profile, members, busy, onLeave, onTransfer }) {
         <p className="text-xs text-text-muted mt-4">
           Como líder você não pode sair antes de transferir a liderança.
         </p>
+      )}
+
+      {/* Leave confirmation modal */}
+      {leaveConfirmOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="leave-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-dark/80 backdrop-blur-sm"
+          onClick={() => setLeaveConfirmOpen(false)}
+        >
+          <div
+            className="card-glass rounded-2xl p-6 max-w-sm w-full"
+            onClick={e => e.stopPropagation()}
+          >
+            <p id="leave-modal-title" className="text-base font-bold text-white mb-2">
+              Sair da equipe?
+            </p>
+            <p className="text-sm text-text-muted mb-6">
+              Você sairá da equipe <strong className="text-white">{profile.team_name}</strong>. Será necessário um novo pedido de entrada para voltar.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => { setLeaveConfirmOpen(false); onLeave() }}
+                className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold bg-hot/20 text-hot border border-hot/40 hover:bg-hot/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Confirmar saída
+              </button>
+              <button
+                type="button"
+                onClick={() => setLeaveConfirmOpen(false)}
+                className="px-4 py-2 rounded-xl text-sm font-semibold border border-dark-border text-text-muted hover:text-white transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

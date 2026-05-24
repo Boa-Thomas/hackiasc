@@ -29,6 +29,10 @@ export default function AdminMentors({ readOnly = false }) {
 
   const teamName = (id) => teams.find(t => t.id === id)?.name || '—'
 
+  // Map of team_id → mentor (for duplicate assignment warning)
+  const mentorByTeam = new Map()
+  mentors.forEach(m => { if (m.team_id) mentorByTeam.set(m.team_id, m) })
+
   async function createMentor(e) {
     e.preventDefault()
     if (!supabase || !email.trim()) return
@@ -99,7 +103,14 @@ export default function AdminMentors({ readOnly = false }) {
             <label className="block text-xs text-white/60 mb-1">Equipe</label>
             <select value={teamId} onChange={e => setTeamId(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan/50">
               <option value="">Sem equipe</option>
-              {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              {teams.map(t => {
+                const existing = mentorByTeam.get(t.id)
+                return (
+                  <option key={t.id} value={t.id}>
+                    {t.name}{existing ? ` — já tem: ${existing.name || existing.email}` : ''}
+                  </option>
+                )
+              })}
             </select>
           </div>
           <button type="submit" disabled={creating || !email.trim()} className="px-4 py-2 rounded-lg text-sm font-semibold bg-cyan/20 text-cyan border border-cyan/40 hover:bg-cyan/30 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -126,9 +137,29 @@ export default function AdminMentors({ readOnly = false }) {
                 </td>
                 <td className="px-4 py-2">
                   {readOnly ? teamName(m.team_id) : (
-                    <select value={m.team_id || ''} onChange={e => reassign(m.id, e.target.value)} className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:border-cyan/50">
+                    <select
+                      value={m.team_id || ''}
+                      onChange={e => {
+                        const newId = e.target.value
+                        const conflict = newId && mentorByTeam.has(newId) && mentorByTeam.get(newId).id !== m.id
+                        if (conflict) {
+                          const existing = mentorByTeam.get(newId)
+                          if (!window.confirm(`A equipe "${teamName(newId)}" já tem o mentor "${existing.name || existing.email}" atribuído. Confirmar mesmo assim?`)) return
+                        }
+                        reassign(m.id, newId)
+                      }}
+                      className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:border-cyan/50"
+                    >
                       <option value="">Sem equipe</option>
-                      {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      {teams.map(t => {
+                        const existing = mentorByTeam.get(t.id)
+                        const conflict = existing && existing.id !== m.id
+                        return (
+                          <option key={t.id} value={t.id}>
+                            {t.name}{conflict ? ` — já tem: ${existing.name || existing.email}` : ''}
+                          </option>
+                        )
+                      })}
                     </select>
                   )}
                 </td>

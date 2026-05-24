@@ -1,4 +1,5 @@
 import DatiLogo from './DatiLogo'
+import { EVENT_CONFIG } from '../lib/config'
 
 export default function Hero() {
   return (
@@ -12,7 +13,7 @@ export default function Hero() {
         {/* Badge */}
         <div className="animate-slide-up inline-flex items-center gap-2 px-4 py-2 rounded-full border border-cyan/20 bg-cyan/5 text-cyan text-sm font-mono mb-8">
           <span className="w-2 h-2 rounded-full bg-cyan animate-pulse" />
-          29 - 31 de Maio de 2026
+          {EVENT_CONFIG.dates}
         </div>
 
         {/* Title */}

@@ -41,6 +41,14 @@ const QUESTIONS = [
     q: 'Qual a política de cancelamento?',
     a: 'Reembolso integral em até 7 dias após a compra (CDC). Após 7 dias: reembolso de 50% se faltar mais de 10 dias para o evento; sem reembolso se faltar 10 dias ou menos. Não comparecimento não gera devolução. Solicitações devem ser enviadas para contato@hackiasc.com.',
   },
+  {
+    q: 'O que acontece se eu não pagar antes do prazo de inscrição?',
+    a: 'Inscrições com pagamento pendente após o prazo (27/05 às 23:59) podem perder a vaga para outro participante na lista de espera. Se isso acontecer, você será notificado. Em caso de dúvidas, entre em contato pelo contato@hackiasc.com o quanto antes.',
+  },
+  {
+    q: 'Posso transferir minha inscrição para outra pessoa?',
+    a: 'Transferências são analisadas caso a caso até 7 dias antes do evento. Envie um e-mail para contato@hackiasc.com com os dados do novo participante (nome completo, e-mail, telefone e CPF). A organização confirmará a viabilidade em até 2 dias úteis.',
+  },
 ]
 
 function FAQItem({ q, a }) {
