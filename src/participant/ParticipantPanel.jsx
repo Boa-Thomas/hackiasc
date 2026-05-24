@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import TeamSection from './TeamSection'
 import EditProfile from './EditProfile'
 import DeliverablesSection from './DeliverablesSection'
+import CertificateSection from './CertificateSection'
 import { EVENT_CONFIG } from '../lib/config'
 import { QRCodeSVG } from 'qrcode.react'
 
@@ -266,6 +267,9 @@ function EventInfoSection({ profile }) {
           </a>
         </div>
       </div>
+
+      {/* Certificado de Participação */}
+      <CertificateSection profile={profile} />
     </div>
   )
 }
