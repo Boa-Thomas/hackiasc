@@ -1018,6 +1018,141 @@ export default function AdminDashboard({ onViewRegistration }) {
 
   const maxCapacity = EVENT_CONFIG.maxCapacity ?? 100
 
+  // ─── Export helpers ────────────────────────────────────────────────────────
+
+  function exportFinanceiro() {
+    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
+    const row = (label, value) => [esc(label), esc(value)].join(',')
+    const blank = ','
+    const section = (title) => [esc(`=== ${title} ===`), esc('')].join(',')
+
+    const today = new Date().toISOString().slice(0, 10)
+
+    // Tier breakdown computed directly from raw registrations (not audience-filtered)
+    const confirmedRegs = registrations.filter(r => r.payment_status === 'confirmed')
+    const pendingRegs = registrations.filter(r => r.payment_status === 'pending')
+
+    const tierBreakdown = (regs) => ({
+      early_bird: regs.filter(r => r.ticket_tier === 'early_bird').length,
+      regular: regs.filter(r => r.ticket_tier === 'regular').length,
+      dati: regs.filter(r => r.ticket_tier === 'dati').length,
+    })
+    const confirmedTier = tierBreakdown(confirmedRegs)
+    const pendingTier = tierBreakdown(pendingRegs)
+
+    const lines = [
+      row('Métrica', 'Valor'),
+      blank,
+      section('RESUMO GERAL'),
+      row('Data do relatório', today),
+      row('Total de inscrições', stats.total),
+      row('Confirmados', stats.confirmedCount),
+      row('Pendentes', stats.pendingCount),
+      row('Cancelados', stats.cancelledCount),
+      row('Taxa de conversão (%)', stats.conversionRate),
+      blank,
+      section('RECEITA CONFIRMADA'),
+      row('Receita bruta confirmada (R$)', (stats.revenueConfirmed / 100).toFixed(2)),
+      row('Receita pendente (R$)', (stats.revenuePending / 100).toFixed(2)),
+      row('Ticket médio confirmado (R$)', (stats.avgTicket / 100).toFixed(2)),
+      blank,
+      section('BREAKDOWN POR TIER — CONFIRMADOS'),
+      row('Early Bird confirmados', confirmedTier.early_bird),
+      row('Regular confirmados', confirmedTier.regular),
+      row('DATI confirmados', confirmedTier.dati),
+      row('Early bird usados / limite', `${stats.earlyBirdUsed} / ${EVENT_CONFIG.earlyBirdLimit ?? 10}`),
+      row('Early bird restantes', stats.earlyBirdLeft),
+      blank,
+      section('BREAKDOWN POR TIER — PENDENTES'),
+      row('Early Bird pendentes', pendingTier.early_bird),
+      row('Regular pendentes', pendingTier.regular),
+      row('DATI pendentes', pendingTier.dati),
+      blank,
+      section('MERCADO PAGO (se sincronizado)'),
+      row('Receita bruta MP (R$)', feeData ? (feeData.total_gross / 100).toFixed(2) : 'N/D'),
+      row('Receita líquida MP (R$)', feeData ? (feeData.total_net / 100).toFixed(2) : 'N/D'),
+      row('Taxas MP (R$)', feeData ? (feeData.total_fees / 100).toFixed(2) : 'N/D'),
+      row('Receita projetada líquida (R$)', feeData
+        ? ((feeData.total_net + stats.revenuePending) / 100).toFixed(2)
+        : 'N/D'),
+    ]
+
+    const csv = '﻿' + lines.join('\r\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `financeiro-hackia-${today}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function exportDemografico() {
+    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
+    const row = (label, value) => [esc(label), esc(value)].join(',')
+    const blank = ','
+    const section = (title) => [esc(`=== ${title} ===`), esc('')].join(',')
+
+    const today = new Date().toISOString().slice(0, 10)
+
+    const lines = [
+      row('Métrica', 'Valor'),
+      blank,
+      section('CONTEXTO'),
+      row('Data do relatório', today),
+      row('Audiência filtrada', audienceLabel),
+      row('Total nesta audiência', demographics.audienceSize),
+      blank,
+      section('PERFIL (occupation_type)'),
+      row('Hacker', demographics.byType.hacker),
+      row('Hustler', demographics.byType.hustler),
+      row('Hipster', demographics.byType.hipster),
+      row('Enthusiast', demographics.byType.enthusiast),
+      blank,
+      section('MODALIDADE DE INSCRIÇÃO'),
+      row('Time (formação via form)', demographics.byModality.individual_form_team),
+      row('Individual', demographics.byModality.individual_own),
+      row('Time próprio', demographics.byModality.team),
+      blank,
+      section('TICKET TIER'),
+      row('Early Bird', demographics.byTier.early_bird),
+      row('Regular', demographics.byTier.regular),
+      row('DATI', demographics.byTier.dati),
+      blank,
+      section('EXPERIÊNCIA EM IA'),
+      row('Nível médio (escala 1-10)', demographics.aiAvg),
+      ...Array.from({ length: 10 }, (_, i) => i + 1).map(lvl =>
+        row(`Nível ${lvl}`, demographics.aiLevels[lvl] ?? 0)
+      ),
+      blank,
+      section('EIXOS ECONÔMICOS'),
+      ...demographics.axesSorted.map(([ax, count]) => row(ax, count)),
+      blank,
+      section('PROJETOS'),
+      row('Com projeto declarado', demographics.withProject),
+      row('Sem projeto', demographics.audienceSize - demographics.withProject),
+      blank,
+      section('RESTRIÇÕES ALIMENTARES'),
+      row('Com restrições', demographics.dietarySorted.reduce((s, [, c]) => s + c, 0)),
+      ...demographics.dietarySorted.map(([r, c]) => row(r, c)),
+      blank,
+      section('ACESSIBILIDADE (PCD)'),
+      row('Total PCD', demographics.pcdCount),
+      ...Object.entries(demographics.pcdTypes).map(([type, count]) => row(type, count)),
+    ]
+
+    const csv = '﻿' + lines.join('\r\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `demografico-hackia-${today}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+
   return (
     <div className="flex flex-col gap-6">
 
@@ -1028,6 +1163,22 @@ export default function AdminDashboard({ onViewRegistration }) {
         onToggle={() => setAutoRefresh(v => !v)}
         isLive={isLive}
       />
+
+      {/* Export buttons */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <button
+          onClick={exportFinanceiro}
+          className="px-4 py-2 rounded-lg text-xs font-mono uppercase tracking-wider border border-cyan/30 bg-cyan/10 text-cyan hover:bg-cyan/20 transition-colors"
+        >
+          Exportar financeiro (CSV)
+        </button>
+        <button
+          onClick={exportDemografico}
+          className="px-4 py-2 rounded-lg text-xs font-mono uppercase tracking-wider border border-violet/30 bg-violet/10 text-violet hover:bg-violet/20 transition-colors"
+        >
+          Exportar demográfico (CSV)
+        </button>
+      </div>
 
       {/* Countdown & Phase */}
       <CountdownBanner />

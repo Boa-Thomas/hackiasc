@@ -2,47 +2,93 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
 const TOKEN_KEY = 'hackiasc_mentor_token'
+// Modo de auth: 'session' (email+codigo) ou 'link' (access_token na URL).
+// Guardado para saber qual RPC usar em refreshMe e se o logout deve invalidar
+// a sessao server-side (mentor_logout) — o link permanece valido apos sair.
+const MODE_KEY = 'hackiasc_mentor_mode'
 
-// Auth do mentor por token custom (email + código), espelhando useParticipantAuth.
+// Le o access_token do mentor da URL (#mentor?t=<uuid>), espelha em
+// sessionStorage e limpa o token da barra de enderecos (history.replaceState)
+// para nao vazar via historico/print — mesmo padrao do useJuror.
+function seedFromUrl() {
+  let urlToken = null
+  try {
+    const hash = window.location.hash || ''
+    const qIdx = hash.indexOf('?')
+    if (qIdx !== -1) {
+      const params = new URLSearchParams(hash.slice(qIdx + 1))
+      urlToken = params.get('t')
+    }
+  } catch { /* ignore malformed hash */ }
+
+  if (urlToken) {
+    try {
+      sessionStorage.setItem(TOKEN_KEY, urlToken)
+      sessionStorage.setItem(MODE_KEY, 'link')
+    } catch { /* private mode */ }
+    // Remove o token da URL preservando a rota base (#mentor).
+    try { window.history.replaceState(null, '', '#mentor') } catch { /* ignore */ }
+    return { token: urlToken, mode: 'link' }
+  }
+
+  try {
+    return { token: sessionStorage.getItem(TOKEN_KEY), mode: sessionStorage.getItem(MODE_KEY) || 'session' }
+  } catch { return { token: null, mode: 'session' } }
+}
+
+// Auth do mentor: por sessao (email + codigo) OU por link secreto (token na URL).
+// Os dois caminhos sao aditivos — o link e uma forma adicional de acesso.
 export function useMentorAuth() {
-  const [token, setToken] = useState(() => {
-    try { return sessionStorage.getItem(TOKEN_KEY) } catch { return null }
-  })
+  // Seed unico (le URL/sessionStorage, faz replaceState) calculado uma vez
+  // via lazy initializer — espelha o padrao do useJuror.
+  const [seed] = useState(seedFromUrl)
+  const [token, setToken] = useState(seed.token)
+  const [mode, setMode] = useState(seed.mode)
   const [me, setMe] = useState(null)
-  const [loading, setLoading] = useState(!!token)
+  const [loading, setLoading] = useState(!!seed.token)
   const [error, setError] = useState(null)
   const initialized = useRef(false)
 
-  const persistToken = (t) => {
+  const persist = (t, m) => {
     try {
-      if (t) sessionStorage.setItem(TOKEN_KEY, t)
-      else sessionStorage.removeItem(TOKEN_KEY)
+      if (t) {
+        sessionStorage.setItem(TOKEN_KEY, t)
+        sessionStorage.setItem(MODE_KEY, m)
+      } else {
+        sessionStorage.removeItem(TOKEN_KEY)
+        sessionStorage.removeItem(MODE_KEY)
+      }
     } catch { /* ignore quota / private mode errors */ }
   }
 
-  const refreshMe = useCallback(async (t) => {
+  const refreshMe = useCallback(async (t, m) => {
     const useToken = t ?? token
+    const useMode = m ?? mode
     if (!useToken || !supabase) return null
-    const { data, error: rpcError } = await supabase.rpc('mentor_get_me', { p_token: useToken })
+    // Modo link valida pelo access_token (retorna NULL em token invalido);
+    // modo sessao usa o token de mentor_sessions (email+codigo).
+    const rpc = useMode === 'link' ? 'mentor_get_me_by_token' : 'mentor_get_me'
+    const args = useMode === 'link' ? { p_access_token: useToken } : { p_token: useToken }
+    const { data, error: rpcError } = await supabase.rpc(rpc, args)
     if (rpcError || !data) {
-      persistToken(null)
+      persist(null)
       setToken(null)
       setMe(null)
       return null
     }
     setMe(data)
     return data
-  }, [token])
+  }, [token, mode])
 
   useEffect(() => {
     if (initialized.current) return
     initialized.current = true
     if (token) {
-      refreshMe(token).finally(() => setLoading(false)) // eslint-disable-line react-hooks/set-state-in-effect
+      refreshMe(token, mode).finally(() => setLoading(false)) // eslint-disable-line react-hooks/set-state-in-effect
     } else {
       setLoading(false)
     }
-  }, [token, refreshMe])
+  }, [token, mode, refreshMe])
 
   const login = useCallback(async (email, code) => {
     setError(null)
@@ -65,21 +111,25 @@ export function useMentorAuth() {
       setLoading(false)
       return false
     }
-    persistToken(data.token)
+    persist(data.token, 'session')
     setToken(data.token)
-    await refreshMe(data.token)
+    setMode('session')
+    await refreshMe(data.token, 'session')
     setLoading(false)
     return true
   }, [refreshMe])
 
   const logout = useCallback(async () => {
-    if (token && supabase) {
+    // So invalida a sessao server-side no modo email+codigo. No modo link,
+    // o access_token segue valido — apenas limpamos o sessionStorage local.
+    if (token && mode === 'session' && supabase) {
       try { await supabase.rpc('mentor_logout', { p_token: token }) } catch { /* best-effort */ }
     }
-    persistToken(null)
+    persist(null)
     setToken(null)
+    setMode('session')
     setMe(null)
-  }, [token])
+  }, [token, mode])
 
   return {
     token,
