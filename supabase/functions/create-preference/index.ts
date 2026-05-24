@@ -90,7 +90,7 @@ Deno.serve(async (req: Request) => {
     // Fetch the registration after the RPC to get the final authoritative price
     const { data: reg, error: regError } = await supabase
       .from('registrations')
-      .select('ticket_price, ticket_tier')
+      .select('ticket_price, ticket_tier, team_name, inscription_modality')
       .eq('id', registration_id)
       .single()
 
@@ -101,10 +101,39 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // Server-side authoritative price — never trust client-supplied amount
-    const effectiveAmount = reg.ticket_price
+    // Team bundles: the leader pays for the whole team in a single preference.
+    // The charged amount MUST equal what mp-webhook validates on confirmation —
+    // namely the SUM of ticket_price across all active (non-cancelled) team
+    // members (see mp-webhook/index.ts amount gate). Mirroring that logic here
+    // guarantees the payment passes the webhook's amount check instead of being
+    // flagged as a mismatch and left pending. Server-side only — the
+    // client-supplied amount is never trusted. Individual inscriptions resolve
+    // to this registration's own ticket_price.
+    let effectiveAmount = reg.ticket_price
+    let memberCount = 1
 
-    // Create Mercado Pago preference
+    if (reg.inscription_modality === 'team' && reg.team_name) {
+      const { data: members, error: membersError } = await supabase
+        .from('registrations')
+        .select('ticket_price')
+        .eq('team_name', reg.team_name)
+        .neq('payment_status', 'cancelled')
+
+      if (membersError || !members || members.length === 0) {
+        console.error('team member fetch error:', membersError)
+        return new Response(
+          JSON.stringify({ error: 'Failed to determine team size' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      memberCount = members.length
+      effectiveAmount = members.reduce((sum, m) => sum + (m.ticket_price ?? 0), 0)
+    }
+
+    // Create Mercado Pago preference. Single line item carrying the full team
+    // total — member prices may differ (e.g. leader early-bird + regular
+    // member), so quantity stays 1 and unit_price holds the summed amount.
+    // The client already sends a descriptive title (team name + member count).
     const preference = {
       items: [
         {
@@ -112,7 +141,7 @@ Deno.serve(async (req: Request) => {
           title: description || 'Inscrição — AI Venture Hackathon Blumenau 2026',
           currency_id: 'BRL',
           quantity: 1,
-          unit_price: effectiveAmount / 100, // amount in cents, MP expects BRL
+          unit_price: effectiveAmount / 100, // total amount in cents, MP expects BRL
         },
       ],
       payer: {
@@ -170,8 +199,8 @@ Deno.serve(async (req: Request) => {
       target_table: 'registrations',
       target_id: registration_id,
       target_email: email,
-      new_data: { preference_id: mpData.id, amount: effectiveAmount, ticket_tier: reg.ticket_tier },
-      metadata: { full_name: full_name || null },
+      new_data: { preference_id: mpData.id, amount: effectiveAmount, ticket_tier: reg.ticket_tier, member_count: memberCount },
+      metadata: { full_name: full_name || null, inscription_modality: reg.inscription_modality },
     })
 
     return new Response(
