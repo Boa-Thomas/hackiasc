@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { supabase } from '../lib/supabase'
 import { audit } from '../lib/auditLog'
@@ -42,6 +42,7 @@ const EMPTY_MEMBER = {
   cpf: '',
   occupation_type: '',
   ai_experience_level: '',
+  has_dietary_restrictions: '',
   dietary_restrictions: '',
   is_pcd: 'no',
   pcd_type: '',
@@ -63,7 +64,8 @@ function validateMember(member) {
   if (!validateCPF(member.cpf)) errs.cpf = 'CPF inválido'
   if (!member.occupation_type) errs.occupation_type = 'Selecione um perfil'
   if (!member.ai_experience_level) errs.ai_experience_level = 'Selecione um nível'
-  if (!member.dietary_restrictions.trim()) errs.dietary_restrictions = 'Campo obrigatório'
+  if (!member.has_dietary_restrictions) errs.has_dietary_restrictions = 'Selecione uma opção'
+  else if (member.has_dietary_restrictions === 'yes' && !member.dietary_restrictions.trim()) errs.dietary_restrictions = 'Descreva a restrição'
   if (!member.accept_edital) errs.accept_edital = 'Obrigatório'
   if (!member.accept_image) errs.accept_image = 'Obrigatório'
   if (!member.accept_responsibility) errs.accept_responsibility = 'Obrigatório'
@@ -78,6 +80,12 @@ function MemberCard({ index, member, errors, onChange, onRemove }) {
   const [collapsed, setCollapsed] = useState(false)
   const ordinal = ORDINALS[index]
   const hasErrors = Object.keys(errors).length > 0
+
+  // Auto-expand when validation errors are injected from the parent
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (hasErrors) setCollapsed(false)
+  }, [hasErrors])
 
   return (
     <div
@@ -214,6 +222,7 @@ function MemberCard({ index, member, errors, onChange, onRemove }) {
                 ].map(({ value, label }) => (
                   <label
                     key={value}
+                    htmlFor={`m${index}-occupation_type-${value}`}
                     className={`flex items-center justify-center py-2 px-3 rounded-lg border cursor-pointer transition-all text-xs font-semibold ${
                       member.occupation_type === value
                         ? 'border-cyan bg-cyan/5 text-white'
@@ -221,6 +230,7 @@ function MemberCard({ index, member, errors, onChange, onRemove }) {
                     }`}
                   >
                     <input
+                      id={`m${index}-occupation_type-${value}`}
                       type="radio"
                       value={value}
                       checked={member.occupation_type === value}
@@ -242,6 +252,7 @@ function MemberCard({ index, member, errors, onChange, onRemove }) {
                 {[1,2,3,4,5,6,7,8,9,10].map(n => (
                   <label
                     key={n}
+                    htmlFor={`m${index}-ai_experience_level-${n}`}
                     className={`flex-1 min-w-[1.75rem] text-center py-1.5 rounded-md border cursor-pointer transition-all font-mono text-xs ${
                       parseInt(member.ai_experience_level) === n
                         ? 'border-cyan bg-cyan/10 text-cyan font-bold'
@@ -249,6 +260,7 @@ function MemberCard({ index, member, errors, onChange, onRemove }) {
                     }`}
                   >
                     <input
+                      id={`m${index}-ai_experience_level-${n}`}
                       type="radio"
                       value={n}
                       checked={parseInt(member.ai_experience_level) === n}
@@ -267,13 +279,44 @@ function MemberCard({ index, member, errors, onChange, onRemove }) {
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className={LBL}>Restrição alimentar *</label>
-              <input
-                value={member.dietary_restrictions}
-                onChange={e => onChange('dietary_restrictions', e.target.value)}
-                className={INPUT}
-                placeholder="Ex: Vegetariano, ou 'Não'"
-              />
-              {errors.dietary_restrictions && <p className={ERR}>{errors.dietary_restrictions}</p>}
+              <div className="flex gap-2 mb-2">
+                {[
+                  { value: 'no', label: 'Não tenho' },
+                  { value: 'yes', label: 'Sim, tenho' },
+                ].map(({ value, label }) => (
+                  <label
+                    key={value}
+                    htmlFor={`m${index}-has_dietary_restrictions-${value}`}
+                    className={`flex-1 flex items-center justify-center py-1.5 rounded-lg border cursor-pointer transition-all text-xs font-semibold ${
+                      member.has_dietary_restrictions === value
+                        ? 'border-cyan bg-cyan/5 text-white'
+                        : 'border-dark-border bg-dark hover:border-text-muted text-text-muted'
+                    }`}
+                  >
+                    <input
+                      id={`m${index}-has_dietary_restrictions-${value}`}
+                      type="radio"
+                      value={value}
+                      checked={member.has_dietary_restrictions === value}
+                      onChange={() => onChange('has_dietary_restrictions', value)}
+                      className="sr-only"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              {errors.has_dietary_restrictions && <p className={ERR}>{errors.has_dietary_restrictions}</p>}
+              {member.has_dietary_restrictions === 'yes' && (
+                <>
+                  <input
+                    value={member.dietary_restrictions}
+                    onChange={e => onChange('dietary_restrictions', e.target.value)}
+                    className={INPUT}
+                    placeholder="Ex: Vegetariano, alergia a glúten..."
+                  />
+                  {errors.dietary_restrictions && <p className={ERR}>{errors.dietary_restrictions}</p>}
+                </>
+              )}
             </div>
             <div>
               <label className={LBL}>PcD? *</label>
@@ -281,6 +324,7 @@ function MemberCard({ index, member, errors, onChange, onRemove }) {
                 {[{ value: 'yes', label: 'Sim' }, { value: 'no', label: 'Não' }].map(({ value, label }) => (
                   <label
                     key={value}
+                    htmlFor={`m${index}-is_pcd-${value}`}
                     className={`flex-1 flex items-center justify-center py-2 rounded-lg border cursor-pointer transition-all text-xs font-semibold ${
                       member.is_pcd === value
                         ? 'border-cyan bg-cyan/5 text-white'
@@ -288,6 +332,7 @@ function MemberCard({ index, member, errors, onChange, onRemove }) {
                     }`}
                   >
                     <input
+                      id={`m${index}-is_pcd-${value}`}
                       type="radio"
                       value={value}
                       checked={member.is_pcd === value}
@@ -409,6 +454,7 @@ export default function RegistrationForm() {
   const [memberErrors, setMemberErrors] = useState([])
 
   const [termsExpanded, setTermsExpanded] = useState(false)
+  const [dietaryMode, setDietaryMode] = useState('')
 
   // Recovery state
   const [recovering, setRecovering] = useState(false)
@@ -417,7 +463,7 @@ export default function RegistrationForm() {
   const [recoveryError, setRecoveryError] = useState('')
 
   // URL params — early access + DATI secret discount + voucher empresarial
-  const urlParams = new URLSearchParams(window.location.search)
+  const urlParams = useMemo(() => new URLSearchParams(window.location.search), [])
   const earlyCode = urlParams.get('early')
   const hasEarlyAccess = earlyCode === EVENT_CONFIG.earlyAccessCode
   const datiCode = urlParams.get('dati')
@@ -501,11 +547,23 @@ export default function RegistrationForm() {
   }
 
   const updateMember = (idx, field, value) => {
-    setTeamMembers(prev => prev.map((m, i) => i === idx ? { ...m, [field]: value } : m))
+    setTeamMembers(prev => prev.map((m, i) => {
+      if (i !== idx) return m
+      const updated = { ...m, [field]: value }
+      // When "no restrictions" is selected, auto-fill the text field
+      if (field === 'has_dietary_restrictions' && value === 'no') {
+        updated.dietary_restrictions = 'Nenhuma'
+      }
+      if (field === 'has_dietary_restrictions' && value === 'yes') {
+        updated.dietary_restrictions = ''
+      }
+      return updated
+    }))
     setMemberErrors(prev => prev.map((e, i) => {
       if (i !== idx) return e
       const next = { ...e }
       delete next[field]
+      if (field === 'has_dietary_restrictions') delete next.dietary_restrictions
       // Clear all accept errors together since they share one error message
       if (field === 'accept_edital' || field === 'accept_image' || field === 'accept_responsibility' || field === 'accept_lgpd' || field === 'accept_code_ip') {
         delete next.accept_edital
@@ -575,7 +633,7 @@ export default function RegistrationForm() {
       setSubmitted(true)
       setRecovering(false)
       return { success: true }
-    } catch (err) {
+    } catch {
       setRecovering(false)
       return { success: false, message: 'Erro inesperado. Tente novamente.' }
     }
@@ -892,9 +950,14 @@ export default function RegistrationForm() {
               </p>
             ) : registrationEnded ? (
               <p className="mt-6 text-lg text-white font-semibold">
-                Inscrições encerradas em 27/05 às 23:59. Dúvidas:{' '}
-                <a href="mailto:contato@hackiasc.com" className="text-electric underline">
-                  contato@hackiasc.com
+                {(() => {
+                  const d = regEnd.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
+                  const t = regEnd.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+                  return `Inscrições encerradas em ${d} às ${t}.`
+                })()}{' '}
+                Dúvidas:{' '}
+                <a href={`mailto:${EVENT_CONFIG.organizer.email}`} className="text-electric underline">
+                  {EVENT_CONFIG.organizer.email}
                 </a>
               </p>
             ) : null}
@@ -1171,7 +1234,14 @@ export default function RegistrationForm() {
           )}
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+        <form onSubmit={handleSubmit(onSubmit, (errs) => {
+          const termsKeys = [
+            'avail_physical', 'avail_disqualification',
+            'accept_edital', 'accept_image', 'accept_responsibility', 'accept_lgpd', 'accept_code_ip',
+            'commit_ia', 'commit_monetizable', 'commit_sales', 'commit_edital',
+          ]
+          if (termsKeys.some(k => errs[k])) setTermsExpanded(true)
+        })} className="space-y-8">
 
           {/* ===== DADOS PESSOAIS ===== */}
           <fieldset className="card-glass rounded-2xl p-6 sm:p-8 space-y-5">
@@ -1229,8 +1299,8 @@ export default function RegistrationForm() {
                   { value: 'hipster', label: 'Hipster', desc: 'Design/UX' },
                   { value: 'enthusiast', label: 'Entusiasta', desc: 'Outro' },
                 ].map(({ value, label, desc }) => (
-                  <label key={value} className={`flex flex-col p-4 rounded-xl border cursor-pointer transition-all ${watch('occupation_type') === value ? 'border-cyan bg-cyan/5 text-white' : 'border-dark-border bg-dark hover:border-text-muted text-text-muted'}`}>
-                    <input type="radio" value={value} {...register('occupation_type', { required: 'Selecione seu perfil' })} className="sr-only" />
+                  <label key={value} htmlFor={`occupation_type-${value}`} className={`flex flex-col p-4 rounded-xl border cursor-pointer transition-all ${watch('occupation_type') === value ? 'border-cyan bg-cyan/5 text-white' : 'border-dark-border bg-dark hover:border-text-muted text-text-muted'}`}>
+                    <input id={`occupation_type-${value}`} type="radio" value={value} {...register('occupation_type', { required: 'Selecione seu perfil' })} className="sr-only" />
                     <span className="font-semibold text-sm">{label}</span>
                     <span className="text-xs mt-1 opacity-70">{desc}</span>
                   </label>
@@ -1244,8 +1314,8 @@ export default function RegistrationForm() {
               <p className="text-xs text-text-muted mb-3">1 = Nenhum/Iniciante — 10 = Avançado/Especialista</p>
               <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
                 {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                  <label key={n} className={`text-center py-2.5 rounded-lg border cursor-pointer transition-all font-mono text-sm ${parseInt(watch('ai_experience_level')) === n ? 'border-cyan bg-cyan/10 text-cyan font-bold' : 'border-dark-border bg-dark text-text-muted hover:border-text-muted'}`}>
-                    <input type="radio" value={n} {...register('ai_experience_level', { required: 'Selecione seu nível' })} className="sr-only" />
+                  <label key={n} htmlFor={`ai_experience_level-${n}`} className={`text-center py-2.5 rounded-lg border cursor-pointer transition-all font-mono text-sm ${parseInt(watch('ai_experience_level')) === n ? 'border-cyan bg-cyan/10 text-cyan font-bold' : 'border-dark-border bg-dark text-text-muted hover:border-text-muted'}`}>
+                    <input id={`ai_experience_level-${n}`} type="radio" value={n} {...register('ai_experience_level', { required: 'Selecione seu nível' })} className="sr-only" />
                     {n}
                   </label>
                 ))}
@@ -1259,17 +1329,64 @@ export default function RegistrationForm() {
             <legend className="text-sm font-mono text-electric tracking-wider uppercase mb-2">Para o Evento</legend>
 
             <div>
-              <label className={LBL}>Você tem alguma restrição alimentar? Se sim, qual? *</label>
-              <input maxLength={200} {...register('dietary_restrictions', { required: 'Campo obrigatório' })} className={INPUT} placeholder="Ex: Vegetariano, vegano, alergias... ou 'Não'" />
-              {errors.dietary_restrictions && <p className={ERR}>{errors.dietary_restrictions.message}</p>}
+              <label className={LBL}>Você tem alguma restrição alimentar? *</label>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                {[
+                  { value: 'no', label: 'Não tenho restrições' },
+                  { value: 'yes', label: 'Sim, tenho' },
+                ].map(({ value, label }) => (
+                  <label
+                    key={value}
+                    htmlFor={`dietary_mode-${value}`}
+                    className={`flex items-center justify-center p-3 rounded-xl border cursor-pointer transition-all text-sm font-semibold ${dietaryMode === value ? 'border-cyan bg-cyan/5 text-white' : 'border-dark-border bg-dark hover:border-text-muted text-text-muted'}`}
+                  >
+                    <input
+                      id={`dietary_mode-${value}`}
+                      type="radio"
+                      value={value}
+                      checked={dietaryMode === value}
+                      onChange={() => {
+                        setDietaryMode(value)
+                        if (value === 'no') setValue('dietary_restrictions', 'Nenhuma', { shouldValidate: true })
+                        else setValue('dietary_restrictions', '', { shouldValidate: false })
+                      }}
+                      className="sr-only"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              {/* Hidden input always registered so RHF tracks the value */}
+              <input
+                type="hidden"
+                {...register('dietary_restrictions', {
+                  validate: () => dietaryMode !== '' || 'Selecione uma opção',
+                  required: dietaryMode === 'yes' ? 'Descreva a restrição' : false,
+                })}
+              />
+              {dietaryMode === 'yes' && (
+                <>
+                  <input
+                    maxLength={200}
+                    className={INPUT}
+                    placeholder="Ex: Vegetariano, vegano, alergia a glúten..."
+                    onChange={e => setValue('dietary_restrictions', e.target.value, { shouldValidate: true })}
+                    defaultValue=""
+                  />
+                  {errors.dietary_restrictions && <p className={ERR}>{errors.dietary_restrictions.message}</p>}
+                </>
+              )}
+              {dietaryMode === '' && errors.dietary_restrictions && (
+                <p className={ERR}>{errors.dietary_restrictions.message}</p>
+              )}
             </div>
 
             <div>
               <label className={LBL}>Você se identifica como pessoa com deficiência (PcD)? *</label>
               <div className="grid grid-cols-2 gap-3">
                 {[{ value: 'yes', label: 'Sim' }, { value: 'no', label: 'Não' }].map(({ value, label }) => (
-                  <label key={value} className={`flex items-center justify-center p-3 rounded-xl border cursor-pointer transition-all ${isPcd === value ? 'border-cyan bg-cyan/5 text-white' : 'border-dark-border bg-dark hover:border-text-muted text-text-muted'}`}>
-                    <input type="radio" value={value} {...register('is_pcd', { required: 'Obrigatório' })} className="sr-only" />
+                  <label key={value} htmlFor={`is_pcd-${value}`} className={`flex items-center justify-center p-3 rounded-xl border cursor-pointer transition-all ${isPcd === value ? 'border-cyan bg-cyan/5 text-white' : 'border-dark-border bg-dark hover:border-text-muted text-text-muted'}`}>
+                    <input id={`is_pcd-${value}`} type="radio" value={value} {...register('is_pcd', { required: 'Obrigatório' })} className="sr-only" />
                     <span className="text-sm font-semibold">{label}</span>
                   </label>
                 ))}
@@ -1293,8 +1410,8 @@ export default function RegistrationForm() {
               <label className={LBL}>Você já tem um projeto? *</label>
               <div className="grid grid-cols-2 gap-3">
                 {[{ value: 'yes', label: 'Sim' }, { value: 'no', label: 'Não' }].map(({ value, label }) => (
-                  <label key={value} className={`flex items-center justify-center p-3 rounded-xl border cursor-pointer transition-all ${hasProject === value ? 'border-cyan bg-cyan/5 text-white' : 'border-dark-border bg-dark hover:border-text-muted text-text-muted'}`}>
-                    <input type="radio" value={value} {...register('has_project', { required: 'Obrigatório' })} className="sr-only" />
+                  <label key={value} htmlFor={`has_project-${value}`} className={`flex items-center justify-center p-3 rounded-xl border cursor-pointer transition-all ${hasProject === value ? 'border-cyan bg-cyan/5 text-white' : 'border-dark-border bg-dark hover:border-text-muted text-text-muted'}`}>
+                    <input id={`has_project-${value}`} type="radio" value={value} {...register('has_project', { required: 'Obrigatório' })} className="sr-only" />
                     <span className="text-sm font-semibold">{label}</span>
                   </label>
                 ))}
@@ -1334,8 +1451,8 @@ export default function RegistrationForm() {
                 { value: 'individual_own', label: 'Inscrição Individual (equipe já existe)', desc: 'Cada integrante da minha equipe se inscreverá por conta própria' },
                 { value: 'team', label: 'Inscrição em Equipe', desc: 'Já possuo um time e inscreverei todos agora' },
               ].map(({ value, label, desc }) => (
-                <label key={value} className={`flex flex-col p-4 rounded-xl border cursor-pointer transition-all ${inscriptionModality === value ? 'border-cyan bg-cyan/5 text-white' : 'border-dark-border bg-dark hover:border-text-muted text-text-muted'}`}>
-                  <input type="radio" value={value} {...register('inscription_modality')} className="sr-only" />
+                <label key={value} htmlFor={`inscription_modality-${value}`} className={`flex flex-col p-4 rounded-xl border cursor-pointer transition-all ${inscriptionModality === value ? 'border-cyan bg-cyan/5 text-white' : 'border-dark-border bg-dark hover:border-text-muted text-text-muted'}`}>
+                  <input id={`inscription_modality-${value}`} type="radio" value={value} {...register('inscription_modality')} className="sr-only" />
                   <span className="font-semibold text-sm">{label}</span>
                   <span className="text-xs mt-1 opacity-70">{desc}</span>
                 </label>
