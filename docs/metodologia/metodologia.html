@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metodologia HackIA — AI Hackathon Blumenau 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    /* ========== RESET & BASE ========== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cyan:     #06d6a0;
+      --electric: #3a86ff;
+      --violet:   #8338ec;
+      --hot:      #ff006e;
+      --gold:     #ffbe0b;
+      --dark:     #050510;
+      --bg:       #ffffff;
+      --text:     #1a1a2e;
+      --text-muted: #555577;
+      --border:   #e0e0f0;
+      --page-margin: 20mm;
+    }
+
+    html { font-size: 10pt; }
+
+    body {
+      font-family: 'Sora', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 0;
+    }
+
+    /* ========== TYPOGRAPHY ========== */
+    h1, h2, h3, h4, h5 { font-weight: 700; line-height: 1.3; }
+
+    h1 { font-size: 2.6em; }
+    h2 { font-size: 1.6em; margin-bottom: 0.5em; }
+    h3 { font-size: 1.2em; margin-bottom: 0.4em; }
+    h4 { font-size: 1.05em; margin-bottom: 0.3em; }
+
+    p { margin-bottom: 0.8em; }
+    ul, ol { margin: 0.5em 0 0.8em 1.4em; }
+    li { margin-bottom: 0.25em; }
+
+    strong { font-weight: 700; }
+    code, .mono {
+      font-family: 'JetBrains Mono', 'Courier New', monospace;
+      font-size: 0.9em;
+    }
+
+    /* ========== PAGE SECTIONS ========== */
+    .page {
+      min-height: 297mm;
+      padding: var(--page-margin);
+      position: relative;
+      page-break-before: always;
+    }
+
+    .page:first-of-type { page-break-before: avoid; }
+
+    .page-footer {
+      position: absolute;
+      bottom: 10mm;
+      left: var(--page-margin);
+      right: var(--page-margin);
+      font-size: 0.75em;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid var(--border);
+      padding-top: 4px;
+    }
+
+    /* ========== COVER PAGE ========== */
+    .cover {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      background: var(--dark);
+      color: #fff;
+      min-height: 297mm;
+      padding: 20mm;
+    }
+
+    .cover-logo {
+      font-size: 4.5em;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--cyan), var(--electric), var(--violet));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.15em;
+    }
+
+    .cover-subtitle {
+      font-size: 1.4em;
+      color: rgba(255,255,255,0.85);
+      font-weight: 300;
+      margin-bottom: 2em;
+    }
+
+    .cover-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1em 2em;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 1.5em 2em;
+      text-align: left;
+      max-width: 420px;
+      width: 100%;
+      font-size: 0.95em;
+    }
+
+    .cover-meta dt {
+      color: rgba(255,255,255,0.55);
+      font-size: 0.8em;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 500;
+    }
+
+    .cover-meta dd {
+      color: #fff;
+      font-weight: 600;
+      margin-left: 0;
+    }
+
+    .cover-notice {
+      margin-top: 2.5em;
+      font-size: 0.8em;
+      color: rgba(255,255,255,0.45);
+      font-style: italic;
+      max-width: 480px;
+    }
+
+    .cover-sponsor {
+      margin-top: 1em;
+      font-size: 0.9em;
+      color: var(--gold);
+      font-weight: 600;
+    }
+
+    /* ========== CHAPTER HEADER ========== */
+    .chapter-header {
+      border-left: 5px solid var(--electric);
+      padding-left: 1em;
+      margin-bottom: 1.5em;
+    }
+
+    .chapter-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8em;
+      color: var(--electric);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-weight: 500;
+    }
+
+    .chapter-header h2 { margin-bottom: 0; }
+
+    /* ========== ALERT / CALLOUT BOXES ========== */
+    .callout {
+      border-radius: 8px;
+      padding: 1em 1.2em;
+      margin: 1.2em 0;
+      font-size: 0.95em;
+    }
+
+    .callout-cyan   { background: #e6fdf6; border-left: 4px solid var(--cyan); }
+    .callout-violet { background: #f3ecfd; border-left: 4px solid var(--violet); }
+    .callout-gold   { background: #fffbea; border-left: 4px solid var(--gold); }
+    .callout-hot    { background: #fff0f5; border-left: 4px solid var(--hot); }
+    .callout-electric { background: #eef3ff; border-left: 4px solid var(--electric); }
+    .callout-warn   { background: #fff8e6; border-left: 4px solid #e6a800; }
+
+    .callout-label {
+      font-size: 0.75em;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      display: block;
+      margin-bottom: 0.3em;
+    }
+
+    /* ========== TABLES ========== */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9em;
+      margin: 1em 0 1.5em;
+    }
+
+    th {
+      background: var(--dark);
+      color: #fff;
+      padding: 0.6em 0.8em;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    td {
+      padding: 0.5em 0.8em;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    tr:nth-child(even) td { background: #f8f8fc; }
+
+    .table-accent th { background: var(--electric); }
+    .table-cyan th   { background: var(--cyan); color: var(--dark); }
+    .table-violet th { background: var(--violet); }
+    .table-gold th   { background: var(--gold); color: var(--dark); }
+
+    /* ========== BADGE / PILL ========== */
+    .badge {
+      display: inline-block;
+      padding: 0.15em 0.6em;
+      border-radius: 100px;
+      font-size: 0.78em;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    .badge-cyan    { background: var(--cyan); color: var(--dark); }
+    .badge-electric { background: var(--electric); color: #fff; }
+    .badge-violet  { background: var(--violet); color: #fff; }
+    .badge-hot     { background: var(--hot); color: #fff; }
+    .badge-gold    { background: var(--gold); color: var(--dark); }
+    .badge-gray    { background: #e0e0f0; color: var(--text); }
+
+    /* ========== CRITERIA CARDS ========== */
+    .criteria-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1em;
+      margin: 1.2em 0;
+    }
+
+    .criteria-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1em 1.1em;
+      position: relative;
+    }
+
+    .criteria-card .weight {
+      font-size: 2em;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 0.2em;
+    }
+
+    .criteria-card h4 { font-size: 1em; }
+
+    .criteria-card p { font-size: 0.88em; color: var(--text-muted); margin-bottom: 0; }
+
+    .criteria-card.elimination { border-color: var(--hot); border-width: 2px; }
+    .criteria-card.elimination .weight { color: var(--hot); }
+
+    .criteria-card.electric .weight { color: var(--electric); }
+    .criteria-card.cyan .weight { color: var(--cyan); }
+    .criteria-card.violet .weight { color: var(--violet); }
+
+    /* ========== PITCH TIMELINE ========== */
+    .pitch-timeline {
+      display: flex;
+      gap: 0;
+      margin: 1.2em 0;
+      border-radius: 8px;
+      overflow: hidden;
+      font-size: 0.88em;
+    }
+
+    .pitch-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0.7em 0.5em;
+      text-align: center;
+      color: #fff;
+      flex: 0 0 auto;
+    }
+
+    .pitch-block .time {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.1em;
+      font-weight: 700;
+    }
+
+    .pitch-block .label {
+      font-size: 0.78em;
+      opacity: 0.9;
+      margin-top: 2px;
+      font-weight: 500;
+    }
+
+    .pb-pitch  { background: var(--electric); flex: 3; }
+    .pb-demo   { background: var(--hot); flex: 1; }
+    .pb-qa     { background: var(--violet); flex: 5; }
+    .pb-jury   { background: var(--cyan); color: var(--dark); flex: 1; }
+
+    /* ========== SCHEDULE TABLE ========== */
+    .schedule-table td:first-child { font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+    .schedule-table td:nth-child(3) { font-size: 0.85em; color: var(--text-muted); }
+
+    /* ========== SECTION DIVIDER ========== */
+    .section-divider {
+      border: none;
+      border-top: 2px solid var(--border);
+      margin: 2em 0;
+    }
+
+    /* ========== TWO COLUMN GRID ========== */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5em;
+      margin: 1em 0;
+    }
+
+    /* ========== MANTRA ========== */
+    .mantra {
+      text-align: center;
+      background: var(--dark);
+      color: var(--cyan);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.05em;
+      font-weight: 700;
+      padding: 1em 1.5em;
+      border-radius: 8px;
+      margin: 1.2em 0;
+      letter-spacing: 0.04em;
+    }
+
+    /* ========== PRINT RULES ========== */
+    @media print {
+      body {
+        font-size: 9pt;
+        max-width: 100%;
+      }
+
+      .page {
+        min-height: 0;
+        padding: 15mm 18mm 20mm;
+        page-break-inside: avoid;
+      }
+
+      .page.chapter { page-break-before: always; }
+
+      .cover {
+        min-height: 0;
+        height: 297mm;
+        page-break-after: always;
+      }
+
+      .criteria-grid { grid-template-columns: 1fr 1fr; }
+      .two-col { grid-template-columns: 1fr 1fr; }
+      .pitch-timeline { flex-wrap: nowrap; }
+
+      table { page-break-inside: avoid; }
+
+      h2, h3 { page-break-after: avoid; }
+
+      a { text-decoration: none; color: inherit; }
+
+      .page-footer { display: flex !important; }
+    }
+
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    @page :first { margin: 0; }
+  </style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- CAPA                                                          -->
+<!-- ============================================================ -->
+<div class="cover">
+  <div class="cover-logo">HackIA</div>
+  <div class="cover-subtitle">AI Hackathon Blumenau 2026</div>
+
+  <dl class="cover-meta">
+    <dt>Edição</dt>  <dd>1ª — Piloto SC</dd>
+    <dt>Datas</dt>   <dd>29, 30 e 31 de maio de 2026</dd>
+    <dt>Local</dt>   <dd>Centro de Inovação de Blumenau (CIB)</dd>
+    <dt>Duração</dt> <dd>54 horas — formato imersivo</dd>
+    <dt>Premiação</dt><dd>R$ 9.000 em dinheiro + benefícios</dd>
+    <dt>Formato</dt> <dd>DEV-first · equipes de 3 a 6 pessoas</dd>
+  </dl>
+
+  <div class="cover-sponsor">Naming Sponsor: DATI — HackIA SC by DATI</div>
+
+  <p class="cover-notice">
+    Documento de metodologia preparado para a equipe organizadora —<br>
+    Vini (JOYn RH), Thomas Topfstedt, Ana Luiza, Lycia, Letícia, Bruno,<br>
+    Cristiane, Juan, William, Igor, Junior (CIB) e Millena Miliotti (coord. de metodologia).
+  </p>
+
+  <p class="cover-notice" style="margin-top:1em; color: #ff9980; border-top: 1px solid rgba(255,255,255,0.2); padding-top:1em;">
+    ⚠ Em caso de conflito entre este documento e o edital oficial, prevalece o edital.
+  </p>
+</div>
+
+<!-- ============================================================ -->
+<!-- 1. SUMÁRIO EXECUTIVO                                          -->
+<!-- ============================================================ -->
+<div class="page chapter">
+  <div class="chapter-header">
+    <div class="chapter-num">Capítulo 1</div>
+    <h2>Sumário Executivo</h2>
+  </div>
+
+  <h3>O que é o HackIA</h3>
+  <p>
+    O HackIA é um evento imersivo de 54 horas em que equipes de 3 a 6 pessoas — com pelo menos um perfil DEV — constroem um produto real usando Inteligência Artificial, validam com clientes pagantes durante o próprio evento e disputam prêmios em dinheiro e benefícios institucionais. Diferente de hackathons tradicionais — que privilegiam código sem cliente — e de bootcamps de aprendizado validado — que privilegiam entender o problema sem entregar produto — o HackIA é um <strong>laboratório de execução comercial com IA</strong>. O que importa é a convergência de três coisas simultâneas: produto que roda com IA real, evidência de que alguém pagou ou pré-comprou, e clareza sobre o que foi aprendido para escalar.
+  </p>
+
+  <div class="mantra">MANTRA: Construa com IA real. Venda no fim de semana. Saia com um CNPJ.</div>
+
+  <h3>Os três diferenciais</h3>
+  <p>A metodologia HackIA é desenhada em torno de três decisões de design que a separam tanto de hackathons clássicos quanto de programas de aceleração:</p>
+
+  <table class="table-accent">
+    <thead>
+      <tr><th>#</th><th>Diferencial</th><th>Por quê</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1</strong></td>
+        <td>Mentor fixo por equipe durante as 54h — não rotaciona</td>
+        <td>Em hackathon de IA, troca rápida de mentor cria ruído (cada um sugere uma stack diferente). Mentor fixo conhece a hipótese, vê a evolução do código, sabe quando intervir.</td>
+      </tr>
+      <tr>
+        <td><strong>2</strong></td>
+        <td>Demo ao vivo do SLC-IA obrigatória no pitch final</td>
+        <td>Slide com prompt não conta. Captura de tela do ChatGPT não conta. A equipe demonstra inferência ao vivo — chamada real à API com latência e custo medidos.</td>
+      </tr>
+      <tr>
+        <td><strong>3</strong></td>
+        <td>IA Evaluator — modelo de IA avalia os pitches em paralelo aos jurados humanos</td>
+        <td>Pitches são transcritos via Whisper e analisados por LLM com a mesma rubrica dos jurados. Resultado entra como 1 voto adicional. É inovação que se pratica, não se anuncia.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Saída esperada</h3>
+  <p>Cada equipe que conclui as 54h deve sair com:</p>
+  <ol>
+    <li>Repositório público no GitHub com o código do SLC-IA versionado</li>
+    <li>SLC-IA deployed em URL pública conectada a uma API de IA</li>
+    <li>Diário de Aprendizado documentando pelo menos 2 ciclos Build-Measure-Learn</li>
+    <li>Decisão Pivotar/Perseverar registrada com justificativa baseada em dados</li>
+    <li>Primeira evidência de tração — LOI, pré-venda ou primeira nota fiscal</li>
+  </ol>
+  <p>As três equipes vencedoras saem com prêmio em dinheiro, mentoria pós-evento e visita institucional ao patrocinador.</p>
+
+  <div class="page-footer">
+    <span>HackIA SC — AI Hackathon Blumenau 2026 · Documento de Metodologia</span>
+    <span>Documento interno — equipe organizadora</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 2. FUNDAMENTOS TEÓRICOS: LEAN STARTUP                        -->
+<!-- ============================================================ -->
+<div class="page chapter">
+  <div class="chapter-header">
+    <div class="chapter-num">Capítulo 2</div>
+    <h2>Fundamentos Teóricos: Lean Startup</h2>
+  </div>
+
+  <p>A metodologia HackIA é construída sobre os princípios do Lean Startup, formulados por Eric Ries em 2011. Esses princípios já são amplamente aplicados em programas como Y Combinator, 500 Startups e em currículos acadêmicos de empreendedorismo. O HackIA reinterpreta esses princípios para o contexto técnico-comercial de um hackathon de IA.</p>
+
+  <h3>Build-Measure-Learn (BML)</h3>
+  <p>É o ciclo central do Lean Startup. A equipe parte de uma hipótese, constrói o experimento mínimo capaz de testá-la, mede resultados em campo e aprende se a hipótese se confirmou, foi refutada ou exige refino. O ciclo se repete.</p>
+  <div class="callout callout-cyan">
+    <span class="callout-label">Regra HackIA</span>
+    Cada equipe deve completar pelo menos <strong>2 voltas do ciclo BML</strong> durante as 54 horas. O mentor fixo é responsável por garantir que isso aconteça.
+  </div>
+
+  <h3>Saltos de Fé</h3>
+  <p>Saltos de fé são as hipóteses fundacionais que sustentam um negócio. No HackIA adicionamos uma terceira hipótese ao modelo clássico de Lean Startup:</p>
+
+  <table class="table-cyan">
+    <thead>
+      <tr><th>Salto</th><th>Pergunta</th><th>Como o HackIA testa</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. Valor</strong></td>
+        <td>Existe um cliente disposto a pagar pela solução?</td>
+        <td>Saia do CIB no sábado: entrevistas, landing com checkout, pré-venda.</td>
+      </tr>
+      <tr>
+        <td><strong>2. Crescimento</strong></td>
+        <td>Como novos clientes chegam ao produto?</td>
+        <td>Definição do motor de crescimento (viral, pago, pegajoso, comunidade).</td>
+      </tr>
+      <tr>
+        <td><strong>3. Técnica de IA</strong></td>
+        <td>A IA consegue fazer X com Y de qualidade em Z tempo/custo?</td>
+        <td>Construção do SLC-IA + medição de latência, custo por inferência, qualidade.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>SLC — Simples, Adorável, Completo</h3>
+  <p>SLC (Simples, Adorável, Completo) é a evolução conceitual do MVP cunhada por Jason Cohen em 2014. O termo original "mínimo viável" carrega uma conotação problemática — produto incompleto, pela metade, que apenas "funciona". O SLC corrige essa armadilha: o que se constrói deve ser <strong>simples</strong> no escopo, mas <strong>adorável</strong> na execução e <strong>completo</strong> dentro do que promete. Não é v0.1 de algo quebrado — é v1 de algo simples.</p>
+  <p>No HackIA o conceito é estendido para <strong>SLC-IA</strong>: simples, adorável, completo e com IA real rodando — chamada à API, output gerado dinamicamente, custo medido. Não é IA mockada nem prompt em slide.</p>
+
+  <h3>Pivotar ou Perseverar</h3>
+  <p>Ao final de cada ciclo BML, a equipe decide: <strong>perseverar</strong> (a hipótese se confirmou — aprofunda), <strong>pivotar</strong> (a hipótese falhou — muda um aspecto: cliente, problema, modelo, canal ou tecnologia) ou <strong>parar</strong> (os dados refutam o conceito por inteiro). No HackIA, pivotar é inteligência — equipes que pivotam com base em dados ganham os mesmos pontos que equipes que perseveram com dados. O que pesa na avaliação é o rigor da decisão, não o caminho escolhido.</p>
+
+  <div class="page-footer">
+    <span>HackIA SC — AI Hackathon Blumenau 2026 · Documento de Metodologia</span>
+    <span>Documento interno — equipe organizadora</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 3. CINCO PRINCÍPIOS FUNDACIONAIS                             -->
+<!-- ============================================================ -->
+<div class="page chapter">
+  <div class="chapter-header">
+    <div class="chapter-num">Capítulo 3</div>
+    <h2>Cinco Princípios Fundacionais</h2>
+  </div>
+
+  <p>Toda decisão de design da metodologia HackIA é justificável por um dos cinco princípios abaixo. São princípios que devem ser comunicados aos participantes na abertura, internalizados pelos mentores antes do evento e usados pelos jurados como bússola durante a deliberação.</p>
+
+  <div class="callout callout-electric">
+    <span class="callout-label">Princípio 1</span>
+    <strong>Empreendedorismo é gerenciar incerteza com método.</strong><br>
+    O HackIA não premia 'sangue nos olhos' sem rigor. Premia hipóteses claras, experimentos curtos e decisões baseadas em dados.
+  </div>
+
+  <div class="callout callout-electric">
+    <span class="callout-label">Princípio 2</span>
+    <strong>Aprender é só metade da resposta.</strong><br>
+    A outra metade é executar. Equipe que aprende muito mas não constrói nada que rode no palco perde para a equipe que aprendeu menos mas mostra o produto funcionando. É um trade-off consciente — o HackIA atrai DEVs e o evento precisa devolver tração e código.
+  </div>
+
+  <div class="callout callout-electric">
+    <span class="callout-label">Princípio 3</span>
+    <strong>IA tem que rodar de verdade.</strong><br>
+    Slide com prompt não conta. Deck com captura de tela do ChatGPT não conta. A equipe demonstra inferência ao vivo no pitch final — chamada real à API, com latência real, custo real medido.
+  </div>
+
+  <div class="callout callout-electric">
+    <span class="callout-label">Princípio 4</span>
+    <strong>Build-Measure-Learn segue sendo o motor.</strong><br>
+    Cada equipe deve completar pelo menos duas voltas do ciclo BML durante as 54 horas. Mentor fixo é responsável por garantir que isso aconteça. Equipes que pulam a etapa de validação são interpeladas pelo mentor.
+  </div>
+
+  <div class="callout callout-electric">
+    <span class="callout-label">Princípio 5</span>
+    <strong>Pivotar é inteligência. Persistir cego é fracasso.</strong><br>
+    Equipes que pivotaram com base em dados ganham os mesmos pontos que equipes que perseveraram com base em dados. O que pesa é o rigor da decisão, não o caminho escolhido. O critério eliminatório é decidir contra os dados.
+  </div>
+
+  <div class="page-footer">
+    <span>HackIA SC — AI Hackathon Blumenau 2026 · Documento de Metodologia</span>
+    <span>Documento interno — equipe organizadora</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 4. A JORNADA DA EQUIPE — SAPO NA VITÓRIA-RÉGIA               -->
+<!-- ============================================================ -->
+<div class="page chapter">
+  <div class="chapter-header">
+    <div class="chapter-num">Capítulo 4</div>
+    <h2>A Jornada da Equipe — Sapo na Vitória-Régia</h2>
+  </div>
+
+  <p>A identidade visual e narrativa do HackIA representa a jornada do participante como um sapo pulando entre vitórias-régias. Cada vitória-régia é uma etapa do ciclo BML; cada salto é uma decisão. A metáfora é didática — mas o motor por trás é Build-Measure-Learn puro. Não substituímos BML pelo sapo: o sapo é como a gente conta BML.</p>
+
+  <div class="callout callout-cyan">
+    <span class="callout-label">Caminho Principal</span>
+    <strong style="font-family: 'JetBrains Mono', monospace; font-size: 0.95em; letter-spacing:0.05em;">
+      PROBLEMA → PROTÓTIPO → CÓDIGO → SLC → VENDAS → PITCH
+    </strong>
+    <p style="margin-top:0.5em; margin-bottom:0;">Caminho linear com 6 etapas. 14 conexões alternativas são possíveis no grafo.</p>
+  </div>
+
+  <h3>Atalhos e Loops de Aprendizado</h3>
+  <ul>
+    <li><strong>Atalhos:</strong> Problema → Vendas (pré-venda direta), Protótipo → Pitch (pitch exploratório)</li>
+    <li><strong>Loops de aprendizado:</strong> Vendas → Problema (vendeu errado, volta), Código → Problema (construiu errado, volta), Pitch → Problema (pitch fraco, refinar base)</li>
+  </ul>
+
+  <div class="callout callout-gold">
+    <span class="callout-label">Consequência prática para mentores e facilitadores</span>
+    Nenhuma equipe é obrigada a seguir o caminho linear. Equipes podem entrar em loop, pular etapas, voltar. O que importa é que ao final tenham completado os ciclos BML necessários — e que cada salto seja registrado no Diário de Aprendizado.
+  </div>
+
+  <div class="page-footer">
+    <span>HackIA SC — AI Hackathon Blumenau 2026 · Documento de Metodologia</span>
+    <span>Documento interno — equipe organizadora</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 5. AS TRÊS FASES DO EVENTO                                    -->
+<!-- ============================================================ -->
+<div class="page chapter">
+  <div class="chapter-header">
+    <div class="chapter-num">Capítulo 5</div>
+    <h2>As Três Fases do Evento</h2>
+  </div>
+
+  <p>O HackIA é dividido em três fases dentro de uma janela de 54 horas. A carga de programação ativa é de aproximadamente 30 horas — o restante é descanso, refeições, validação externa e tempo livre de construção.</p>
+
+  <table class="table-accent">
+    <thead>
+      <tr><th>Fase</th><th>Quando</th><th>Foco Lean</th><th>Entregável</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. Ignição</strong></td>
+        <td>Sex 18:30–23:15<br><span class="badge badge-gray">~4h45</span></td>
+        <td>Visão + 3 Saltos de Fé</td>
+        <td>Canvas de Hipóteses + mentor fixo confirmado</td>
+      </tr>
+      <tr>
+        <td><strong>2. Construção</strong></td>
+        <td>Sáb 08:00–23:00<br><span class="badge badge-gray">~14h</span></td>
+        <td>BML — 2 voltas + Protótipo IA + Saia do CIB</td>
+        <td>SLC-IA rodando + 1 ciclo BML completo + decisão Pivot/Persevere</td>
+      </tr>
+      <tr>
+        <td><strong>3. Apresentação</strong></td>
+        <td>Dom 08:00–21:00<br><span class="badge badge-gray">~13h</span></td>
+        <td>Demo ao vivo + Pitch + Avaliação por jurados e IA Evaluator</td>
+        <td>Pitch entregue + ranking final + premiação + repositórios arquivados</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-warn">
+    <span class="callout-label">⚠ Nota sobre horários</span>
+    Os horários acima refletem o cronograma detalhado desta metodologia. Existem divergências documentadas entre estes horários e o edital oficial (cláusula 9.1); consulte <code>DIVERGENCIAS-CRONOGRAMA.md</code> para a lista completa. Em caso de conflito, o edital prevalece.
+  </div>
+
+  <h3>Fase 1 — Ignição (sexta 29/05)</h3>
+  <p><strong>Conceito Lean: Visão + Saltos de Fé.</strong> Objetivo: formar equipes ao redor de problemas reais, definir as três hipóteses (valor, crescimento, técnica de IA) e parear cada equipe com seu mentor fixo.</p>
+  <div class="callout callout-violet">
+    <span class="callout-label">Narrativa de abertura</span>
+    "Toda startup começa com três apostas. Uma sobre o cliente, uma sobre como ele chega até você, e — no HackIA — uma sobre o que a IA consegue fazer. Hoje à noite de descobrir essas três apostas e formar o time que vai tentar provar todas elas em 48 horas."
+  </div>
+
+  <h3>Fase 2 — Construção (sábado 30/05)</h3>
+  <p><strong>Conceito Lean: BML — 2 voltas + Tipos de Protótipo IA + Saia do CIB.</strong> Objetivo: construir o SLC-IA mais simples possível que prove a hipótese, validar com clientes reais (incluindo cobrar de alguém) e tomar a decisão Pivotar/Perseverar ainda no sábado à noite — não no domingo.</p>
+  <div class="callout callout-violet">
+    <span class="callout-label">Narrativa</span>
+    "Vocês têm hipóteses. Agora precisam de evidências de mercado E de código rodando. O sábado tem dois objetivos simultâneos: construir o mínimo de IA que funciona e botar isso na mão de 5 a 10 pessoas reais até o jantar."
+  </div>
+  <div class="callout callout-hot">
+    <span class="callout-label">Regra das 16h</span>
+    Se às 16h da tarde de sábado a equipe não tem chamada real à API funcionando (mesmo que com prompt fixo), o mentor fixo força um time-out de 15 minutos. Over-prompting é o over-building do HackIA: equipe que só edita prompt sem código rodando precisa simplificar drasticamente o escopo, ou virar Mágico de Oz IA pelo resto do dia.
+  </div>
+
+  <h3>Fase 3 — Apresentação (domingo 31/05)</h3>
+  <p><strong>Conceito Lean: Demonstração de aprendizado validado + Demo ao vivo do SLC-IA + Premiação.</strong> Objetivo: consolidar dados, preparar pitch que conta a jornada (incluindo demo ao vivo), apresentar para o júri, ser avaliado também pelo IA Evaluator e receber prêmios.</p>
+  <div class="callout callout-cyan">
+    <span class="callout-label">Temas do dia</span>
+    Manhã: <em>"Conta a jornada com evidências."</em><br>
+    Tarde: <em>"Demo ao vivo. Sem slide salva."</em>
+  </div>
+
+  <div class="page-footer">
+    <span>HackIA SC — AI Hackathon Blumenau 2026 · Documento de Metodologia</span>
+    <span>Documento interno — equipe organizadora</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 6. CRONOGRAMA DETALHADO — 54 HORAS                           -->
+<!-- ============================================================ -->
+<div class="page chapter">
+  <div class="chapter-header">
+    <div class="chapter-num">Capítulo 6</div>
+    <h2>Cronograma Detalhado — 54 Horas</h2>
+  </div>
+
+  <div class="callout callout-warn">
+    <span class="callout-label">⚠ Atenção</span>
+    Este cronograma é o detalhamento pedagógico desta metodologia. Divergências entre estes horários e o edital oficial (cláusula 9.1) estão documentadas em <code>docs/metodologia/DIVERGENCIAS-CRONOGRAMA.md</code>. Em caso de conflito, o edital prevalece.
+  </div>
+
+  <h3>Sexta 29/05 — Fase 1: Ignição</h3>
+  <p><em>Tema do dia: "Que dor real vale resolver com IA?" · Local: sala 106 (café do CIB), capacidade 100 + telão</em></p>
+
+  <table class="schedule-table table-accent">
+    <thead><tr><th>Hora</th><th>Atividade</th><th>Duração</th><th>Responsável</th></tr></thead>
+    <tbody>
+      <tr><td>18:30</td><td>Welcome coffee + credenciamento</td><td>60 min</td><td>Logística + Bruna</td></tr>
+      <tr><td>19:00</td><td>Abertura oficial — naming sponsor + regras</td><td>20 min</td><td>Vini + DATI + Lycia</td></tr>
+      <tr><td>19:20</td><td>"O que é o HackIA?" — princípios e jornada do sapo</td><td>20 min</td><td>Millena</td></tr>
+      <tr><td>19:40</td><td>Energizer "Conexão Relâmpago AI"</td><td>20 min</td><td>Facilitadores</td></tr>
+      <tr><td>20:00</td><td>Muro de Dores digital — app no telão</td><td>30 min</td><td>Bruno + Cris</td></tr>
+      <tr><td>20:30</td><td>Pitch Relâmpago — máx 30 pitches × 60s</td><td>60 min</td><td>Millena + Letícia (timer)</td></tr>
+      <tr><td>21:30</td><td>Votação digital (3 votos por participante)</td><td>15 min</td><td>Thomas (operação)</td></tr>
+      <tr><td>21:45</td><td>Formação de equipes (3–6 + 1 remoto opcional)</td><td>45 min</td><td>Facilitadores + Mentores</td></tr>
+      <tr><td>22:30</td><td>Workshop Saltos de Fé — Canvas de Hipóteses</td><td>30 min</td><td>Mentor fixo de cada equipe</td></tr>
+      <tr><td>23:00</td><td>Pareamento mentor–equipe + check-out</td><td>15 min</td><td>Vini</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Sábado 30/05 — Fase 2: Construção</h3>
+  <p><em>Tema do dia: "Constrói com IA real. Vende no fim de semana."</em></p>
+
+  <table class="schedule-table table-cyan">
+    <thead><tr><th>Hora</th><th>Atividade</th><th>Duração</th><th>Responsável</th></tr></thead>
+    <tbody>
+      <tr><td>08:00</td><td>Café da manhã</td><td>60 min</td><td>Logística</td></tr>
+      <tr><td>09:00</td><td>Energizer "2 verdades e 1 IA"</td><td>15 min</td><td>Millena</td></tr>
+      <tr><td>09:15</td><td>Mentoria FIXA — Rodada 1 (45 min com a equipe)</td><td>45 min</td><td>Mentor fixo</td></tr>
+      <tr><td>10:00</td><td>Mini-palestra "Tipos de Protótipo IA"</td><td>15 min</td><td>Coord. Metodologia</td></tr>
+      <tr><td>10:15</td><td>Canvas SLC-IA + escopo + escolha de stack</td><td>60 min</td><td>Equipes + facilitadores</td></tr>
+      <tr><td>11:15</td><td>Validação cruzada — equipes trocam canvas</td><td>30 min</td><td>Facilitadores</td></tr>
+      <tr><td>11:45</td><td>Almoço</td><td>60 min</td><td>Logística</td></tr>
+      <tr><td>12:45</td><td>Alinhamento pós-almoço (declaração 30s/equipe)</td><td>15 min</td><td>Mentor fixo</td></tr>
+      <tr><td>13:00</td><td>CONSTRUÇÃO DO SLC-IA — bloco focado</td><td>4h</td><td>Equipes (mentor circula)</td></tr>
+      <tr><td>17:00</td><td>Construção — final do bloco / último commit</td><td>30 min</td><td>Equipes</td></tr>
+      <tr><td>17:30</td><td>Briefing "Saia do CIB" + roteiro de entrevista</td><td>15 min</td><td>Coord. Metodologia</td></tr>
+      <tr><td>17:45</td><td>SAIA DO CIB — Rodada 1 (validação externa)</td><td>2h</td><td>Equipes</td></tr>
+      <tr><td>19:45</td><td>Café da tarde</td><td>15 min</td><td>Logística</td></tr>
+      <tr><td>20:00</td><td>Jantar (pizza + opções diet)</td><td>30 min</td><td>Logística</td></tr>
+      <tr><td>20:30</td><td>Workshop "Métricas que importam para IA"</td><td>30 min</td><td>Coord. Metodologia</td></tr>
+      <tr><td>21:00</td><td>Checkpoint BML — análise de dados</td><td>60 min</td><td>Equipes + facilitadores</td></tr>
+      <tr><td>22:00</td><td>Reunião Pivotar/Perseverar + 2ª iteração</td><td>60 min</td><td>Equipes + mentor fixo</td></tr>
+      <tr><td>23:00</td><td>Check-out do dia</td><td>15 min</td><td>Vini</td></tr>
+    </tbody>
+  </table>
+
+  <div class="page-footer">
+    <span>HackIA SC — AI Hackathon Blumenau 2026 · Documento de Metodologia</span>
+    <span>Documento interno — equipe organizadora</span>
+  </div>
+</div>
+
+<div class="page">
+  <h3>Domingo 31/05 — Fase 3: Apresentação</h3>
+  <p><em>Temas: manhã — "Conta a jornada com evidências"; tarde — "Demo ao vivo. Sem slide salva."</em></p>
+
+  <table class="schedule-table table-violet">
+    <thead><tr><th>Hora</th><th>Atividade</th><th>Duração</th><th>Responsável</th></tr></thead>
+    <tbody>
+      <tr><td>08:00</td><td>Café da manhã</td><td>60 min</td><td>Logística</td></tr>
+      <tr><td>09:00</td><td>Consolidação de dados residuais</td><td>30 min</td><td>Mentor fixo</td></tr>
+      <tr><td>09:30</td><td>Preparação do pitch (estrutura de 7 blocos)</td><td>90 min</td><td>Equipes + mentor fixo</td></tr>
+      <tr><td>11:00</td><td>Ensaio cronometrado + mentoria de pitch</td><td>60 min</td><td>Mentor fixo + Millena</td></tr>
+      <tr><td>12:00</td><td>Almoço</td><td>60 min</td><td>Logística</td></tr>
+      <tr><td>13:00</td><td>Briefing dos jurados + entrega do scorecard</td><td>15 min</td><td>Millena</td></tr>
+      <tr><td>13:15</td><td>Abertura dos pitches — apresentação do júri</td><td>15 min</td><td>Vini</td></tr>
+      <tr><td>13:30</td><td><strong>PITCH FINAL</strong> — 12–15 equipes × ~8 min</td><td>~2h30</td><td>Equipes + Júri</td></tr>
+      <tr><td>16:00</td><td>Intervalo</td><td>15 min</td><td>Logística</td></tr>
+      <tr><td>16:15</td><td>Deliberação do júri + processamento IA Evaluator</td><td>30 min</td><td>Júri + Thomas (op IA)</td></tr>
+      <tr><td>16:45</td><td>Encerramento e premiação</td><td>45 min</td><td>Vini + DATI + Júri</td></tr>
+      <tr><td>17:30</td><td>Networking final</td><td>60 min</td><td>—</td></tr>
+      <tr><td>18:30</td><td>Encerramento formal</td><td>30 min</td><td>Vini</td></tr>
+      <tr><td>20:00</td><td>Coquetel + chopp</td><td>60 min</td><td>Logística</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-warn">
+    <span class="callout-label">⚠ Divergência com edital — pitches finais</span>
+    Esta metodologia prevê pitches finais a partir das 13:30. O edital (cláusula 9.1) prevê início às 18:00, com bancas de pré-pitch às 14:00 e 15:30. Consulte <code>DIVERGENCIAS-CRONOGRAMA.md</code> (item 4) para decisão da organização. O formato de 10 min por equipe (3+1+5+1) do edital (cláusula 5.2) já está incorporado no Capítulo 11.
+  </div>
+
+  <div class="page-footer">
+    <span>HackIA SC — AI Hackathon Blumenau 2026 · Documento de Metodologia</span>
+    <span>Documento interno — equipe organizadora</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 7. TIPOS DE PROTÓTIPO IA                                      -->
+<!-- ============================================================ -->
+<div class="page chapter">
+  <div class="chapter-header">
+    <div class="chapter-num">Capítulo 7</div>
+    <h2>Os Três Tipos de Protótipo IA</h2>
+  </div>
+
+  <p>A maior armadilha de um hackathon de IA é construir o produto inteiro antes de validar a hipótese. A função dos tipos de protótipo é acelerar o aprendizado com investimento mínimo. Cada equipe escolhe um (ou combina dois) dependendo de quanto tempo tem, que ferramentas tem em mão, e qual hipótese é mais arriscada.</p>
+
+  <div class="two-col">
+    <div class="callout callout-cyan">
+      <span class="callout-label" style="color: #047a5c;">Tipo 1 — Concierge IA</span>
+      <p><strong>Definição:</strong> a equipe opera a IA manualmente. O cliente acha que está usando um produto, mas na verdade é um humano (ou humano + ChatGPT/Claude no terminal) executando.</p>
+      <p><strong>Quando usar:</strong> hipótese é "isso resolve um problema?" — você ainda não sabe se vale automatizar.</p>
+      <p><strong>Vantagem:</strong> zero código, validação profunda, gera receita real.</p>
+      <p><strong>Limitação:</strong> não conta como demo ao vivo se não tiver pelo menos uma chamada automatizada à API.</p>
+    </div>
+    <div class="callout callout-violet">
+      <span class="callout-label">Tipo 2 — Mágico de Oz IA</span>
+      <p><strong>Definição:</strong> a interface parece IA-automática, mas tem humano operando por trás. O cliente clica e vê resposta — sem saber que vocês estão respondendo manualmente em outra aba.</p>
+      <p><strong>Quando usar:</strong> hipótese é "a UX funciona?" mas vocês ainda não conseguem automatizar.</p>
+      <p><strong>Cuidado:</strong> declare ao cliente que é beta — não engane. Para demo ao vivo, é preciso ter pelo menos um caminho automatizado funcionando até domingo.</p>
+    </div>
+  </div>
+
+  <div class="callout callout-electric">
+    <span class="callout-label">Tipo 3 — IA-real mínima</span>
+    <p><strong>Definição:</strong> vocês constroem de verdade. Backend chama API de IA real. Frontend mínimo. Escopo apertado mas funcional. Tudo automatizado de ponta a ponta.</p>
+    <p><strong>Quando usar:</strong> equipe tem DEVs fortes (perfil HackIA típico) e quer maximizar pontuação técnica.</p>
+    <p><strong>Vantagem:</strong> maximiza pontuação técnica e gera demo ao vivo natural. <strong>Risco:</strong> over-engineering — equipe se apaixona pelo código e esquece de validar.</p>
+    <p><em>Exemplo: equipe constrói "IA que resume contratos PDF". Backend chama Claude com prompt estruturado, retorna 5 bullet points + 3 cláusulas de risco. Deploy no Vercel. 50 testes durante a tarde. Custo medido: R$0,18 por contrato. 6 de 10 testadores disseram que pagariam R$30/mês.</em></p>
+  </div>
+
+  <div class="callout callout-gold">
+    <span class="callout-label">Tipo bônus — Pré-venda + Landing (combinar com outro)</span>
+    Landing page com botão "comprar" — mede se cliente paga ANTES do produto existir. Não pode ser tipo único porque não tem demo ao vivo. Combine com Concierge IA ou Mágico de Oz IA. Bônus de pontuação no critério "Escalabilidade e Negócio" se gerar primeira venda real durante o evento.
+  </div>
+
+  <h3>Matriz de decisão</h3>
+  <table class="table-gold">
+    <thead><tr><th>Vocês têm...</th><th>Escolham...</th></tr></thead>
+    <tbody>
+      <tr><td>0 dev na equipe</td><td>Concierge IA + Pré-venda</td></tr>
+      <tr><td>1 dev mas pouco tempo de IA</td><td>Mágico de Oz IA + Pré-venda</td></tr>
+      <tr><td>1+ dev e familiaridade com APIs</td><td>IA-real mínima + Pré-venda</td></tr>
+      <tr><td>Squad sênior e API/crédito sobrando</td><td>IA-real mínima robusta com cache + RAG</td></tr>
+    </tbody>
+  </table>
+
+  <div class="page-footer">
+    <span>HackIA SC — AI Hackathon Blumenau 2026 · Documento de Metodologia</span>
+    <span>Documento interno — equipe organizadora</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 8. TEMPLATES PARA AS EQUIPES                                  -->
+<!-- ============================================================ -->
+<div class="page chapter">
+  <div class="chapter-header">
+    <div class="chapter-num">Capítulo 8</div>
+    <h2>Templates para as Equipes</h2>
+  </div>
+
+  <p>Cada equipe trabalha com dois templates principais durante o evento. São impressos em A3 e disponibilizados também digitalmente no app de jornada.</p>
+
+  <h3>8.1 Canvas de Hipóteses <span class="badge badge-violet">Fase 1 · sexta 22:30</span></h3>
+  <p>Define as três apostas fundamentais da equipe. Tudo o que vocês fizerem nas 54h gira ao redor de testar essas hipóteses.</p>
+
+  <table class="table-violet">
+    <thead><tr><th>Bloco</th><th>O que preencher</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>1. Cliente-alvo</strong></td>
+        <td>Quem é (perfil, contexto, cargo); onde está; como lida com a dor hoje; o que já tentou; por que falhou.</td>
+      </tr>
+      <tr>
+        <td><strong>2. Hipótese de Valor</strong></td>
+        <td>"Acreditamos que [CLIENTE] tem o problema de [PROBLEMA] e estaria disposto a [AÇÃO/PAGAMENTO] para resolvê-lo." Como saberemos se é verdade? Como saberemos se é falso?</td>
+      </tr>
+      <tr>
+        <td><strong>3. Hipótese de Crescimento</strong></td>
+        <td>"Acreditamos que novos clientes chegarão por meio de [CANAL]." Tipo de motor: viral, pago, pegajoso ou comunidade. Métrica do motor.</td>
+      </tr>
+      <tr>
+        <td><strong>4. Hipótese Técnica de IA</strong></td>
+        <td>"Acreditamos que [modelo/abordagem] consegue [tarefa específica] com [qualidade — métrica, não opinião] em [tempo/custo]." Provider primário e fallback. Custo de inferência projetado. Plano de degradação graciosa.</td>
+      </tr>
+      <tr>
+        <td><strong>5. Priorização</strong></td>
+        <td>Qual das 3 hipóteses é a mais arriscada? (a que se for falsa, mata o resto?) Vamos testar essa primeiro.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>8.2 Canvas SLC-IA <span class="badge badge-cyan">Fase 2 · sábado 10:15</span></h3>
+  <p>Define o que a equipe vai construir e — igualmente importante — o que <em>não</em> vai construir. SLC-IA = Simples, Adorável, Completo com IA Real.</p>
+
+  <div class="callout callout-cyan">
+    <span class="callout-label">Definição SLC-IA</span>
+    <strong>S</strong> — Simples: escopo limitado. Construa apenas o necessário para testar a hipótese mais arriscada.<br>
+    <strong>L</strong> — adorável (Lovable): a parte que existe deve encantar. UX cuidada, tom de voz claro, output útil.<br>
+    <strong>C</strong> — Completo: funciona ponta a ponta dentro do escopo escolhido. Não está quebrado, não tem "está vindo".<br>
+    <strong>IA-real:</strong> a IA roda de verdade — chamada à API, output gerado dinamicamente, custo medido.
+  </div>
+
+  <table class="table-cyan">
+    <thead><tr><th>Bloco</th><th>O que preencher</th></tr></thead>
+    <tbody>
+      <tr><td><strong>1. Hipótese a testar</strong></td><td>Copie do Canvas de Hipóteses — foque na mais arriscada.</td></tr>
+      <tr><td><strong>2. Tipo de protótipo</strong></td><td>Concierge IA / Mágico de Oz IA / IA-real mínima / Pré-venda + Landing / Combinação. Justificativa.</td></tr>
+      <tr><td><strong>3. Escopo</strong></td><td>UMA funcionalidade central (must-have). Pelo menos 3 coisas que NÃO vão construir (nice-to-have descartado). Critérios de "Simples" (escopo) e de "Completo" (qualidade dentro do escopo).</td></tr>
+      <tr><td><strong>4. Camada de IA</strong></td><td>Provider primário e fallback. Tarefa específica. Arquitetura da chamada (sync/async/streaming). RAG/tools/agente? Custo MEDIDO: tokens entrada e saída, R$ por chamada, latência média e P95. Plano de degradação graciosa.</td></tr>
+      <tr><td><strong>5. Experimento</strong></td><td>O que querem aprender? Como coletam evidências? Critérios de sucesso definidos ANTES do teste. Quantas pessoas vão testar? Onde encontrá-las?</td></tr>
+      <tr><td><strong>6. Plano de execução</strong></td><td>Hora a hora até as 17h: quem faz o quê. Toda hora alguém anota o que avançou e o que travou. Mentor passa a cada 60 min.</td></tr>
+      <tr><td><strong>7. Entregáveis</strong></td><td>Repositório público GitHub (README mínimo); SLC-IA deployed em URL pública; 5 chamadas reais com sucesso (logs); custo medido; 5 pessoas testaram; decisão Pivot/Persevere documentada.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="page-footer">
+    <span>HackIA SC — AI Hackathon Blumenau 2026 · Documento de Metodologia</span>
+    <span>Documento interno — equipe organizadora</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 9. PAPÉIS NO EVENTO                                           -->
+<!-- ============================================================ -->
+<div class="page chapter">
+  <div class="chapter-header">
+    <div class="chapter-num">Capítulo 9</div>
+    <h2>Papéis no Evento</h2>
+  </div>
+
+  <h3>9.1 Mentor Fixo (diferencial central)</h3>
+  <p>Um mentor por equipe. Fica todas as 54 horas com a mesma equipe. Não rotaciona — opinião profunda vence diversidade de perspectivas em hackathon de IA. Em modelos rotativos, cada mentor sugere uma stack diferente e a equipe não converge.</p>
+
+  <div class="two-col">
+    <div class="callout callout-cyan">
+      <span class="callout-label">Pré-requisitos (escolha um trilho)</span>
+      <strong>Trilho técnico:</strong> já construiu algo com IA (LLM, agente, automação) que rodou em produção, mesmo que pequeno.<br><br>
+      <strong>Trilho empreendedor:</strong> já passou por hackathon/Startup Weekend/Techstars vencendo, ou empreendeu com tração comprovada.
+    </div>
+    <div>
+      <div class="callout callout-electric">
+        <span class="callout-label">O que é seu papel</span>
+        Fazer perguntas que forcem rigor; garantir que a equipe siga o BML (não pula etapas); redirecionar over-prompting (regra das 16h); manter ritmo e energia; ajudar a interpretar dados sem viés de confirmação; ser a memória da equipe.
+      </div>
+      <div class="callout callout-hot">
+        <span class="callout-label">O que NÃO é seu papel</span>
+        Dar a ideia de negócio; validar se "a ideia é boa"; decidir pela equipe; programar com a equipe; ser jurado da equipe que mentora (proibido).
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-gold">
+    <span class="callout-label">Regra de Ouro do Mentor</span>
+    Se a equipe não falou com nenhum cliente real até sábado às 17h, algo está errado — intervenha. Se a equipe não tem código rodando com IA real até sábado às 16h, algo está errado — intervenha.
+  </div>
+
+  <h3>9.2 Coordenadora de Metodologia</h3>
+  <p><strong>Millena Miliotti.</strong> Função: conduzir transições de fase; defender o método contra atalhos das equipes ("vamos pular o saia do CIB porque já temos a ideia"); garantir timing rigoroso nos pitches; briefar jurados na manhã de domingo; arbitrar exceções.</p>
+
+  <h3>9.3 Jurados</h3>
+  <p>Mínimo de 3 jurados, máximo de 5 (a depender da quantidade de equipes). Diversidade obrigatória de perfis para evitar viés de avaliação. Os nomes dos jurados serão mantidos em sigilo até o momento das apresentações finais (edital, cláusula 5.1).</p>
+
+  <table class="table-violet">
+    <thead><tr><th>Perfil</th><th>Por quê</th></tr></thead>
+    <tbody>
+      <tr><td>Voz técnica crítica</td><td>Para questionar arquitetura, custo de inferência, viabilidade técnica.</td></tr>
+      <tr><td>Voz de negócio/produto</td><td>Para avaliar modelo de receita, ICP, viabilidade comercial.</td></tr>
+      <tr><td>Voz de investidor/M&amp;A</td><td>Para avaliar escalabilidade e "colocaria meu dinheiro?"</td></tr>
+      <tr><td>Naming sponsor (DATI)</td><td>Representante institucional do patrocinador.</td></tr>
+      <tr><td>Voz de operação/escala</td><td>Para avaliar como o produto vira empresa de verdade.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>9.4 IA Evaluator</h3>
+  <p>Modelo de IA que avalia os pitches em paralelo aos jurados humanos. Não substitui — complementa. Pipeline técnico:</p>
+  <ol>
+    <li>Pitch é gravado com consentimento prévio (termo específico assinado pelos jurados)</li>
+    <li>Áudio é transcrito via Whisper (OpenAI)</li>
+    <li>Transcrição é analisada por LLM (Claude ou GPT-4) com prompt espelhando a rubrica oficial</li>
+    <li>Modelo gera notas por critério + justificativas</li>
+    <li>Resultado entra na deliberação como 1 voto adicional (peso 1/N+1, onde N = jurados humanos)</li>
+    <li>Anúncio do resultado da IA acontece <strong>após</strong> o resultado oficial dos humanos — para evitar ancoragem</li>
+  </ol>
+
+  <h3>9.5 Equipe Organizadora</h3>
+  <table class="table-accent">
+    <thead><tr><th>Pessoa</th><th>Função</th></tr></thead>
+    <tbody>
+      <tr><td>Vini (JOYn RH)</td><td>Direção geral, patrocínios, mentores</td></tr>
+      <tr><td>Thomas Topfstedt (Morph3D)</td><td>Tecnologia (site, IA Evaluator, app de jornada)</td></tr>
+      <tr><td>Ana Luiza</td><td>Jurados, parcerias internacionais</td></tr>
+      <tr><td>Lycia</td><td>Jurídico, edital, patrocínios</td></tr>
+      <tr><td>Letícia Zen</td><td>Marketing, redes sociais, identidade visual</td></tr>
+      <tr><td>Bruno Lubian</td><td>Divulgação, jornada do sapo, suporte técnico</td></tr>
+      <tr><td>Cristiane Stüepp</td><td>Relacionamento com participantes</td></tr>
+      <tr><td>Juan, William, Igor</td><td>Onboarding, força-tarefa de WhatsApp</td></tr>
+      <tr><td>Junior (CIB)</td><td>Infraestrutura física</td></tr>
+      <tr><td>Millena Miliotti</td><td>Coordenação de metodologia (facilitadora-chefe)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="page-footer">
+    <span>HackIA SC — AI Hackathon Blumenau 2026 · Documento de Metodologia</span>
+    <span>Documento interno — equipe organizadora</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 10. CRITÉRIOS DE AVALIAÇÃO                                    -->
+<!-- ============================================================ -->
+<div class="page chapter">
+  <div class="chapter-header">
+    <div class="chapter-num">Capítulo 10</div>
+    <h2>Critérios de Avaliação</h2>
+  </div>
+
+  <div class="callout callout-hot">
+    <span class="callout-label">⚠ Nota de autoridade</span>
+    Os critérios abaixo refletem integralmente o <strong>edital oficial (cláusula 6)</strong>, que é a fonte de verdade. Em caso de conflito entre este documento e o edital, prevalece o edital.
+  </div>
+
+  <p>No HackIA, sucesso não é só aprendizado validado nem só código bonito. É a convergência de três coisas: <strong>Build</strong> (IA rodando de verdade no palco), <strong>Sell</strong> (evidência de que alguém pagou ou pré-comprou) e <strong>Learn</strong> (clareza sobre o que foi aprendido para escalar). Equipes que pivotaram com base em dados não são penalizadas.</p>
+
+  <div class="mantra">MANTRA DO JÚRI: Slide com prompt não conta. Captura de tela do ChatGPT não conta. Show me the IA running.</div>
+
+  <h3>Rubrica — 4 critérios do edital</h3>
+
+  <div class="criteria-grid">
+    <div class="criteria-card elimination">
+      <div class="weight">30%</div>
+      <h4>Execução Técnica e IA</h4>
+      <span class="badge badge-hot" style="margin-bottom:0.5em;">Caráter Eliminatório</span>
+      <p>Funcionalidade do código, design da solução e profundidade da implementação de IA. Repositório público e solução deployed obrigatórios.</p>
+    </div>
+    <div class="criteria-card electric">
+      <div class="weight">25%</div>
+      <h4>Validação do Problema</h4>
+      <p>Relevância da dor resolvida, validada com dados verídicos. Capacidade de internacionalização. Aderência aos eixos econômicos de Blumenau confere pontuação extra.</p>
+    </div>
+    <div class="criteria-card cyan">
+      <div class="weight">25%</div>
+      <h4>Escalabilidade e Negócio</h4>
+      <p>Potencial de crescimento, evidências de tração comercial e viabilidade financeira. Ticket médio sugerido mínimo de R$20. Pontuação extra para vendas ou pré-vendas comprovadas durante o evento.</p>
+    </div>
+    <div class="criteria-card violet">
+      <div class="weight">20%</div>
+      <h4>Pitch e Equipe</h4>
+      <p>Clareza do problema resolvido, sinergia dos fundadores, potencial de continuidade e resposta aos jurados.</p>
+    </div>
+  </div>
+
+  <div class="callout callout-gold">
+    <span class="callout-label">Avaliação do Mentor (Extra — não soma nos 100%)</span>
+    O mentor fixo fornecerá um parecer padronizado sobre cada equipe à banca examinadora antes das apresentações finais. Em casos de conduta inadequada, o mentor poderá recomendar a desclassificação, cabendo a decisão final ao facilitador e à organização (conforme cláusula 2.6 do edital).
+  </div>
+
+  <h3>Desempate (edital, cláusula 11)</h3>
+  <p>Em caso de empate na pontuação final, o critério de desempate segue esta ordem de prioridade:</p>
+  <ol>
+    <li><strong>Maior nota em Execução Técnica e IA</strong></li>
+    <li><strong>Maior nota em Validação do Problema Real</strong></li>
+    <li><strong>Maior nota em Escalabilidade e Modelo de Negócio</strong></li>
+  </ol>
+  <p>Persistindo o empate, a decisão final caberá ao Facilitador do evento em conjunto com o Presidente da Banca de Jurados.</p>
+
+  <h3>Evidências válidas de tração comercial</h3>
+  <ul>
+    <li>Vendas efetivadas (com comprovante)</li>
+    <li>Pré-vendas ou assinaturas de intenção de compra</li>
+    <li>Landing pages com conversões mensuráveis</li>
+    <li>Cartas de intenção (LOIs) assinadas por potenciais clientes</li>
+  </ul>
+  <div class="callout callout-warn">
+    <span class="callout-label">Atenção</span>
+    Vendas para parentes diretos (mesmo sobrenome ou até 3º grau) não serão contabilizadas. A organização se reserva o direito de solicitar comprovantes.
+  </div>
+
+  <h3>Premiação Principal</h3>
+  <table class="table-gold">
+    <thead><tr><th>Lugar</th><th>Dinheiro</th><th>Benefícios</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>1º</strong></td>
+        <td>R$ 6.000</td>
+        <td>Visita à sede DATI + 4h de mentoria em grupo (4×1h) + indicação de mentores DATI + cupom para distribuir</td>
+      </tr>
+      <tr>
+        <td><strong>2º</strong></td>
+        <td>R$ 3.000</td>
+        <td>Visita à DATI + 2h de mentoria em grupo (2×1h)</td>
+      </tr>
+      <tr>
+        <td><strong>3º</strong></td>
+        <td>Benefícios e consultorias</td>
+        <td>A serem divulgados até o dia do evento</td>
+      </tr>
+      <tr>
+        <td><strong>Todas</strong></td>
+        <td>—</td>
+        <td>Ingresso TSW Blumenau Healthtech 2026 + visita institucional DATI + brindes</td>
+      </tr>
+    </tbody>
+  </table>
+  <p><em>O prêmio possui natureza de "Capital Semente" e deve ser reinvestido na startup. Pode ser convertido em crédito e prestação de serviços.</em></p>
+
+  <h3>Categorias Especiais (reconhecimentos do evento — não monetárias)</h3>
+  <table class="table-violet">
+    <thead><tr><th>Categoria</th><th>Critério</th></tr></thead>
+    <tbody>
+      <tr><td>Melhor SLC-IA Real</td><td>Equipe com a integração de IA mais sofisticada que rodou no palco.</td></tr>
+      <tr><td>Melhor Saída do Prédio</td><td>Equipe que mais efetivamente "saiu do CIB" e coletou dados reais.</td></tr>
+      <tr><td>Melhor Pivô</td><td>Equipe que melhor demonstrou capacidade de mudar de direção com base em evidências.</td></tr>
+      <tr><td>Menção do IA Evaluator</td><td>Equipe melhor avaliada pelo modelo de IA. Anunciada APÓS o resultado oficial dos jurados humanos.</td></tr>
+      <tr><td>Menção do Júri</td><td>Reconhecimento livre — resiliência, criatividade no experimento, trabalho em equipe.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="page-footer">
+    <span>HackIA SC — AI Hackathon Blumenau 2026 · Documento de Metodologia</span>
+    <span>⚠ Em caso de conflito entre este documento e o edital oficial, prevalece o edital.</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 11. ESTRUTURA DO PITCH FINAL                                  -->
+<!-- ============================================================ -->
+<div class="page chapter">
+  <div class="chapter-header">
+    <div class="chapter-num">Capítulo 11</div>
+    <h2>Estrutura Obrigatória do Pitch Final</h2>
+  </div>
+
+  <div class="callout callout-hot">
+    <span class="callout-label">⚠ Nota de autoridade</span>
+    O rito de apresentação abaixo é o definido no <strong>edital oficial (cláusula 5.2)</strong> e é o que prevalece. Em caso de dúvida, o edital é a fonte de verdade.
+  </div>
+
+  <h3>Rito oficial (edital, cláusula 5.2)</h3>
+  <p>Todas as equipes seguem o mesmo rito na ordem abaixo. Timer rigoroso.</p>
+
+  <div class="pitch-timeline">
+    <div class="pitch-block pb-pitch">
+      <div class="time">3 min</div>
+      <div class="label">Pitch<br>(1 apresentador)</div>
+    </div>
+    <div class="pitch-block pb-demo">
+      <div class="time">1 min</div>
+      <div class="label">Demo<br>obrigatória</div>
+    </div>
+    <div class="pitch-block pb-qa">
+      <div class="time">5 min</div>
+      <div class="label">Q&amp;A com<br>jurados</div>
+    </div>
+    <div class="pitch-block pb-jury">
+      <div class="time">1 min</div>
+      <div class="label">Jurados<br>usam solução</div>
+    </div>
+  </div>
+
+  <table class="table-accent" style="margin-top: 1em;">
+    <thead><tr><th>Bloco</th><th>Duração</th><th>Regras</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Pitch</strong></td>
+        <td>3 min</td>
+        <td>Apenas UM apresentador por equipe. Apresentação em PDF, Canva, PPT ou ferramentas de IA são permitidos. Não há limitadores de conteúdo — surpreenda, mas lembre-se dos critérios de avaliação.</td>
+      </tr>
+      <tr>
+        <td><strong>Demo OBRIGATÓRIA</strong></td>
+        <td>1 min</td>
+        <td>Demonstração com código funcional / solução operante. A IA precisa rodar de verdade.</td>
+      </tr>
+      <tr>
+        <td><strong>Q&amp;A</strong></td>
+        <td>5 min</td>
+        <td>Perguntas e Respostas com os jurados. Toda a equipe pode responder.</td>
+      </tr>
+      <tr>
+        <td><strong>Jurados usam a solução</strong></td>
+        <td>1 min</td>
+        <td>Os jurados terão 1 minuto para utilizar a solução após o tempo finalizado da equipe.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-warn">
+    <span class="callout-label">Regra de leitura integral (edital, cláusula 5.2)</span>
+    Se o Pitcher realizar <strong>leitura integral</strong> da apresentação durante o pitch final, a nota do critério "Pitch e Equipe" sofrerá redução de até <strong>50%</strong>. Consultas pontuais a notas ou dados específicos são permitidas. O Pitcher deve manter o foco na plateia e nos jurados.
+  </div>
+
+  <div class="callout callout-electric">
+    <span class="callout-label">Submissão prévia obrigatória (até prazo comunicado no dia 31/05)</span>
+    Enviar para contato@hackiasc.com antes do pitch final:
+    <ul>
+      <li>Apresentação do Pitcher nos formatos supracitados</li>
+      <li>Comprovantes de vendas realizadas (proibido parentes até 3º grau)</li>
+      <li>Código funcional para revisão técnica</li>
+      <li>Solução funcional navegável — caso aplicável</li>
+    </ul>
+  </div>
+
+  <hr class="section-divider">
+
+  <h3>Roteiro sugerido de conteúdo para os 3 minutos de pitch</h3>
+  <p><em>Os 7 blocos abaixo são uma sugestão de organização do conteúdo dentro dos 3 minutos oficiais. O rito que vale é o do edital — esses blocos são apenas um guia pedagógico.</em></p>
+
+  <table class="table-cyan">
+    <thead><tr><th>#</th><th>Bloco</th><th>Tempo sugerido</th><th>Conteúdo</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Problema</td>
+        <td>~30s</td>
+        <td>Que dor real vocês descobriram? Quem sofre? Como sofre hoje?</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Hipótese</td>
+        <td>~20s</td>
+        <td>O que vocês acreditavam — incluindo a hipótese técnica de IA.</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Experimento</td>
+        <td>~30s</td>
+        <td>O que vocês fizeram para testar (com quantas pessoas, prazo, critério de sucesso).</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Evidências</td>
+        <td>~40s</td>
+        <td>O que os dados e clientes disseram — citações diretas, números, gráficos.</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>Aprendizado</td>
+        <td>~20s</td>
+        <td>O que vocês descobriram que NÃO esperavam. Pivotaram ou perseveraram? Por quê?</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td><em>(ver Demo separada)</em></td>
+        <td><em>1 min próprio</em></td>
+        <td><em>A demo agora tem bloco separado no rito oficial — não precisa caber nos 3 min de pitch.</em></td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td>Próximos passos</td>
+        <td>~20s</td>
+        <td>O que testariam a seguir, qual o modelo de receita, quanto precisariam para 90 dias.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-cyan">
+    <span class="callout-label">Por que a demo ao vivo é o diferencial central</span>
+    O bloco de demonstração é o que separa o HackIA da maioria dos hackathons brasileiros. É o momento em que se prova que IA não é slide. A equipe sobe o input no palco, a chamada à API roda em tempo real (com a latência real, na frente do júri), e o output aparece. Equipe que codou bem, com fallback configurado e dado de teste pré-preparado, brilha. Equipe que ficou só editando prompt, falha.
+  </div>
+
+  <div class="page-footer">
+    <span>HackIA SC — AI Hackathon Blumenau 2026 · Documento de Metodologia</span>
+    <span>⚠ Em caso de conflito entre este documento e o edital oficial, prevalece o edital.</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 12. OUTPUTS ESPERADOS                                         -->
+<!-- ============================================================ -->
+<div class="page chapter">
+  <div class="chapter-header">
+    <div class="chapter-num">Capítulo 12</div>
+    <h2>Outputs Esperados ao Final das 54 Horas</h2>
+  </div>
+
+  <p>Por convenção da metodologia, ao fim das 54 horas cada equipe deve sair com seis entregas mínimas — independente de ranking. As três equipes vencedoras saem ainda com os benefícios do patrocinador.</p>
+
+  <table class="table-accent">
+    <thead><tr><th>#</th><th>Entrega</th><th>Como verificar</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td><strong>Repositório no GitHub</strong></td>
+        <td>URL pública, README com instruções de setup, código do SLC-IA versionado.</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td><strong>SLC-IA funcional deployed</strong></td>
+        <td>URL pública (Vercel/Netlify/Cloud Run/Replit) acessível pelo celular do júri.</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td><strong>Diário de Aprendizado</strong></td>
+        <td>Pelo menos 2 ciclos BML documentados, com hipótese, experimento, dados e conclusão de cada.</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td><strong>Decisão Pivot/Persevere</strong></td>
+        <td>Documentada com justificativa baseada em dados.</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td><strong>Slides do pitch</strong></td>
+        <td>Exportáveis em PDF. Enviados ao e-mail oficial até o prazo comunicado no dia 31/05.</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td><strong>Vídeo do pitch</strong></td>
+        <td>Gravação oficial (organização disponibiliza após o evento).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-cyan">
+    <span class="callout-label">Equipes vencedoras (1º, 2º, 3º) — adicionalmente</span>
+    Prêmio em dinheiro (R$ 6k / R$ 3k / benefícios), mentoria pós-evento com a DATI (4h / 2h respectivamente), visita institucional à sede DATI, indicação de mentores DATI para continuidade, e ingresso para o TSW Blumenau Healthtech 2026 estendido a todos os participantes.
+  </div>
+
+  <div class="page-footer">
+    <span>HackIA SC — AI Hackathon Blumenau 2026 · Documento de Metodologia</span>
+    <span>Documento interno — equipe organizadora</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 13. PLANO DE CONTINGÊNCIA                                     -->
+<!-- ============================================================ -->
+<div class="page chapter">
+  <div class="chapter-header">
+    <div class="chapter-num">Capítulo 13</div>
+    <h2>Plano de Contingência</h2>
+  </div>
+
+  <p>Riscos antecipados e mitigações pré-acordadas:</p>
+
+  <table class="table-accent">
+    <thead><tr><th>Risco</th><th>Mitigação</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>API de IA cair durante construção</td>
+        <td>Cada equipe usa 2+ providers (OpenAI + Anthropic ou Gemini). Briefing prévio inclui orientação. Mentor verifica configuração na rodada 1 de mentoria.</td>
+      </tr>
+      <tr>
+        <td>Internet do CIB cair</td>
+        <td>Backup via roteador 4G. Alguns membros da org levam Starlink. Cris tem créditos AWS para emergência.</td>
+      </tr>
+      <tr>
+        <td>Mentor fixo cancelar de última hora</td>
+        <td>Lista de mentores backup em standby. Em emergência, mentor de equipe com pitch já consolidado rodízia 1h para equipe sem mentor.</td>
+      </tr>
+      <tr>
+        <td>Pitch ultrapassar tempo</td>
+        <td>Timer rigoroso. Coord. de Metodologia tem autoridade para cortar atividades.</td>
+      </tr>
+      <tr>
+        <td>Demo de equipe falhar no palco</td>
+        <td>Equipe perde pontuação no critério 1 (Execução Técnica e IA) — mas pode usar 30s a mais de explicação verbal e exibir vídeo gravado da última execução bem-sucedida. Não é eliminatório.</td>
+      </tr>
+      <tr>
+        <td>Discriminação ou conflito</td>
+        <td>Cláusula 9.5 do edital — desclassificação imediata, procedimento da 2.6. Organização pode acionar autoridades competentes.</td>
+      </tr>
+      <tr>
+        <td>IA Evaluator dar resultado embaraçoso</td>
+        <td>Comunicação clara de que IA Evaluator é UM input dos jurados (peso 1/N+1), não a decisão final. Resultado da IA divulgado APÓS resultado oficial.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="page-footer">
+    <span>HackIA SC — AI Hackathon Blumenau 2026 · Documento de Metodologia</span>
+    <span>Documento interno — equipe organizadora</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 14. VISÃO DE EXPANSÃO REGIONAL                                -->
+<!-- ============================================================ -->
+<div class="page chapter">
+  <div class="chapter-header">
+    <div class="chapter-num">Capítulo 14</div>
+    <h2>Visão de Expansão Regional</h2>
+  </div>
+
+  <p>A marca HackIA SC foi pensada como guarda-chuva regional. A 1ª edição em Blumenau é o piloto. Esta metodologia foi escrita já visando reuso para Joinville, Florianópolis e outras cidades de Santa Catarina:</p>
+
+  <table class="table-cyan">
+    <thead><tr><th>Variável</th><th>Em Blumenau</th><th>Em outra edição</th></tr></thead>
+    <tbody>
+      <tr><td>Local</td><td>CIB — Centro de Inovação de Blumenau</td><td>Substituir por hub local equivalente</td></tr>
+      <tr><td>Naming sponsor</td><td>DATI</td><td>Patrocinador local; premiação pode escalar</td></tr>
+      <tr><td>Cronograma 54h</td><td>Sex 18:30 → Dom 20:00</td><td>Portável sem alteração</td></tr>
+      <tr><td>Rubrica</td><td>4 critérios do edital (cap. 10)</td><td>Portável sem alteração</td></tr>
+      <tr><td>3 diferenciais</td><td>Mentor fixo + IA Evaluator + Demo ao vivo</td><td>Permanecem sempre — assinatura HackIA</td></tr>
+    </tbody>
+  </table>
+
+  <p>Em outras palavras: a infraestrutura conceitual da metodologia HackIA é desenhada para se manter constante. O que muda de edição para edição são contexto, pessoas, local e patrocinadores — o esqueleto fica.</p>
+
+  <hr class="section-divider">
+
+  <h3>Encerramento</h3>
+  <p>Esta metodologia é o que a equipe organizadora se comprometeu a praticar nos dias 29, 30 e 31 de maio de 2026. É um documento vivo — algumas decisões serão refinadas até a véspera do evento, e a 1ª edição funcionará também como teste do método.</p>
+  <p>O sucesso do HackIA não será medido pelo prêmio entregue, nem pelo número de inscritos, nem pelo engajamento das redes. Será medido pela quantidade de equipes que saem do CIB no domingo à noite com produto rodando, primeira receita registrada, código no GitHub público e clareza sobre o próximo experimento. Esse é o resultado que importa.</p>
+
+  <p style="margin-top:1.5em; font-size:0.85em; color: var(--text-muted); font-style:italic;">
+    Documento preparado em maio de 2026 para a equipe organizadora do AI Hackathon Blumenau 2026. Lean Startup, Build-Measure-Learn e o conceito de produto mínimo viável foram publicados por Eric Ries em "The Lean Startup" (2011); o conceito SLC é de Jason Cohen (2014). Ambos foram adaptados aqui ao contexto técnico-comercial de um hackathon de IA.
+  </p>
+
+  <div class="page-footer">
+    <span>HackIA SC — AI Hackathon Blumenau 2026 · Documento de Metodologia</span>
+    <span>Documento interno — equipe organizadora</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 15. GLOSSÁRIO                                                  -->
+<!-- ============================================================ -->
+<div class="page chapter">
+  <div class="chapter-header">
+    <div class="chapter-num">Capítulo 15</div>
+    <h2>Glossário de Termos</h2>
+  </div>
+
+  <p>Termos que aparecem recorrentemente neste documento, organizados por área. Para facilitadores e mentores: leiam a seção inteira antes do evento — vários termos têm definição operacional específica do HackIA que diverge do uso casual.</p>
+
+  <h3>Metodologia e Jornada</h3>
+  <table class="table-accent">
+    <thead><tr><th>Termo</th><th>Definição</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Lean Startup</strong></td><td>Metodologia de empreendedorismo formulada por Eric Ries (2011). Trata empresa nascente como experimento — gerencia incerteza com método.</td></tr>
+      <tr><td><strong>BML (Build-Measure-Learn)</strong></td><td>Ciclo central do Lean Startup: a equipe constrói o experimento mínimo, mede em campo e aprende se a hipótese se confirmou. No HackIA, exigimos pelo menos 2 voltas em 54h.</td></tr>
+      <tr><td><strong>SLC (Simples, Adorável, Completo)</strong></td><td>Conceito cunhado por Jason Cohen (2014) que evolui o MVP. Em vez de "mínimo viável" — que conota produto pela metade — o SLC enfatiza simples no escopo, adorável na execução, completo dentro do que promete.</td></tr>
+      <tr><td><strong>SLC-IA</strong></td><td>Versão HackIA do SLC: simples, adorável, completo e com IA real rodando (chamada à API, output gerado dinamicamente, custo medido — não é mockado).</td></tr>
+      <tr><td><strong>Saltos de Fé</strong></td><td>Hipóteses fundacionais que sustentam o negócio. No HackIA são três: valor, crescimento e técnica de IA.</td></tr>
+      <tr><td><strong>Pivotar</strong></td><td>Mudar um aspecto fundamental do negócio (cliente, problema, modelo, canal ou tecnologia) com base em dados que refutam a hipótese. Pivotar é inteligência, não fracasso.</td></tr>
+      <tr><td><strong>Perseverar</strong></td><td>Aprofundar a hipótese atual com base em dados que a confirmam. Não é teimosia — é decisão informada.</td></tr>
+      <tr><td><strong>Jornada do sapo</strong></td><td>Identidade visual e narrativa do HackIA: o participante é um sapo pulando entre vitórias-régias (etapas do BML). Didática, não substitui BML.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Atividades do Evento</h3>
+  <table class="table-electric">
+    <thead><tr><th>Termo</th><th>Definição</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Pitch de Guerrilha</strong></td><td>Atividade obrigatória (cláusula 4.2 do edital). Mentor sai do grupo fixo, visita outra equipe, ouve pitch elevator e critica. Dura 15 min. Foco: entender nível de cada equipe e aumentar competitividade.</td></tr>
+      <tr><td><strong>Saia do CIB</strong></td><td>Bloco de validação externa no sábado. Equipes saem fisicamente ou validam digitalmente (landing + ads). Não é opcional.</td></tr>
+      <tr><td><strong>Pivot/Persevere</strong></td><td>Reunião de decisão estruturada. Equipe consolida dados e decide: pivotar, perseverar ou parar. Acontece no sábado à noite, não no domingo.</td></tr>
+      <tr><td><strong>Demo ao vivo</strong></td><td>Bloco obrigatório de 1 minuto no pitch final. A IA roda em tempo real no palco — chamada à API com latência real.</td></tr>
+      <tr><td><strong>IA Evaluator</strong></td><td>Modelo de IA que avalia pitches em paralelo aos jurados humanos. Whisper transcreve, LLM analisa pela rubrica oficial. Resultado entra como 1 voto adicional na deliberação.</td></tr>
+      <tr><td><strong>Mentor fixo</strong></td><td>Mentor pareado com uma única equipe pelas 54 horas. Não rotaciona. Não é par-programmer. Não é jurado da própria equipe.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="page-footer">
+    <span>HackIA SC — AI Hackathon Blumenau 2026 · Documento de Metodologia</span>
+    <span>Documento interno — equipe organizadora</span>
+  </div>
+</div>
+
+<div class="page">
+  <h3>Tipos de Protótipo</h3>
+  <table class="table-cyan">
+    <thead><tr><th>Termo</th><th>Definição</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Concierge IA</strong></td><td>Equipe opera a IA manualmente para 1–3 clientes. Vocês são a IA por trás. Zero código; máxima profundidade de validação.</td></tr>
+      <tr><td><strong>Mágico de Oz IA</strong></td><td>Interface parece automática, mas humano opera atrás. Cliente vê resposta "mágica"; vocês respondem manualmente em outra aba. Declare ao cliente que é beta.</td></tr>
+      <tr><td><strong>IA-real mínima</strong></td><td>Backend chama API de IA real; frontend mínimo; tudo automatizado. Maximiza pontuação técnica e demo ao vivo natural. Risco: over-engineering.</td></tr>
+      <tr><td><strong>Pré-venda + Landing</strong></td><td>Tipo bônus. Landing com checkout — mede se cliente paga antes do produto existir. Não pode ser único (não tem demo). Combine com Concierge ou Mágico de Oz.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Termos Técnicos de IA</h3>
+  <table class="table-violet">
+    <thead><tr><th>Termo</th><th>Definição</th></tr></thead>
+    <tbody>
+      <tr><td><strong>LLM</strong></td><td>Large Language Model — modelo de linguagem grande. Ex.: GPT-4, Claude Sonnet/Opus, Gemini, Llama, Mistral.</td></tr>
+      <tr><td><strong>API</strong></td><td>Application Programming Interface. Endpoint pelo qual seu backend se conecta ao modelo de IA. Exige chave de autenticação e gera custo por chamada.</td></tr>
+      <tr><td><strong>Inferência</strong></td><td>Cada chamada ao modelo. Tem custo (medido em tokens) e latência (tempo de resposta).</td></tr>
+      <tr><td><strong>Token</strong></td><td>Unidade de cobrança dos LLMs (~4 caracteres em PT-BR). Cobrança separada por tokens de entrada (prompt) e de saída (resposta).</td></tr>
+      <tr><td><strong>Latência P95</strong></td><td>Tempo de resposta no percentil 95: 95% das chamadas são mais rápidas que esse valor. Mais útil que média porque captura a cauda da experiência.</td></tr>
+      <tr><td><strong>Fallback</strong></td><td>Provider/modelo alternativo configurado para o caso do primário falhar. Regra HackIA: cada equipe usa 2+ providers (ex. OpenAI + Anthropic).</td></tr>
+      <tr><td><strong>RAG</strong></td><td>Retrieval-Augmented Generation. Técnica que busca trechos relevantes numa base de conhecimento e injeta no prompt antes da chamada ao LLM.</td></tr>
+      <tr><td><strong>Tools / Function calling</strong></td><td>Recurso em que o LLM pode chamar funções estruturadas do seu backend (ex. consultar um banco, enviar e-mail). Habilita agentes multi-step.</td></tr>
+      <tr><td><strong>Whisper</strong></td><td>Modelo de transcrição de áudio da OpenAI. Usado pelo IA Evaluator para transcrever pitches gravados.</td></tr>
+      <tr><td><strong>Over-prompting</strong></td><td>Vício da equipe que gasta o sábado iterando prompt sem código rodando. É o "over-building" do HackIA. Mentor força time-out se persistir até as 16h.</td></tr>
+      <tr><td><strong>Mockado</strong></td><td>Output simulado, não gerado pela IA real. Tela bonita com resposta hardcoded. Não conta como SLC-IA.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Termos de Negócio e Validação</h3>
+  <table class="table-gold">
+    <thead><tr><th>Termo</th><th>Definição</th></tr></thead>
+    <tbody>
+      <tr><td><strong>LOI</strong></td><td>Letter of Intent — carta de intenção de compra. Cliente formaliza por escrito que pretende contratar quando o produto estiver pronto. Evidência forte de tração.</td></tr>
+      <tr><td><strong>CAC</strong></td><td>Customer Acquisition Cost — custo de aquisição de cliente. Quanto você gasta em marketing/vendas para conquistar 1 cliente.</td></tr>
+      <tr><td><strong>LTV</strong></td><td>Lifetime Value — valor que o cliente gera durante toda a relação com o produto. LTV/CAC é métrica fundamental de viabilidade.</td></tr>
+      <tr><td><strong>Break-even</strong></td><td>Ponto em que a receita iguala o custo. Em SaaS com IA, costuma significar "número mínimo de assinantes para a margem cobrir a inferência".</td></tr>
+      <tr><td><strong>Pré-venda</strong></td><td>Cobrar do cliente antes do produto existir. Validação financeira mais forte que entrevista.</td></tr>
+      <tr><td><strong>Motor de crescimento</strong></td><td>Mecanismo pelo qual novos clientes chegam. 4 tipos: viral (boca-a-boca), pago (CAC &lt; receita), pegajoso (retenção alta) e comunidade.</td></tr>
+      <tr><td><strong>ICP</strong></td><td>Ideal Customer Profile — perfil de cliente ideal. Quem é a pessoa específica que tem o problema, paga e renova.</td></tr>
+      <tr><td><strong>Métricas de vaidade</strong></td><td>Números bonitos que não levam à decisão. Ex.: "95% de acurácia no nosso dataset". Opostas das métricas acionáveis ("5 de 8 pagariam R$X após testar").</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Documentos da Metodologia</h3>
+  <table class="table-accent">
+    <thead><tr><th>Documento</th><th>Para que serve</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Canvas de Hipóteses</strong></td><td>Template da Fase 1 (sex 22:30). Equipe registra os 3 saltos de fé: valor, crescimento, técnica de IA.</td></tr>
+      <tr><td><strong>Canvas SLC-IA</strong></td><td>Template da Fase 2 (sáb 10:15). Define o que vai construir, qual stack de IA, custos medidos, plano de execução até 17h.</td></tr>
+      <tr><td><strong>Roteiro de Entrevista</strong></td><td>Script estruturado para o "Saia do CIB". Inclui 2 perguntas obrigatórias HackIA: "confiaria em IA pra isso?" e "pagaria quanto/mês?".</td></tr>
+      <tr><td><strong>Diário de Aprendizado</strong></td><td>Registro contínuo dos ciclos BML. Hipótese → experimento → dados → conclusão. É o que prova o "Aprendizado" na avaliação.</td></tr>
+      <tr><td><strong>Scorecard do Jurado</strong></td><td>Ficha individual que cada jurado preenche por equipe. Pontuação por critério + observações + indicação de categoria especial.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="page-footer">
+    <span>HackIA SC — AI Hackathon Blumenau 2026 · Documento de Metodologia</span>
+    <span>Documento interno — equipe organizadora</span>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,305 @@
+EDITAL DE PARTICIPAÇÃO ­ AI HACKATHON BLUMENAU 2026
+1. DO EVENTO E OBJETIVOS
+1.1. O AI Hackathon Blumenau 2026 consiste em evento de natureza privada, caracterizado como maratona de desenvolvimento tecnológico, voltada à criação de soluções baseadas em Inteligência Artificial (IA), com foco na estruturação de modelos de negócio escaláveis.
+1.2. O evento ocorrerá no Centro de Inovação de Blumenau (CIB) com sede localizada na rua São Paulo, 3366 - Itoupava Seca, Blumenau - SC, 89030-000, entre os dias 29, 30 e 31 de maio de 2026.
+1.3. Constituem objetivos do evento:
+ Fomentar o empreendedorismo dentro de Blumenau;  Incentivar a utilização de tecnologias emergentes;  Auxiliar no desenvolvimento da capacidade empreendedora dos participantes.  estimular a criação de novos modelos de negócio escalável;  Desenvolver os eixos de governança da cidade com tecnologia;  promover o desenvolvimento do ecossistema de inovação regional;  Criar um modelo replicável de eventos para outras cidades de Santa Catarina,
+criando o movimento de hackathons em Santa Catarina;  +70% das equipes continuarem suas startups e se transformarem em negócios.
+1.4 O evento tem como diretriz gerar negócios lucrativos, escaláveis, que resolvam problemas reais e podem ser internacionalizados.
+1.5 O evento é organizado pela MORPH3D INOVA SIMPLES (I.S.), CNPJ 61.358.910/0001-35, com sede em Timbó/SC, sendo a responsabilidade operacional atribuída à comissão organizadora, a qual atuará em conjunto com parceiros institucionais.
+1.6 O evento não corrobora com promessa de lucro, tampouco com responsabilidade solidária ou direta das empresas em que nele forem criadas, de mesma forma não se responsabiliza por eventuais negócios ou participações financeiras entre os participantes durante ou posteriormente ao evento.
+2. DAS INSCRIÇÕES E FORMAÇÃO DE EQUIPES
+2.1. Poderão inscrever-se pessoas físicas maiores de 18 (dezoito) anos, mediante preenchimento de formulário próprio, de modo individual ou em grupo, e pagamento da taxa de inscrição, a inscrição de desenvolvedores, designers, gestores e entusiastas de tecnologia, é incentivada.
+2.2. As equipes devem ser compostas por no mínimo 3 (três) e no máximo 6 (seis) participantes. Priorizando sempre manter um número ímpar para casos de impasse no time.
+2.2.1 A equipe pode ter apenas um membro de maneira remota, para prestar apoio, desde que devidamente inscrito e a equipe não ultrapasse o limite máximo.
+Assinado com Assinatura Eletrônica (Lei 14.063/2020 | Regulamento 910/2014/EC) Hash SHA256 do original: 51b40ad3c42e7be147abc51e9e10ced68b75019a75dfc0b4cc0aeb04aaeb99fc Link de validação: https://valida.ae/e9c6ad2282c28240447d0ab8d286a2ddb7057777f70b54394
+
+Validador
+
+2.2.2 A equipe deverá ter mais de 80% dos membros com participação física no local do evento durante todas as atividades do evento. Se a equipe não aparecer com nenhum membro no horário do cronograma, será desclassificada.
+2.3. Seguindo a filosofia Founders, recomenda-se a composição de perfis: Hacker (desenvolvedor), Hustler (negócios/vendas) e Hipster (design/UX).
+2.4. Os participantes inscritos individualmente deverão obrigatoriamente integrar uma equipe até o início das atividades práticas, sendo disponibilizado orientação da organização na noite de abertura (29/05), caso necessário.
+2.4.1 Obrigatoriamente um participante individual deverá se unir a uma equipe ou formar uma nova com outros participantes.
+2.4.2 A organização poderá, mediante justificativa, realocar participantes em equipes, visando garantir a adequada dinâmica do evento..
+2.4.3 A equipe organizadora, promoverá atividades e eventos online obrigatórios para formação prévia de equipes e geração de ideias. Participantes inscritos individualmente devem participar e poderão formar suas equipes previamente, antes do evento.
+2.5 A organização reserva-se o direito de recusar projetos cujo escopo seja estritamente filantrópico e sem viabilidade de lucro e escala, visto que o foco do evento é o surgimento de startups sustentáveis, lucrativas e escaláveis. Projetos com impacto social que apresentem modelo de negócio viável e escalável são bem-vindos e incentivados.
+2.6 A organização reserva-se o direito de indeferir inscrições ou desclassificar participantes em caso de: I ­ conduta inadequada; II ­ fraude, plágio ou violação de direitos de terceiros; III ­ descumprimento das regras previstas neste edital.
+2.7 A equipe poderá remover um membro de maneira justificada com base no edital, desde que seja previamente alinhado com a organização, mentor fixo e facilitação do evento, e que a equipe permaneça com no mínimo 3 (três) integrantes.
+2.8 As inscrições serão realizadas pelo site oficial do evento: https://hackiasc.com/. O valor da inscrição é de R$ 150,00 (cento e cinquenta reais) por participante para os primeiros 10 (dez) inscritos confirmados (Early Bird) e R$ 200,00 (duzentos reais) para os demais, incluindo alimentação completa durante o evento, crachá de identificação e kit do participante. O pagamento deverá ser confirmado pela equipe organizadora para que o participante seja adicionado ao grupo oficial de WhatsApp.
+2.9 Serão aceitas inscrições do dia 08/04 a partir das 12h até o dia 13/05 - 15h, as inscrições fora deste prazo serão analisadas pela equipe organizadora pelo e-mail: contato@hackiasc.com, podendo ou não serem aceitas.
+2.9.1 O evento tem capacidade limitada a 100 participantes (no máximo 20 equipes). As vagas serão preenchidas por ordem de confirmação de pagamento. Atingido o limite, novas inscrições entrarão em lista de espera.
+2.9.2 Os participantes deverão ter condições legais (+18 anos) de continuar o projeto e converter-se em uma empresa. A comunidade irá apoiar o desenvolvimento da solução e sua continuidade.
+Assinado com Assinatura Eletrônica (Lei 14.063/2020 | Regulamento 910/2014/EC) Hash SHA256 do original: 51b40ad3c42e7be147abc51e9e10ced68b75019a75dfc0b4cc0aeb04aaeb99fc Link de validação: https://valida.ae/e9c6ad2282c28240447d0ab8d286a2ddb7057777f70b54394
+
+Validador
+
+2.9.3 Eventuais resultados financeiros positivos do evento poderão ser destinados a iniciativas futuras do ecossistema de inovação de Blumenau, incluindo futuras edições de hackathons e eventos de empreendedorismo.
+3. DO DESAFIO E TEMÁTICA
+3.1. As equipes deverão desenvolver soluções que utilizem, de forma central, tecnologias de Inteligência Artificial, devendo conter: I ­ solução funcional; II ­ modelo de negócio viável; III ­ potencial de escalabilidade. 3.2. Pontuação Extra: Projetos que atacam dores dentro dos eixos de governança de Blumenau receberão bonificação na nota final. São os Eixos:
+ Metalmecânico; Têxtil; Tecnologia da Informação e Comunicação (TIC); Turismo; Economia Criativa; e Saúde.
+3.3. É obrigatório o uso central de tecnologias de Inteligência Artificial na solução apresentada. A utilização de tecnologias está sujeita a análise dos mentores, contendo de maneira objetiva, mas não limitada, às seguintes funções:
+- Chatbots funcionais - Dispositivos com IA embarcada para processamento de dados em tempo real - Criação de arquivos novos - Análise de imagem e feedback - Modelos preditivos para tomada de decisão ou orientação - Experiências conversacionais sem necessidade de humanos - Processos automatizados com motor de decisão com uso por modelos de IA
+3.4. Ganhará pontos extras equipes que apresentarem capacidade de internacionalização.
+3.5. Não serão considerados modelos escaláveis:
+ Franquias  Cursos gravados ou e-books vendidos de forma isolada, sem plataforma tecnológica
+escalável
+3.6. Produtos não monetizáveis serão desclassificados.
+3.7. Os produtos criados deverão apresentar um modelo de monetização claro, com Ticket Médio sugerido de no mínimo R$20,00. Modelos baseados em volume (freemium, microtransações, marketplace) serão aceitos desde que a equipe demonstre viabilidade financeira da operação.
+3.8. Equipes que apresentarem evidências de tração comercial durante o período do evento receberão pontuação extra no critério "Escalabilidade e Negócio". São consideradas evidências válidas:
+Assinado com Assinatura Eletrônica (Lei 14.063/2020 | Regulamento 910/2014/EC) Hash SHA256 do original: 51b40ad3c42e7be147abc51e9e10ced68b75019a75dfc0b4cc0aeb04aaeb99fc Link de validação: https://valida.ae/e9c6ad2282c28240447d0ab8d286a2ddb7057777f70b54394
+
+Validador
+
+ Vendas efetivadas (com comprovante);  Pré-vendas ou assinaturas de intenção de compra;  Landing pages com conversões mensuráveis;  Cartas de intenção (LOIs) assinadas por potenciais clientes.  Observação: vendas para parentes diretos (mesmo sobrenome) não serão
+contabilizadas.
+3.9 É permitido o uso de ferramentas de IA generativa (ex: GitHub Copilot, Chat GPT, Claude) como auxiliares no desenvolvimento. O uso de código-fonte próprio pré-existente é permitido desde que declarado à organização antes do pitch final. Códigos de terceiros (bibliotecas open-source) devem respeitar suas respectivas licenças. A equipe deve ser capaz de explicar e justificar todo o código apresentado na revisão técnica.
+3.10 A desclassificação de uma equipe por descumprimento dos critérios deste edital impede a participação na cerimônia de pitchs finais e na concorrência à premiação, mas não afeta o acesso à infraestrutura, alimentação e demais serviços incluídos na inscrição.
+3.11 A solução apresentada deve ter viabilidade técnica e continuidade de evolução, com arquitetura de dados e prompt engineering adequados.
+4. DA DINÂMICA E MENTORIA
+4.1. Cada equipe terá um Mentor Fixo designado pela organização, considerando fit cultural, pontos fracos da equipe e necessidade de apoio.
+4.2. Ocorrerão rodízios de mentoria e "Pitchs de Guerrilha" (críticas cruzadas entre grupos) para validação de modelo de negócio.
+4.2.1 A equipe que se recusar a participar do pitch de guerrilha, banca de pré pitch ou de outras dinâmicas de eventos, poderá ser desclassificada. Conforme procedimento da cláusula 2.6
+Disclaimer: Cada mentor sairá do seu grupo fixo e visitará outro grupo para ouvir o pitch elevator da solução e criticar a solução, essas rodadas vão durar 15 min e tem como foco entender o nível de cada equipe e aumentar a competitividade com cada mentor trazendo entendimento de como estão as demais equipes.
+4.3. O evento contará com Sessões Hard sobre: IA Aplicada, Identificação de Problemas Reais, Escala/Modelo de Negócio e Pitch de Alta Performance. A participação de pelo menos 1 (um) membro da equipe em cada sessão é obrigatória. O mentor fixo poderá recomendar que mais membros participem conforme o nível da equipe.
+4.4. Mentores poderão ser realocados entre equipes pela organização, em alinhamento com o facilitador do evento, caso se identifique necessidade de ajuste de fit ou de dinâmica. A equipe será informada previamente sempre que possível.
+5. DA AVALIAÇÃO E BANCA EXAMINADORA
+Assinado com Assinatura Eletrônica (Lei 14.063/2020 | Regulamento 910/2014/EC) Hash SHA256 do original: 51b40ad3c42e7be147abc51e9e10ced68b75019a75dfc0b4cc0aeb04aaeb99fc Link de validação: https://valida.ae/e9c6ad2282c28240447d0ab8d286a2ddb7057777f70b54394
+
+Validador
+
+5.1. A banca será composta por empresários e investidores de sucesso, cujos nomes serão mantidos em sigilo até o momento das apresentações dos pitchs finais do evento no dia 31/05/26.
+5.2. Rito de Apresentação Final, na ordem abaixo, todas as equipes deverão:
+ 3 minutos de Pitch, apenas um apresentador por equipe, com direito a apresentação em PDF, Canva, PPT ou Ferramentas de IA.  Não há limitadores nesse pitch, surpreenda a todos, mas lembre-se dos critérios de avaliação.
+ 1 minuto de demonstração obrigatória com o código funcional/solução operante.  5 minutos de Q&A (Perguntas e Respostas);  1 minuto para os jurados utilizarem a solução;
+5.2.1 O ranking final com a classificação de todas as equipes será divulgado no dia do evento, imediatamente após a cerimônia de encerramento. O detalhamento das notas por critério será enviado individualmente a cada equipe em até 10 (dez) dias úteis por e-mail.
+Pontos extras:
+ Antes do pitch final, a equipe deverá enviar para o e-mail oficial do evento (contato@hackiasc.com), até o prazo comunicado no dia 31/05 durante o evento:  Apresentação do Pitcher nos formatos supracitados.  Comprovantes de vendas realizadas - proibido parentes de até 3º grau.  Código funcional para revisão técnica.  Solução funcional navegável - caso aplicável.
+ Se o Pitcher realizar leitura integral da apresentação durante o pitch final, a nota do critério "Pitch e Equipe" sofrerá redução de até 50%. Consultas pontuais a notas ou dados específicos são permitidas. O Pitcher deve manter o foco na plateia e nos jurados.
+ Em até 10 dias úteis a equipe receberá o feedback final com detalhes das notas e orientações.
+ Esta iniciativa é privada e não envolve recursos públicos. Eventuais dúvidas ou contestações deverão ser encaminhadas à organização pelo e-mail oficial do evento.
+5.2.2 A organização se reserva o direito de solicitar os comprovantes necessários para o alegado pela equipe, sob pena de invalidação de pontos.
+5.3. IA Evaluator: Os pitchs serão transcritos e analisados por um modelo de IA treinado para avaliar consistência técnica, tom de voz e viabilidade mercadológica. O feedback dos jurados poderá ser gravado e revisado por IA, mediante consentimento prévio dos jurados em termo específico. As gravações serão utilizadas exclusivamente para fins de avaliação e feedback às equipes.
+5.4. A votação oficial será realizada via formulário digital interno com os critérios específicos por uma banca de jurados de 3-5 júris (a depender da quantidade de equipes), processado pela coordenação do evento. Os jurados serão empreendedores e investidores convidados pela organização e não serão divulgados até o dia do evento.
+Assinado com Assinatura Eletrônica (Lei 14.063/2020 | Regulamento 910/2014/EC) Hash SHA256 do original: 51b40ad3c42e7be147abc51e9e10ced68b75019a75dfc0b4cc0aeb04aaeb99fc Link de validação: https://valida.ae/e9c6ad2282c28240447d0ab8d286a2ddb7057777f70b54394
+
+Validador
+
+6. DOS CRITÉRIOS DE JULGAMENTO
+Os projetos serão julgados com base nos seguintes pesos:
+ Execução Técnica e IA (30%): Funcionalidade do código, design da solução e profundidade da implementação de IA. (caráter eliminatório)
+ Validação do Problema (25%): Relevância da dor resolvida, é uma dor real e foi validado com dados significantes e verídicos, capacidade de internacionalização do problema e aderência aos eixos econômicos de Blumenau, sendo este pontuação extra.
+ Escalabilidade e Negócio (25%): Potencial de crescimento, evidências de tração comercial e viabilidade financeira. (Pontuação extra para equipes com vendas ou pré-vendas comprovadas)
+ Pitch e Equipe (20%): Clareza do problema resolvido, sinergia dos fundadores, potencial de continuidade e resposta aos jurados.
+ Avaliação do Mentor (Extra): O mentor fixo fornecerá um parecer padronizado sobre cada equipe à banca examinadora antes das apresentações finais. Em casos de conduta inadequada, o mentor poderá recomendar a desclassificação, cabendo a decisão final ao facilitador e à organização, conforme cláusula 2.6.
+A equipe deverá apresentar:
+ Uma solução funcional: Os jurados terão um minuto para utilizar a solução após o tempo finalizado de apresentação da equipe.
+ Um pitch que explique o problema que estão resolvendo, como ele será escalável e monetizado.
+ Potencial de continuidade do negócio.  Um código para revisão técnica.
+7. DA PREMIAÇÃO E USO DO RECURSO
+7.1. Serão premiadas as 3 (três) equipes com maior pontuação. No caso de empate, serão utilizados os critérios da cláusula 11.
+7.2. Valores Confirmados:
+ 1º Lugar: R$6.000,00 (seis mil reais ou em créditos de serviços e produtos).  2º Lugar: R$3.000,00 (três mil reais ou em créditos de serviços e produtos).  3º Lugar: Benefícios e consultorias (a serem divulgados até o dia do evento).  Cada equipe ganhará um ingresso do TSW Blumenau Healthtech 2026.  Outras premiações poderão ser incluídas até a finalização do evento.
+7.3. O prêmio possui natureza de "Capital Semente" e deve ser reinvestido na startup. Podendo ser convertido em crédito e prestação de serviços (Consultorias,Serviços em Geral) Os seguintes gastos são pré-aprovados e não necessitam de autorização individual do Comitê:
+Assinado com Assinatura Eletrônica (Lei 14.063/2020 | Regulamento 910/2014/EC) Hash SHA256 do original: 51b40ad3c42e7be147abc51e9e10ced68b75019a75dfc0b4cc0aeb04aaeb99fc Link de validação: https://valida.ae/e9c6ad2282c28240447d0ab8d286a2ddb7057777f70b54394
+
+Validador
+
+ Compra de domínios e hospedagem;  Serviços de nuvem (AWS, Azure, GCP, etc.);  Assinaturas de APIs de IA;  Custos de formalização (CNPJ) e assessoria jurídica/contábil;  Ferramentas de desenvolvimento e design.
+7.4 Gastos fora da lista pré-aprovada deverão ser submetidos ao Comitê de Governança, composto por membros da equipe organizadora e representantes dos patrocinadores, que terá até 5 (cinco) dias úteis para responder.
+7.4.1 O Comitê de Governança será composto por no mínimo 3 (três) membros: o organizador do evento, um representante dos patrocinadores e um mentor convidado. A composição será divulgada em até 5 (cinco) dias antes do evento.
+7.5 Os pedidos de reembolso serão realizados por e-mail dos membros inscritos para contato@hackiasc.com. Os pagamentos serão processados pela Morph3D Inova Simples (I.S.), CNPJ 61.358.910/0001-35.
+8. INFRAESTRUTURA E LOGÍSTICA
+8.1. A organização fornecerá: Espaço físico, internet, energia elétrica, água e alimentação durante os horários do evento, salvo em casos de desastres naturais ou força maior.
+8.2. É de responsabilidade do participante trazer computadores, cabos, garrafas de água, sombrinhas, roupas extras, câmeras e qualquer hardware necessário para o desenvolvimento.
+8.3 Participantes com necessidades especiais de acessibilidade devem informar à organização no ato da inscrição para que as devidas adequações sejam providenciadas.
+8.4 Os participantes que possuírem restrições alimentares, necessidades especiais deverão informar a equipe com antecedência (na inscrição OU caso surjam posteriormente) para que possam ser providenciadas as devidas medidas para um evento inclusivo.
+9. CRONOGRAMA RESUMIDO
+9.1 A Organização seguirá o seguinte cronograma, salvo em caso de desastre natural ou força maior:
+ 29/05 (Sexta): 18:30 às 22:00  Welcome Coffee - 18:30 -19h  Abertura: 19h - 19:45  Apresentação da equipe organizadora e staff do evento.  Apresentação da facilitadora.  Apresentação de patrocinadores e apoiadores.  Apresentação dos mentores.  Explicação da dinâmica do final de semana.  Critérios da avaliação final.  Formação e Apresentação de Times: 19:45 - 20:20
+Assinado com Assinatura Eletrônica (Lei 14.063/2020 | Regulamento 910/2014/EC) Hash SHA256 do original: 51b40ad3c42e7be147abc51e9e10ced68b75019a75dfc0b4cc0aeb04aaeb99fc Link de validação: https://valida.ae/e9c6ad2282c28240447d0ab8d286a2ddb7057777f70b54394
+
+Validador
+
+ Equipes formadas com 5 ou menos, farão o pitch da sua solução para atrair mais membros
+ Participantes individuais vão fazer um pitch de 30 segundos sobre si mesmo para entrarem em uma equipe.
+ Participantes individuais poderão fazer um pitch de 1 minuto sobre sua solução para formar uma nova equipe.
+ Sessão Hard 1: 20:20 - 21h - Basics First  O que são os Eixos de Governança de Blumenau.  Como internacionalizar um produto.  Contextualização sobre IA e como ela pode estar inclusa no seu produto.
+ Próximos passos: 21h - 22h  O que vamos fazer no sábado e precisa chegar com os pontos.
+ 30/05 (Sábado):  A abertura antecipada do espaço (a partir das 7h) será confirmada por e-mail e WhatsApp até o dia anterior.  09:00 -10h - Café da Manhã e Trabalho  10h - 11h - Sessão Hard 2: O seu problema é real?  11h - 12h - Working Time - continue criando a sua solução  12h - 13:30 - Almoços e Trabalho  13:30 - 15h - Working Time - continue criando a sua solução funcional.  15h - 16h: Sessão Hard 3 -- Escalabilidade e Modelo de Negócio, lucrando com a solução.  16h - 19h - Working time - continue criando a sua solução.  Ideal que você tenha um MVP esse horário.  19h - 19:30 - Pitch de Guerrilha 1  19:30 - 21h - Working Time - Continue criando sua solução  21h - 21:15 - Avisos da Organização.  21:15 - 22h - Jantar  Pode virar a noite?
+ 31/05 (Domingo): A abertura antecipada do espaço (a partir das 7h) será confirmada por e-mail e WhatsApp até o dia anterior.  09:00 - 10h - Café da Manhã.  10h - 10:30h: Sessão Hard 4 -- Construção de Pitch de Alta Performance  10:30h - 11h - Pitch de Guerrilha 2  11h - 12h - Working time - continue trabalhando.  12h - 13:30 - Almoco  13:30 - 14h - Working Time  14h - 14:30 - Banca de Pré Pitch 1  14:30 - 15:30 - Working Time  15:30 - 16:45 - Banca de Pré Pitch 2  16:45 - 17:30h - Working Time Final  17:30h - Entrega do Pitch Final, Código, Solução. (não será permitido alterações)  17:30h - 18:00h - Coffee  18:00 - 20h - Início da Cerimônia de Pitchs Finais e Premiações
+Assinado com Assinatura Eletrônica (Lei 14.063/2020 | Regulamento 910/2014/EC) Hash SHA256 do original: 51b40ad3c42e7be147abc51e9e10ced68b75019a75dfc0b4cc0aeb04aaeb99fc Link de validação: https://valida.ae/e9c6ad2282c28240447d0ab8d286a2ddb7057777f70b54394
+
+Validador
+
+9.2 A equipe organizadora se reserva o direito de alterar o cronograma em benefício do evento.
+9.3 A equipe organizadora se reserva o direito de realizar ajustes operacionais no edital (cronograma, logística, infraestrutura) até 2 (dois) dias antes da data do evento. Alterações nos critérios de avaliação, regras eliminatórias ou valores de premiação serão informadas de maneira direta aos participantes já devidamente inscritos, sendo possibilitada a desistência com reembolso integral.
+9.4. A equipe organizadora poderá remover uma equipe ou um participante que esteja atrapalhando a dinâmica do evento, seguindo os critérios descritos na cláusula 2.6.
+9.5 Não será tolerado nenhum tipo de discriminação, incluindo racismo, xenofobia, homofobia, misoginia ou qualquer forma de preconceito. Ocorrências resultarão na desclassificação imediata da equipe, conforme procedimento da cláusula 2.6. A organização reserva-se o direito de acionar as autoridades competentes quando julgar necessário.
+9.6 Benefícios fornecidos diretamente pelos patrocinadores não são de responsabilidade direta ou solidária do evento, contudo a organização envidará esforços para garantir todos os benefícios divulgados
+10. PROPRIEDADE INTELECTUAL (PI)
+10.1 Toda e qualquer propriedade intelectual, incluindo código-fonte, designs, algoritmos e modelos de negócio desenvolvidos durante o evento, pertence exclusivamente aos membros da equipe que os criou.
+10.2 A organização do evento não detém qualquer direito de posse ou participação societária sobre as soluções.
+10.3 Ao participar, as equipes e seus partcipantes concedem à organização o direito de utilizar o nome do projeto, logotipos, capturas de tela e descrições para fins de divulgação, relatórios de impacto e portfólio do evento, pelo prazo de 5 (cinco) anos, renovável mediante consentimento.  10.4 Ao realizar a inscrição, o participante declara que todo código-fonte, design, algoritmo e material intelectual que utilizar durante o evento é de sua autoria ou possui autorização expressa do titular para utilizá-lo no contexto do hackathon. O participante isenta a organização de qualquer responsabilidade decorrente de violação de direitos de propriedade intelectual de terceiros, incluindo mas não se limitando a empregadores, clientes e parceiros comerciais.
+10.5 Disputas de propriedade intelectual entre membros de uma mesma equipe, surgidas durante ou após o evento, deverão ser resolvidas diretamente entre os envolvidos. A organização poderá, a seu critério, oferecer mediação informal, mas não assume responsabilidade por acordos, divisões de participação societária ou qualquer compromisso firmado entre os participantes.
+Assinado com Assinatura Eletrônica (Lei 14.063/2020 | Regulamento 910/2014/EC) Hash SHA256 do original: 51b40ad3c42e7be147abc51e9e10ced68b75019a75dfc0b4cc0aeb04aaeb99fc Link de validação: https://valida.ae/e9c6ad2282c28240447d0ab8d286a2ddb7057777f70b54394
+
+Validador
+
+11. CRITÉRIOS DE DESEMPATE
+11.1 Em caso de empate na pontuação final entre duas ou mais equipes, o critério de desempate seguirá a seguinte ordem de prioridade:
+1. Maior nota no critério " Execução Técnica e IA "; 2. Maior nota no critério " Validação de Problema Real"; 3. Maior nota no critério "Escalabilidade e Modelo de Negócio".
+11.2 Persistindo o empate, a decisão final caberá ao Facilitador do evento em conjunto com o Presidente da Banca de Jurados.
+12. POLÍTICA DE CANCELAMENTO E REEMBOLSO
+12.1 O participante poderá solicitar o cancelamento da inscrição e o reembolso integral do valor pago em até 7 (sete) dias após a compra, conforme o Código de Defesa do Consumidor. As solicitações devem ser enviadas para contato@hackiasc.com e serão processadas pela Morph3D Inova Simples (I.S.)
+12.2 Solicitações feitas após o prazo de 7 dias ou em data próxima ao evento seguirão a seguinte regra:
+ Até 10 dias antes do evento: Reembolso de 50% do valor.  Menos de 10 dias antes do evento: Não haverá reembolso, devido aos custos
+operacionais e de catering já empenhados.
+12.3 Em caso de não comparecimento do participante inscrito, não haverá devolução de valores, salvo disposição legal.
+13. AUTORIZAÇÃO DE USO DE IMAGEM E VOZ
+13.1 Ao realizar a inscrição, o participante autoriza, de forma gratuita e por prazo indeterminado, o uso de sua imagem e voz captadas durante o evento em fotos, vídeos e gravações de áudio. Esta autorização poderá ser revogada a qualquer momento mediante solicitação por escrito ao e-mail oficial do evento.
+13.2 O uso de tais materiais destina-se exclusivamente à divulgação do evento em redes sociais, sites oficiais, imprensa e materiais institucionais da organização e seus patrocinadores.
+14. DISPOSIÇÕES GERAIS DE SEGURANÇA
+14.1 É dever do participante zelar por seus pertences eletrônicos (laptops, celulares, periféricos). A organização e o Centro de Inovação de Blumenau não se responsabilizam por perdas, danos ou extravios de equipamentos pessoais.
+14.2 É obrigatório o uso do crachá de identificação durante toda a permanência nas dependências do evento para controle de acesso e segurança.
+Assinado com Assinatura Eletrônica (Lei 14.063/2020 | Regulamento 910/2014/EC) Hash SHA256 do original: 51b40ad3c42e7be147abc51e9e10ced68b75019a75dfc0b4cc0aeb04aaeb99fc Link de validação: https://valida.ae/e9c6ad2282c28240447d0ab8d286a2ddb7057777f70b54394
+
+Validador
+
+14.3 Itens não supracitados serão decididos de maneira individualizada pela comissão organizadora 14.4 A participação no evento implica aceitação integral deste edital. 14.5 Casos omissos serão resolvidos pela organização, observando os princípios da razoabilidade e boa-fé. 14.6 Resta eleito o foro da comarca de Blumenau/SC, para dirimir eventuais controvérsias decorrentes deste edital ou de acontecimentos relacionados ao evento.
+07 de Abril de 2026. Blumenau, SC. Organização AI Hackathon Blumenau 2026. Realização: MORPH3D INOVA SIMPLES (I.S.) -- CNPJ 61.358.910/0001-35
+Dúvidas sobre o edital entrar em contato com: Vinicius Adilson da Costa | Coordenador Geral do Evento. contato@hackiasc.com +55 47 9 9170-8404 https://hackiasc.com
+Assinaturas:
+Assinado eletronicamente
+Vinicius C
+Thomas A Topfstedt
+Thomas A Topfstedt
+Assinado com Assinatura Eletrônica (Lei 14.063/2020 | Regulamento 910/2014/EC) Hash SHA256 do original: 51b40ad3c42e7be147abc51e9e10ced68b75019a75dfc0b4cc0aeb04aaeb99fc Link de validação: https://valida.ae/e9c6ad2282c28240447d0ab8d286a2ddb7057777f70b54394
+
+Validador
+
+Identificador: e9c6ad2282c28240447d0ab8d286a2ddb7057777f70b54394 Data/Hora em GMT -3:00 por Google Trusted Services Autenticação eletrônica por autentique.com.br
+Relatório de auditoria e validação de assinaturas eletrônicas
+URL pública de verificação de integridade e autenticidade https://valida.ae/e9c6ad2282c28240447d0ab8d286a2ddb7057777f70b54394 Assinaturas concluídas: 4 de 4 Assinaturas eletrônicas realizadas em conformidade com a Lei nº 14.063/2020 e Regulamento (UE) nº 910/2014 (eIDAS)
+Como auditar e validar este documento
+Você está visualizando uma via para impressão do documento, ela possui os dados de auditoria, porém ela pode ser alterada. Para conferir a integridade do documento e das assinaturas, acesse a URL pública de validação ou escaneie o QRCode ao lado.
+
+51b40ad3c42e7be147abc51e9e1
+
+0ced68b75019a75dfc0b4cc0aeb
+
+04aaeb99fc
+
+Hash SHA256 do original
+
+Assinaturas presentes no documento
+
+Assinado eletronicamente
+Atendimento JOYn 120.295.229-10 Signatário
+
+Vinicius C
+Vinicius Costa 120.295.229-10
+Signatário
+
+Thomas T
+Thomas Adriaan Topfstedt 045.856.469-90 Signatário
+
+Thomas T
+Thomas Adriaan Topfstedt 045.856.469-90 Signatário
+
+Trilha de auditoria
+07/04/2026 Atendimento JOYn (atendimento@joynrh.com, CPF 120.295.229-10) criou o documento
+17:25 Hash SHA256 do arquivo: 51b40ad3c42e7be147abc51e9e10ced68b75019a75dfc0b4cc0aeb04aaeb99fc
+
+07/04/2026 Atendimento JOYn (atendimento@joynrh.com, CPF 120.295.229-10) visualizou o documento
+17:25
+Endereço de IP: 191.204.209.97 Porta: 61328
+
+07/04/2026 17:25
+
+Atendimento JOYn (atendimento@joynrh.com, CPF 120.295.229-10) assinou o documento
+
+Endereço de IP: 191.204.209.97 Porta: 61328 SO: OS X 10_15_7
+
+Navegador: Chrome/146.0.0.0 Tipo de geolocalização: IP
+
+Arquitetura: ARM64
+
+Precisão: 5km+
+
+Render engine: Gecko
+
+Latitude e longitude: -23.5475, -46.6361
+
+07/04/2026 Vinicius Costa (vinirosadacosta@gmail.com, CPF 120.295.229-10) visualizou o documento
+17:26
+Endereço de IP: 191.204.209.97 Porta: 53824
+
+07/04/2026 17:26
+
+Vinicius Costa (vinirosadacosta@gmail.com, CPF 120.295.229-10) assinou o documento
+
+Endereço de IP: 191.204.209.97 Porta: 53824 SO: OS X 10_15_7
+
+Navegador: Chrome/146.0.0.0 Tipo de geolocalização: IP
+
+Arquitetura: ARM64
+
+Precisão: 5km+
+
+Render engine: Gecko
+
+Latitude e longitude: -23.5475, -46.6361
+
+07/04/2026 Thomas Adriaan Topfstedt (contato@hackiasc.com, CPF 045.856.469-90) visualizou o documento
+17:34
+Endereço de IP: 170.231.25.47 Porta: 61077
+
+autentique.com.br
+
+e9c6ad2282c28240447d0ab8d286a2ddb7057777f70b54394
+
+pg. 12 de 13
+
+07/04/2026 17:37
+
+Thomas Adriaan Topfstedt (contato@hackiasc.com, CPF 045.856.469-90) assinou o documento
+
+Endereço de IP: 170.231.25.47 Porta: 59738 SO: Windows 10.0
+
+Navegador: Chrome/146.0.0.0 Tipo de geolocalização: IP
+
+Arquitetura: x64
+
+Precisão: 5km+
+
+Render engine: Gecko
+
+Latitude e longitude: -26.8766, -49.0969
+
+07/04/2026 Thomas Adriaan Topfstedt (thotop100@gmail.com, CPF 045.856.469-90) visualizou o documento
+17:38
+Endereço de IP: 170.231.25.47 Porta: 59738
+
+07/04/2026 17:39
+
+Thomas Adriaan Topfstedt (thotop100@gmail.com, CPF 045.856.469-90) assinou o documento
+
+Endereço de IP: 170.231.25.47 Porta: 59738 SO: Windows 10.0
+
+Navegador: Chrome/146.0.0.0 Tipo de geolocalização: IP
+
+Arquitetura: x64
+
+Precisão: 5km+
+
+Render engine: Gecko
+
+Latitude e longitude: -26.8766, -49.0969
+
+autentique.com.br
+
+e9c6ad2282c28240447d0ab8d286a2ddb7057777f70b54394
+
+pg. 13 de 13
+
+
