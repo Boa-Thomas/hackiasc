@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react'
 import TeamSection from './TeamSection'
 import EditProfile from './EditProfile'
 import DeliverablesSection from './DeliverablesSection'
+import { EVENT_CONFIG } from '../lib/config'
 
 const ALL_TABS = [
   { id: 'team', label: 'Equipe', icon: 'team' },
+  { id: 'event', label: 'Evento', icon: 'event' },
+  { id: 'deliverables', label: 'Entregáveis', icon: 'deliverables' },
   { id: 'profile', label: 'Meus Dados', icon: 'profile' },
-  { id: 'event', label: 'Entregáveis', icon: 'event' },
 ]
 
 const UNPAID_TABS = ALL_TABS.filter(t => t.id === 'profile')
@@ -22,9 +24,16 @@ function TabIcon({ name }) {
       <path strokeLinecap="round" strokeLinejoin="round" d="M5.121 17.804A4 4 0 0 1 8.875 15h6.25a4 4 0 0 1 3.754 2.804M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0z" />
     </svg>
   )
+  if (name === 'deliverables') return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" />
+    </svg>
+  )
+  // default: event icon (calendar/location pin)
   return (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3M3 11h18M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 0 1-2.827 0l-4.244-4.243a8 8 0 1 1 11.314 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" />
     </svg>
   )
 }
@@ -118,9 +127,111 @@ export default function ParticipantPanel({ auth }) {
 
         {/* Content */}
         {tab === 'team' && isPaid && <TeamSection auth={auth} />}
+        {tab === 'event' && isPaid && <EventInfoSection />}
+        {tab === 'deliverables' && isPaid && <DeliverablesSection auth={auth} goToTeam={() => setTab('team')} />}
         {tab === 'profile' && <EditProfile auth={auth} />}
-        {tab === 'event' && isPaid && <DeliverablesSection auth={auth} goToTeam={() => setTab('team')} />}
       </main>
+    </div>
+  )
+}
+
+function EventInfoSection() {
+  return (
+    <div className="space-y-4">
+      {/* Local e datas */}
+      <div className="card-glass rounded-2xl p-6">
+        <p className="text-xs font-mono text-cyan uppercase tracking-wider mb-4">Informações do Evento</p>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="p-4 rounded-xl border border-dark-border bg-dark/60">
+            <p className="text-xs font-mono text-electric uppercase tracking-wider mb-2">Local</p>
+            <p className="text-sm font-semibold text-white">{EVENT_CONFIG.location}</p>
+            <p className="text-xs text-text-muted mt-1">{EVENT_CONFIG.city}</p>
+          </div>
+
+          <div className="p-4 rounded-xl border border-dark-border bg-dark/60">
+            <p className="text-xs font-mono text-electric uppercase tracking-wider mb-2">Datas</p>
+            <p className="text-sm font-semibold text-white">{EVENT_CONFIG.dates}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Cronograma resumido */}
+      <div className="card-glass rounded-2xl p-6">
+        <p className="text-xs font-mono text-violet uppercase tracking-wider mb-4">Cronograma Resumido</p>
+        <div className="space-y-3">
+          {[
+            { day: 'Dia 1 — 29/Mai', desc: 'Abertura, formação de equipes e kick-off do desafio' },
+            { day: 'Dia 2 — 30/Mai', desc: 'Desenvolvimento, mentorias e checkpoint intermediário' },
+            { day: 'Dia 3 — 31/Mai', desc: 'Pitches finais, avaliação e premiação' },
+          ].map(({ day, desc }) => (
+            <div key={day} className="flex gap-3 items-start">
+              <div className="flex-shrink-0 w-2 h-2 rounded-full bg-violet mt-1.5" />
+              <div>
+                <p className="text-sm font-semibold text-white">{day}</p>
+                <p className="text-xs text-text-muted mt-0.5">{desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* O que levar */}
+      <div className="card-glass rounded-2xl p-6">
+        <p className="text-xs font-mono text-gold uppercase tracking-wider mb-4">O que levar</p>
+        <ul className="space-y-2">
+          {[
+            'Notebook + carregador',
+            'Documento com foto (RG ou CNH)',
+            'Fones de ouvido (opcional, mas recomendado)',
+          ].map((item) => (
+            <li key={item} className="flex items-center gap-2 text-sm text-text-muted">
+              <svg className="w-4 h-4 flex-shrink-0 text-gold" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              {item}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Contato e comunidade */}
+      <div className="card-glass rounded-2xl p-6">
+        <p className="text-xs font-mono text-cyan uppercase tracking-wider mb-4">Contato e Comunidade</p>
+        <div className="space-y-3">
+          <a
+            href={EVENT_CONFIG.social.whatsappGroup}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 p-3 rounded-xl border border-cyan/20 bg-cyan/5 hover:bg-cyan/10 transition-colors group"
+          >
+            <svg className="w-5 h-5 flex-shrink-0 text-cyan" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+              <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.118 1.522 5.849L0 24l6.335-1.502A11.93 11.93 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.782 9.782 0 0 1-5.002-1.37l-.36-.213-3.724.882.936-3.618-.234-.372A9.783 9.783 0 0 1 2.182 12C2.182 6.57 6.57 2.182 12 2.182c5.43 0 9.818 4.388 9.818 9.818 0 5.43-4.388 9.818-9.818 9.818z" />
+            </svg>
+            <div>
+              <p className="text-sm font-semibold text-cyan">Grupo WhatsApp dos participantes</p>
+              <p className="text-xs text-text-muted">Entre no grupo oficial do evento</p>
+            </div>
+            <svg className="w-4 h-4 text-text-muted ml-auto group-hover:text-cyan transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </a>
+
+          <a
+            href={`mailto:${EVENT_CONFIG.organizer.email}`}
+            className="flex items-center gap-3 p-3 rounded-xl border border-dark-border bg-dark/60 hover:border-electric/30 hover:bg-electric/5 transition-colors group"
+          >
+            <svg className="w-5 h-5 flex-shrink-0 text-electric" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" />
+            </svg>
+            <div>
+              <p className="text-sm font-semibold text-electric">E-mail da organização</p>
+              <p className="text-xs text-text-muted">{EVENT_CONFIG.organizer.email}</p>
+            </div>
+          </a>
+        </div>
+      </div>
     </div>
   )
 }
@@ -150,7 +261,7 @@ function PaymentRequiredBanner({ status, email }) {
             {!isCancelled && (
               <a
                 href="#inscricao"
-                onClick={() => { window.location.hash = '' }}
+                onClick={(e) => { e.preventDefault(); window.location.hash = 'inscricao' }}
                 className="px-4 py-2 text-sm rounded-lg border border-gold/40 bg-gold/10 text-gold hover:bg-gold/20 transition-colors"
               >
                 Finalizar pagamento
