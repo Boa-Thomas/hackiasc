@@ -23,8 +23,13 @@ const ALL_TABS = [
 
 export default function AdminPanel({ onLogout, role = 'viewer' }) {
   const readOnly = role === 'viewer'
-  const TABS = readOnly ? ALL_TABS.filter(t => !t.adminOnly) : ALL_TABS
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const checkinOnly = role === 'checkin'
+  const TABS = checkinOnly
+    ? ALL_TABS.filter(t => t.id === 'checkin')
+    : readOnly
+      ? ALL_TABS.filter(t => !t.adminOnly)
+      : ALL_TABS
+  const [activeTab, setActiveTab] = useState(checkinOnly ? 'checkin' : 'dashboard')
   const [selectedRegistrationId, setSelectedRegistrationId] = useState(null)
 
   function handleViewRegistration(id) {
@@ -40,6 +45,7 @@ export default function AdminPanel({ onLogout, role = 'viewer' }) {
           <h1 className="text-lg font-bold text-gradient-cyan font-display">
             HackIA Admin
             {readOnly && <span className="ml-2 text-xs font-mono text-electric/60 border border-electric/20 px-2 py-0.5 rounded-full">visualização</span>}
+            {checkinOnly && <span className="ml-2 text-xs font-mono text-cyan/60 border border-cyan/20 px-2 py-0.5 rounded-full">check-in</span>}
           </h1>
           <nav className="flex gap-1 ml-6">
             {TABS.map((tab) => (

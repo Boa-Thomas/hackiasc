@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
+const VALID_ROLES = ['admin', 'viewer', 'checkin']
+
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes of inactivity
 const MAX_FAILED_ATTEMPTS = 5
 const LOCKOUT_DURATION_MS = 5 * 60 * 1000 // 5 minutes
@@ -70,7 +72,7 @@ export function useAdminAuth() {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
         const userRole = session.user.app_metadata?.role ?? null
-        if (userRole === 'admin' || userRole === 'viewer') {
+        if (VALID_ROLES.includes(userRole)) {
           setRole(userRole)
           setIsAuthenticated(true)
           startActivityTracking()
@@ -163,7 +165,7 @@ export function useAdminAuth() {
       lockoutUntilRef.current = null
 
       const userRole = data.user?.app_metadata?.role ?? null
-      if (userRole !== 'admin' && userRole !== 'viewer') {
+      if (!VALID_ROLES.includes(userRole)) {
         await supabase.auth.signOut()
         setError('Acesso restrito a administradores.')
         return false
