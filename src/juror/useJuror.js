@@ -72,6 +72,17 @@ export function useJuror() {
     return { ok: true, data }
   }, [token, refresh])
 
+  // Registra o aceite do termo de consentimento (cláusula 5.3 do edital).
+  const acceptConsent = useCallback(async () => {
+    if (!token || !supabase) return { ok: false, error: 'unavailable' }
+    const { data, error: rpcError } = await supabase.rpc('juror_accept_consent', {
+      p_token: token,
+    })
+    if (rpcError) return { ok: false, error: rpcError.message }
+    await refresh()
+    return { ok: true, data }
+  }, [token, refresh])
+
   return {
     token,
     context,
@@ -82,6 +93,7 @@ export function useJuror() {
     error,
     isValid: !!token && !!context,
     submitScore,
+    acceptConsent,
     refresh,
   }
 }
