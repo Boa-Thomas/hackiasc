@@ -14,10 +14,15 @@ function seedFromUrl() {
   let urlToken = null
   try {
     const hash = window.location.hash || ''
-    const qIdx = hash.indexOf('?')
-    if (qIdx !== -1) {
-      const params = new URLSearchParams(hash.slice(qIdx + 1))
-      urlToken = params.get('t')
+    // Só captura o token na rota do mentor. Este hook roda em TODAS as rotas
+    // (montado no App, antes do roteamento), então sem este guard ele
+    // "sequestraria" o ?t= de outras rotas — ex.: #jurado?t=... viraria #mentor.
+    if (hash.startsWith('#mentor')) {
+      const qIdx = hash.indexOf('?')
+      if (qIdx !== -1) {
+        const params = new URLSearchParams(hash.slice(qIdx + 1))
+        urlToken = params.get('t')
+      }
     }
   } catch { /* ignore malformed hash */ }
 
