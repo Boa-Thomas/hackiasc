@@ -31,6 +31,19 @@ body {
   margin: 0;
 }
 
+/* Dropdowns escuros — corrige contraste (texto claro em fundo claro) nas
+   <option> dos <select> nativos, presente em várias páginas. color-scheme:dark
+   faz o navegador renderizar o popup nativo em tema escuro; as regras de option
+   garantem o fallback explícito em todos os navegadores. */
+select {
+  color-scheme: dark;
+}
+select option,
+select optgroup {
+  background-color: var(--color-dark-card);
+  color: #f5f5f5;
+}
+
 /* Grid circuit background */
 .bg-grid {
   background-image:
