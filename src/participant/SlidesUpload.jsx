@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
 const MAX_BYTES = 52428800 // 50MB
@@ -21,7 +21,21 @@ export default function SlidesUpload({ token, deliverables, onPersist }) {
   const data = deliverables || {}
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const [deadline, setDeadline] = useState(null) // ISO UTC ou null
   const fileRef = useRef(null)
+
+  // Prazo de envio (data de corte configurada pelo admin). Apenas informativo
+  // aqui — o bloqueio real acontece no servidor (slides_upload_allowed via
+  // edge function); este gate de UI evita um upload fadado a 403.
+  useEffect(() => {
+    if (!supabase) return
+    let active = true
+    supabase.rpc('get_slides_deadline').then(({ data: d }) => { if (active) setDeadline(d ?? null) })
+    return () => { active = false }
+  }, [])
+
+  const deadlinePassed = deadline ? new Date(deadline) < new Date() : false
+  const deadlineLabel = deadline ? new Date(deadline).toLocaleString('pt-BR') : null
 
   const hasUpload = !!data.slides_path
   const legacyUrl = data.slides_url
@@ -73,6 +87,7 @@ export default function SlidesUpload({ token, deliverables, onPersist }) {
     } catch (e) {
       if (e?.code === 'no_team') setError('Você precisa estar em uma equipe para enviar os slides.')
       else if (e?.code === 'invalid_file_type') setError('Envie um arquivo PDF.')
+      else if (e?.code === 'deadline_passed') setError(`Prazo de envio encerrado${deadlineLabel ? ` em ${deadlineLabel}` : ''}.`)
       else setError('Falha ao enviar. Tente novamente.')
     } finally {
       setBusy(false)
@@ -116,8 +131,8 @@ export default function SlidesUpload({ token, deliverables, onPersist }) {
               className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-electric/20 text-electric border border-electric/40 hover:bg-electric/30 disabled:opacity-50">
               {busy ? '...' : 'Baixar'}
             </button>
-            <button type="button" onClick={pickFile} disabled={busy}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-dark-border text-text-muted hover:text-white disabled:opacity-50">
+            <button type="button" onClick={pickFile} disabled={busy || deadlinePassed}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-dark-border text-text-muted hover:text-white disabled:opacity-50 disabled:cursor-not-allowed">
               Substituir
             </button>
           </div>
@@ -131,11 +146,17 @@ export default function SlidesUpload({ token, deliverables, onPersist }) {
               {' '}· envie o PDF abaixo para substituir.
             </p>
           )}
-          <button type="button" onClick={pickFile} disabled={busy}
+          <button type="button" onClick={pickFile} disabled={busy || deadlinePassed}
             className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-cyan/20 text-cyan border border-cyan/40 hover:bg-cyan/30 disabled:opacity-50 disabled:cursor-not-allowed">
-            {busy ? 'Enviando...' : 'Enviar PDF (até 50MB)'}
+            {busy ? 'Enviando...' : deadlinePassed ? 'Prazo encerrado' : 'Enviar PDF (até 50MB)'}
           </button>
         </div>
+      )}
+
+      {deadlineLabel && (
+        <p className={`text-xs ${deadlinePassed ? 'text-hot' : 'text-text-muted'}`}>
+          {deadlinePassed ? `Prazo de envio encerrado em ${deadlineLabel}.` : `Prazo para envio dos slides: ${deadlineLabel}.`}
+        </p>
       )}
 
       {error && (

@@ -16,6 +16,14 @@ const STATUS = [
 const statusMeta = (id) => STATUS.find(s => s.id === id) || STATUS[0]
 const PHASE_LABEL = { ignicao: 'Fase 1 · Ignição', construcao: 'Fase 2 · Construção', apresentacao: 'Fase 3 · Apresentação' }
 
+// ISO (UTC, do banco) -> valor de <input type="datetime-local"> no fuso do admin.
+function isoToLocalInput(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 export default function AdminDeliverables({ readOnly = false }) {
   const [teams, setTeams] = useState([])
   const [members, setMembers] = useState([])
@@ -24,6 +32,11 @@ export default function AdminDeliverables({ readOnly = false }) {
   const [deliverableMeta, setDeliverableMeta] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  // Prazo de envio dos slides (singleton slides_config; ISO UTC ou null)
+  const [slidesDeadline, setSlidesDeadline] = useState(null)
+  const [deadlineInput, setDeadlineInput] = useState('')
+  const [deadlineSaving, setDeadlineSaving] = useState(false)
+  const [deadlineMsg, setDeadlineMsg] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
   const [sub, setSub] = useState('hypotheses')
   // IA Evaluator (human-in-the-loop) — estado por equipe selecionada
@@ -39,16 +52,18 @@ export default function AdminDeliverables({ readOnly = false }) {
   async function fetchData() {
     if (!supabase) { setError('Supabase não configurado.'); setLoading(false); return }
     setError(null)
-    const [t, r, n, e, dm] = await Promise.all([
+    const [t, r, n, e, dm, sd] = await Promise.all([
       supabase.from('teams').select('id, name, status, hypotheses_canvas, slc_ia_canvas, learning_diary, final_deliverables, updated_at, updated_by').order('name', { ascending: true }),
       supabase.from('registrations').select('team_id, full_name, is_team_leader, payment_status, occupation_type, economic_axes, project_name'),
       supabase.from('mentor_notes').select('id, team_id, phase, body, is_public, created_at, mentors(name, email)').order('created_at', { ascending: false }),
       supabase.from('team_evaluations').select('id, team_id, evaluator_type, rubric_version, total_score, eliminated, summary, scores, model, status, created_at').order('created_at', { ascending: false }),
       supabase.from('team_deliverable_meta').select('team_id, field, updated_by_name, updated_at'),
+      supabase.rpc('get_slides_deadline'),
     ])
-    const firstErr = [t, r, n, e, dm].find(x => x.error)
+    const firstErr = [t, r, n, e, dm, sd].find(x => x.error)
     if (firstErr) { setError(firstErr.error.message); setLoading(false); return }
     setTeams(t.data ?? []); setMembers(r.data ?? []); setNotes(n.data ?? []); setEvals(e.data ?? []); setDeliverableMeta(dm.data ?? [])
+    setSlidesDeadline(sd.data ?? null); setDeadlineInput(isoToLocalInput(sd.data))
     setLoading(false)
   }
   useEffect(() => { fetchData() }, []) // eslint-disable-line react-hooks/set-state-in-effect
@@ -64,6 +79,36 @@ export default function AdminDeliverables({ readOnly = false }) {
       .map(m => [m.field, { updated_by_name: m.updated_by_name, updated_at: m.updated_at }])
   )
   const selected = teams.find(t => t.id === selectedId) || null
+
+  // Grava o prazo de envio dos slides. O input datetime-local é interpretado no
+  // fuso do admin (provável BRT) e convertido para ISO UTC; toda a comparação de
+  // tempo acontece no banco (slides_upload_allowed). p_deadline null remove o prazo.
+  async function saveDeadline() {
+    if (!supabase) return
+    setDeadlineMsg(null)
+    const iso = deadlineInput ? new Date(deadlineInput).toISOString() : null
+    if (deadlineInput && Number.isNaN(new Date(deadlineInput).getTime())) {
+      setDeadlineMsg({ kind: 'err', text: 'Data inválida.' }); return
+    }
+    setDeadlineSaving(true)
+    const { data, error: err } = await supabase.rpc('set_slides_deadline', { p_deadline: iso })
+    setDeadlineSaving(false)
+    if (err) { setDeadlineMsg({ kind: 'err', text: `Erro: ${err.message}` }); return }
+    setSlidesDeadline(data ?? null)
+    setDeadlineInput(isoToLocalInput(data))
+    setDeadlineMsg({ kind: 'ok', text: data ? `Prazo salvo: ${new Date(data).toLocaleString('pt-BR')}` : 'Prazo removido (sem data de corte).' })
+  }
+
+  async function clearDeadline() {
+    if (!supabase) return
+    setDeadlineMsg(null)
+    setDeadlineSaving(true)
+    const { error: err } = await supabase.rpc('set_slides_deadline', { p_deadline: null })
+    setDeadlineSaving(false)
+    if (err) { setDeadlineMsg({ kind: 'err', text: `Erro: ${err.message}` }); return }
+    setSlidesDeadline(null); setDeadlineInput('')
+    setDeadlineMsg({ kind: 'ok', text: 'Prazo removido (sem data de corte).' })
+  }
 
   async function changeStatus(teamId, status) {
     if (!supabase) return
@@ -284,6 +329,42 @@ export default function AdminDeliverables({ readOnly = false }) {
   return (
     <div className="space-y-6">
       {error && <div className="bg-hot/10 border border-hot/30 rounded-lg px-4 py-2.5 text-hot text-sm">{error}</div>}
+
+      <div className="card-glass rounded-2xl p-5 space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <p className="text-xs font-mono text-gold uppercase tracking-wider">Prazo de envio dos slides (PDF)</p>
+            <p className="text-sm text-white/70 mt-1">
+              {slidesDeadline
+                ? <>Data de corte atual: <span className="font-semibold text-white">{new Date(slidesDeadline).toLocaleString('pt-BR')}</span>{new Date(slidesDeadline) < new Date() && <span className="ml-2 text-hot">(encerrado)</span>}</>
+                : 'Sem data de corte — equipes podem enviar a qualquer momento.'}
+            </p>
+          </div>
+        </div>
+        {!readOnly && (
+          <div className="flex items-end gap-3 flex-wrap">
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Definir prazo (seu fuso horário)</label>
+              <input type="datetime-local" value={deadlineInput} onChange={e => setDeadlineInput(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-cyan/50" />
+            </div>
+            <button onClick={saveDeadline} disabled={deadlineSaving}
+              className="px-4 py-2 rounded-lg text-sm font-semibold bg-cyan/20 text-cyan border border-cyan/40 hover:bg-cyan/30 disabled:opacity-40">
+              {deadlineSaving ? 'Salvando...' : 'Salvar prazo'}
+            </button>
+            {slidesDeadline && (
+              <button onClick={clearDeadline} disabled={deadlineSaving}
+                className="px-4 py-2 rounded-lg text-sm font-semibold border border-dark-border text-text-muted hover:text-white disabled:opacity-40">
+                Remover prazo
+              </button>
+            )}
+          </div>
+        )}
+        {deadlineMsg && (
+          <div className={`rounded-lg px-3 py-2 text-sm border ${deadlineMsg.kind === 'ok' ? 'bg-cyan/10 border-cyan/30 text-cyan' : 'bg-hot/10 border-hot/30 text-hot'}`}>{deadlineMsg.text}</div>
+        )}
+      </div>
+
       <div className="flex items-center justify-between flex-wrap gap-3">
         <p className="text-sm text-white/60">{teams.length} equipes</p>
         <button onClick={exportCSV} className="px-4 py-2 rounded-lg text-sm font-semibold bg-electric/20 text-electric border border-electric/40 hover:bg-electric/30">Exportar CSV</button>
