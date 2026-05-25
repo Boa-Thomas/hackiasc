@@ -49,6 +49,16 @@ export default function Footer() {
                 </a>
               </li>
               <li>
+                <a href="/adendo-01.html" target="_blank" rel="noopener noreferrer" className="text-sm text-text-muted hover:text-white transition-colors">
+                  Adendo nº 1 · Prazo de inscrição
+                </a>
+              </li>
+              <li>
+                <a href="/comunicado-01.html" target="_blank" rel="noopener noreferrer" className="text-sm text-text-muted hover:text-white transition-colors">
+                  Comunicado nº 1 · Comitê de Governança
+                </a>
+              </li>
+              <li>
                 <a href="#patrocinio" className="text-sm text-text-muted hover:text-white transition-colors">
                   Seja Patrocinador
                 </a>
