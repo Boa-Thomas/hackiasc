@@ -9,14 +9,14 @@ const PRIZES = [
   {
     place: '2o',
     value: 'R$ 3.000',
-    desc: 'Capital semente para reinvestir na sua startup.',
+    desc: 'Capital semente + consultoria de marketing para as redes sociais.',
     color: 'text-muted',
     featured: false,
   },
   {
     place: '3o',
-    value: 'Benefícios',
-    desc: 'Consultorias e benefícios exclusivos (a divulgar).',
+    value: 'Consultorias',
+    desc: 'Thought Leadership no LinkedIn (3 meses de conteúdo e sugestão de pautas) + consultoria de marketing para as redes sociais.',
     color: 'hot',
     featured: false,
   },
