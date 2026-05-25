@@ -3,11 +3,13 @@ import { PHASES, HYPOTHESES_FIELDS, SLC_IA_FIELDS, FINAL_FIELDS, METHOD_PHASES }
 import DeliverableForm from '../participant/DeliverableForm'
 import LearningDiary from '../participant/LearningDiary'
 import MentorNotes from './MentorNotes'
+import SectionMeta from '../participant/SectionMeta'
 import { relativeTime } from '../lib/relativeTime'
 
 export default function MentorPanel({ auth }) {
   const { mentor, team } = auth
   const [sub, setSub] = useState('hypotheses')
+  const meta = team?.deliverable_meta
 
   return (
     <div className="min-h-screen bg-dark text-white bg-grid">
@@ -83,11 +85,11 @@ export default function MentorPanel({ auth }) {
               </div>
             </div>
 
-            {sub === 'hypotheses' && <DeliverableForm readOnly eyebrow="Fase 1 · Ignição" title="Canvas de Hipóteses" fields={HYPOTHESES_FIELDS} value={team.hypotheses_canvas} />}
-            {sub === 'slc' && <DeliverableForm readOnly eyebrow="Fase 2 · Construção" title="Canvas SLC-IA" fields={SLC_IA_FIELDS} value={team.slc_ia_canvas} />}
-            {sub === 'diary' && <LearningDiary readOnly value={team.learning_diary} />}
-            {sub === 'final' && <DeliverableForm readOnly eyebrow="Fase 3 · Apresentação" title="Entregas finais" fields={FINAL_FIELDS} value={team.final_deliverables} gridClass="grid grid-cols-1 sm:grid-cols-2 gap-4"
-              renderField={(f, ctx) => f.type === 'file-pdf' ? <MentorSlidesInfo deliverables={ctx.value} /> : null} />}
+            {sub === 'hypotheses' && <div className="space-y-2"><SectionMeta meta={meta} field="hypotheses_canvas" /><DeliverableForm readOnly eyebrow="Fase 1 · Ignição" title="Canvas de Hipóteses" fields={HYPOTHESES_FIELDS} value={team.hypotheses_canvas} /></div>}
+            {sub === 'slc' && <div className="space-y-2"><SectionMeta meta={meta} field="slc_ia_canvas" /><DeliverableForm readOnly eyebrow="Fase 2 · Construção" title="Canvas SLC-IA" fields={SLC_IA_FIELDS} value={team.slc_ia_canvas} /></div>}
+            {sub === 'diary' && <div className="space-y-2"><SectionMeta meta={meta} field="learning_diary" /><LearningDiary readOnly value={team.learning_diary} /></div>}
+            {sub === 'final' && <div className="space-y-2"><SectionMeta meta={meta} field="final_deliverables" /><DeliverableForm readOnly eyebrow="Fase 3 · Apresentação" title="Entregas finais" fields={FINAL_FIELDS} value={team.final_deliverables} gridClass="grid grid-cols-1 sm:grid-cols-2 gap-4"
+              renderField={(f, ctx) => f.type === 'file-pdf' ? <MentorSlidesInfo deliverables={ctx.value} /> : null} /></div>}
 
             <div className="card-glass rounded-2xl p-6 space-y-4">
               <div>

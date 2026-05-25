@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import DeliverableForm from '../participant/DeliverableForm'
 import LearningDiary from '../participant/LearningDiary'
 import { PHASES, HYPOTHESES_FIELDS, SLC_IA_FIELDS, FINAL_FIELDS } from '../participant/deliverableFields'
+import SectionMeta from '../participant/SectionMeta'
 import { relativeTime } from '../lib/relativeTime'
 import { buildEvaluationPrompt, parseEvaluation, EDITAL_RUBRIC } from '../lib/iaEvaluator'
 
@@ -20,6 +21,7 @@ export default function AdminDeliverables({ readOnly = false }) {
   const [members, setMembers] = useState([])
   const [notes, setNotes] = useState([])
   const [evals, setEvals] = useState([])
+  const [deliverableMeta, setDeliverableMeta] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
@@ -37,15 +39,16 @@ export default function AdminDeliverables({ readOnly = false }) {
   async function fetchData() {
     if (!supabase) { setError('Supabase não configurado.'); setLoading(false); return }
     setError(null)
-    const [t, r, n, e] = await Promise.all([
+    const [t, r, n, e, dm] = await Promise.all([
       supabase.from('teams').select('id, name, status, hypotheses_canvas, slc_ia_canvas, learning_diary, final_deliverables, updated_at, updated_by').order('name', { ascending: true }),
       supabase.from('registrations').select('team_id, full_name, is_team_leader, payment_status, occupation_type, economic_axes, project_name'),
       supabase.from('mentor_notes').select('id, team_id, phase, body, is_public, created_at, mentors(name, email)').order('created_at', { ascending: false }),
       supabase.from('team_evaluations').select('id, team_id, evaluator_type, rubric_version, total_score, eliminated, summary, scores, model, status, created_at').order('created_at', { ascending: false }),
+      supabase.from('team_deliverable_meta').select('team_id, field, updated_by_name, updated_at'),
     ])
-    const firstErr = [t, r, n, e].find(x => x.error)
+    const firstErr = [t, r, n, e, dm].find(x => x.error)
     if (firstErr) { setError(firstErr.error.message); setLoading(false); return }
-    setTeams(t.data ?? []); setMembers(r.data ?? []); setNotes(n.data ?? []); setEvals(e.data ?? [])
+    setTeams(t.data ?? []); setMembers(r.data ?? []); setNotes(n.data ?? []); setEvals(e.data ?? []); setDeliverableMeta(dm.data ?? [])
     setLoading(false)
   }
   useEffect(() => { fetchData() }, []) // eslint-disable-line react-hooks/set-state-in-effect
@@ -53,6 +56,13 @@ export default function AdminDeliverables({ readOnly = false }) {
   const memberCount = (teamId) => members.filter(m => m.team_id === teamId && m.payment_status === 'confirmed').length
   const notesFor = (teamId) => notes.filter(n => n.team_id === teamId)
   const evalsFor = (teamId) => evals.filter(ev => ev.team_id === teamId)
+  // Meta por seção no mesmo formato consumido por SectionMeta:
+  // { <field>: { updated_by_name, updated_at } }
+  const metaFor = (teamId) => Object.fromEntries(
+    deliverableMeta
+      .filter(m => m.team_id === teamId)
+      .map(m => [m.field, { updated_by_name: m.updated_by_name, updated_at: m.updated_at }])
+  )
   const selected = teams.find(t => t.id === selectedId) || null
 
   async function changeStatus(teamId, status) {
@@ -142,6 +152,7 @@ export default function AdminDeliverables({ readOnly = false }) {
   if (selected) {
     const tnotes = notesFor(selected.id)
     const tevals = evalsFor(selected.id)
+    const tmeta = metaFor(selected.id)
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-3">
@@ -175,11 +186,11 @@ export default function AdminDeliverables({ readOnly = false }) {
           </div>
         </div>
 
-        {sub === 'hypotheses' && <DeliverableForm readOnly eyebrow="Fase 1 · Ignição" title="Canvas de Hipóteses" fields={HYPOTHESES_FIELDS} value={selected.hypotheses_canvas} />}
-        {sub === 'slc' && <DeliverableForm readOnly eyebrow="Fase 2 · Construção" title="Canvas SLC-IA" fields={SLC_IA_FIELDS} value={selected.slc_ia_canvas} />}
-        {sub === 'diary' && <LearningDiary readOnly value={selected.learning_diary} />}
-        {sub === 'final' && <DeliverableForm readOnly eyebrow="Fase 3 · Apresentação" title="Entregas finais" fields={FINAL_FIELDS} value={selected.final_deliverables} gridClass="grid grid-cols-1 sm:grid-cols-2 gap-4"
-          renderField={(f, ctx) => f.type === 'file-pdf' ? <AdminSlidesDownload deliverables={ctx.value} /> : null} />}
+        {sub === 'hypotheses' && <div className="space-y-2"><SectionMeta meta={tmeta} field="hypotheses_canvas" /><DeliverableForm readOnly eyebrow="Fase 1 · Ignição" title="Canvas de Hipóteses" fields={HYPOTHESES_FIELDS} value={selected.hypotheses_canvas} /></div>}
+        {sub === 'slc' && <div className="space-y-2"><SectionMeta meta={tmeta} field="slc_ia_canvas" /><DeliverableForm readOnly eyebrow="Fase 2 · Construção" title="Canvas SLC-IA" fields={SLC_IA_FIELDS} value={selected.slc_ia_canvas} /></div>}
+        {sub === 'diary' && <div className="space-y-2"><SectionMeta meta={tmeta} field="learning_diary" /><LearningDiary readOnly value={selected.learning_diary} /></div>}
+        {sub === 'final' && <div className="space-y-2"><SectionMeta meta={tmeta} field="final_deliverables" /><DeliverableForm readOnly eyebrow="Fase 3 · Apresentação" title="Entregas finais" fields={FINAL_FIELDS} value={selected.final_deliverables} gridClass="grid grid-cols-1 sm:grid-cols-2 gap-4"
+          renderField={(f, ctx) => f.type === 'file-pdf' ? <AdminSlidesDownload deliverables={ctx.value} /> : null} /></div>}
 
         <div className="card-glass rounded-2xl p-6 space-y-4">
           <div>
