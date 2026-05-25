@@ -49,7 +49,11 @@ export const SLC_IA_FIELDS = [
 export const FINAL_FIELDS = [
   { key: 'repo_url', label: 'Repositório no GitHub', type: 'url', placeholder: 'https://github.com/...' },
   { key: 'deploy_url', label: 'SLC-IA deployed (URL pública)', type: 'url', placeholder: 'https://...' },
-  { key: 'slides_url', label: 'Slides do pitch (PDF/Canva)', type: 'url', placeholder: 'https://...' },
+  // Slides do pitch: upload de PDF (máx 50MB) para o bucket privado `files`,
+  // prefixo deliverables/<team_id>/. Tratado fora do fluxo genérico de campos
+  // do DeliverableForm (ver SlidesUpload no DeliverablesSection). O caminho
+  // fica em final_deliverables.slides_path e o nome em slides_name.
+  { key: 'slides', label: 'Slides do pitch (PDF, até 50MB)', type: 'file-pdf', full: true },
   { key: 'proximos_passos', label: 'Próximos passos', type: 'textarea', rows: 3, full: true,
     placeholder: 'Modelo de receita, o que testariam a seguir, quanto precisariam para 90 dias.' },
 ]

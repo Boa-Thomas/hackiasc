@@ -3,16 +3,26 @@ import { useState, useEffect, useRef } from 'react'
 const INPUT = 'w-full bg-dark border border-dark-border rounded-xl px-4 py-2.5 text-white text-sm placeholder-text-muted focus:outline-none focus:border-electric focus:ring-1 focus:ring-electric/30 transition-colors disabled:opacity-70'
 const LBL = 'block text-sm font-semibold text-white mb-2'
 
+// `file-pdf` fields are handled outside the generic text-field flow (upload
+// UI is injected via `renderField`); their keys are NOT mapped into the form
+// state nor saved as plain values, so the underlying JSONB keys they manage
+// (e.g. slides_path / slides_name) are preserved untouched.
+const isManaged = (f) => f.type !== 'file-pdf'
+
 function valueToForm(fields, value) {
   const v = value || {}
-  return Object.fromEntries(fields.map(f => [f.key, v[f.key] || '']))
+  return Object.fromEntries(fields.filter(isManaged).map(f => [f.key, v[f.key] || '']))
 }
 
 // Form genérico orientado por config de campos. Edição quando `onSave` é
 // fornecido; modo leitura quando `readOnly` (usado pelo painel do mentor).
+// `renderField` (optional): (field, ctx) => ReactNode — lets the caller inject
+// custom UI for non-text fields (e.g. the slides PDF uploader). ctx exposes the
+// current full `value` (JSONB) and `readOnly`.
 export default function DeliverableForm({
   eyebrow, title, description, fields, value, onSave, readOnly = false,
   updatedAt, gridClass = 'grid grid-cols-1 md:grid-cols-2 gap-4', saveLabel = 'Salvar',
+  renderField,
 }) {
   const [form, setForm] = useState(() => valueToForm(fields, value))
   const [saving, setSaving] = useState(false)
@@ -24,7 +34,7 @@ export default function DeliverableForm({
     loadedAtRef.current = updatedAt
   }, [value, updatedAt, fields])
 
-  const dirty = fields.some(f => form[f.key] !== ((value || {})[f.key] || ''))
+  const dirty = fields.filter(isManaged).some(f => form[f.key] !== ((value || {})[f.key] || ''))
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   async function onSubmit(e) {
@@ -40,7 +50,9 @@ export default function DeliverableForm({
     }
     setSaving(true)
     try {
-      await onSave(form)
+      // Merge over the original value so keys managed outside this form
+      // (e.g. slides_path / slides_name from the PDF uploader) are preserved.
+      await onSave({ ...(value || {}), ...form })
       setFeedback({ type: 'success', text: 'Salvo.' })
     } catch {
       setFeedback({ type: 'error', text: 'Erro ao salvar. Tente novamente.' })
@@ -62,7 +74,11 @@ export default function DeliverableForm({
       {fields.map(f => (
         <div key={f.key} className={f.full ? 'col-span-full' : ''}>
           <label className={LBL} htmlFor={`fld-${f.key}`}>{f.label}</label>
-          {f.type === 'select' ? (
+          {f.type === 'file-pdf' ? (
+            renderField
+              ? renderField(f, { value: value || {}, readOnly })
+              : <p className="text-sm text-text-muted">—</p>
+          ) : f.type === 'select' ? (
             <select id={`fld-${f.key}`} value={form[f.key]} onChange={e => set(f.key, e.target.value)} disabled={readOnly} className={INPUT}>
               <option value="">{f.placeholder || 'Selecione...'}</option>
               {f.options.map(o => <option key={o} value={o}>{o}</option>)}

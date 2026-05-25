@@ -86,7 +86,8 @@ export default function MentorPanel({ auth }) {
             {sub === 'hypotheses' && <DeliverableForm readOnly eyebrow="Fase 1 · Ignição" title="Canvas de Hipóteses" fields={HYPOTHESES_FIELDS} value={team.hypotheses_canvas} />}
             {sub === 'slc' && <DeliverableForm readOnly eyebrow="Fase 2 · Construção" title="Canvas SLC-IA" fields={SLC_IA_FIELDS} value={team.slc_ia_canvas} />}
             {sub === 'diary' && <LearningDiary readOnly value={team.learning_diary} />}
-            {sub === 'final' && <DeliverableForm readOnly eyebrow="Fase 3 · Apresentação" title="Entregas finais" fields={FINAL_FIELDS} value={team.final_deliverables} gridClass="grid grid-cols-1 sm:grid-cols-2 gap-4" />}
+            {sub === 'final' && <DeliverableForm readOnly eyebrow="Fase 3 · Apresentação" title="Entregas finais" fields={FINAL_FIELDS} value={team.final_deliverables} gridClass="grid grid-cols-1 sm:grid-cols-2 gap-4"
+              renderField={(f, ctx) => f.type === 'file-pdf' ? <MentorSlidesInfo deliverables={ctx.value} /> : null} />}
 
             <div className="card-glass rounded-2xl p-6 space-y-4">
               <div>
@@ -105,4 +106,28 @@ export default function MentorPanel({ auth }) {
       </main>
     </div>
   )
+}
+
+// Slides do pitch (PDF). O mentor não baixa o arquivo: a edge function
+// team-slides valida token de participante (não de mentor), e o storage só
+// libera download para admin/equipe. Mostramos o status do envio e, se houver,
+// o link antigo (slides_url) de equipes anteriores à migração de upload.
+function MentorSlidesInfo({ deliverables }) {
+  const data = deliverables || {}
+  if (data.slides_path) {
+    return (
+      <p className="text-sm text-white/80">
+        PDF enviado: <span className="font-semibold">{data.slides_name || 'slides.pdf'}</span>
+        <span className="text-text-muted"> · download disponível para a organização e a equipe.</span>
+      </p>
+    )
+  }
+  if (data.slides_url) {
+    return (
+      <a href={data.slides_url} target="_blank" rel="noopener noreferrer" className="text-sm text-electric hover:underline break-all">
+        {data.slides_url}
+      </a>
+    )
+  }
+  return <p className="text-sm text-text-muted">Nenhum slide enviado.</p>
 }
