@@ -5,10 +5,12 @@ import { PHASES, HYPOTHESES_FIELDS, SLC_IA_FIELDS, FINAL_FIELDS } from './delive
 import DeliverableForm from './DeliverableForm'
 import LearningDiary from './LearningDiary'
 import SlidesUpload from './SlidesUpload'
+import SectionMeta from './SectionMeta'
 
 export default function DeliverablesSection({ auth, goToTeam }) {
   const team = auth.team
   const [sub, setSub] = useState('hypotheses')
+  const meta = team?.deliverable_meta
 
   if (!team) return <NoTeamEmptyState onGoToTeam={goToTeam} />
 
@@ -50,29 +52,40 @@ export default function DeliverablesSection({ auth, goToTeam }) {
       </div>
 
       {sub === 'hypotheses' && (
-        <DeliverableForm
-          eyebrow="Fase 1 · Ignição" title="Canvas de Hipóteses"
-          description="Os 3 saltos de fé: valor, crescimento e técnica de IA."
-          fields={HYPOTHESES_FIELDS} value={team.hypotheses_canvas} updatedAt={team.updated_at}
-          onSave={d => saveDeliverable('hypotheses_canvas', d)} saveLabel="Salvar Hipóteses"
-        />
+        <div className="space-y-2">
+          <SectionMeta meta={meta} field="hypotheses_canvas" />
+          <DeliverableForm
+            eyebrow="Fase 1 · Ignição" title="Canvas de Hipóteses"
+            description="Os 3 saltos de fé: valor, crescimento e técnica de IA."
+            fields={HYPOTHESES_FIELDS} value={team.hypotheses_canvas} updatedAt={team.updated_at}
+            onSave={d => saveDeliverable('hypotheses_canvas', d)} saveLabel="Salvar Hipóteses"
+          />
+        </div>
       )}
       {sub === 'slc' && (
-        <DeliverableForm
-          eyebrow="Fase 2 · Construção" title="Canvas SLC-IA"
-          description="Simples, Adorável, Completo — com IA real rodando."
-          fields={SLC_IA_FIELDS} value={team.slc_ia_canvas} updatedAt={team.updated_at}
-          onSave={d => saveDeliverable('slc_ia_canvas', d)} saveLabel="Salvar SLC-IA"
-        />
+        <div className="space-y-2">
+          <SectionMeta meta={meta} field="slc_ia_canvas" />
+          <DeliverableForm
+            eyebrow="Fase 2 · Construção" title="Canvas SLC-IA"
+            description="Simples, Adorável, Completo — com IA real rodando."
+            fields={SLC_IA_FIELDS} value={team.slc_ia_canvas} updatedAt={team.updated_at}
+            onSave={d => saveDeliverable('slc_ia_canvas', d)} saveLabel="Salvar SLC-IA"
+          />
+        </div>
       )}
       {sub === 'diary' && (
-        <LearningDiary
-          value={team.learning_diary} updatedAt={team.updated_at}
-          onSave={d => saveDeliverable('learning_diary', d)}
-        />
+        <div className="space-y-2">
+          <SectionMeta meta={meta} field="learning_diary" />
+          <LearningDiary
+            value={team.learning_diary} updatedAt={team.updated_at}
+            onSave={d => saveDeliverable('learning_diary', d)}
+          />
+        </div>
       )}
       {sub === 'final' && (
-        <DeliverableForm
+        <div className="space-y-2">
+          <SectionMeta meta={meta} field="final_deliverables" />
+          <DeliverableForm
           eyebrow="Fase 3 · Apresentação" title="Entregas finais"
           description="Links públicos das entregas exigidas no edital. Os slides são enviados como PDF."
           fields={FINAL_FIELDS} value={team.final_deliverables} updatedAt={team.updated_at}
@@ -85,7 +98,8 @@ export default function DeliverablesSection({ auth, goToTeam }) {
               onPersist={extra => saveDeliverable('final_deliverables', { ...(team.final_deliverables || {}), ...extra })}
             />
           ) : null}
-        />
+          />
+        </div>
       )}
 
       <PublicMentorNotes
