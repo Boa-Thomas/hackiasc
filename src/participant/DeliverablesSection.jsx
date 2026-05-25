@@ -93,7 +93,7 @@ function PublicMentorNotes({ notes, phase }) {
   if (!list.length) return null
   return (
     <div className="card-glass rounded-2xl p-6">
-      <p className="text-xs font-mono text-violet uppercase tracking-wider mb-3">Comentários do mentor</p>
+      <p className="text-xs font-mono text-violet uppercase tracking-wider mb-3">Comentários dos mentores</p>
       <div className="space-y-3">
         {list.map(n => (
           <div key={n.id} className="rounded-lg border border-violet/20 bg-violet/5 p-3">
