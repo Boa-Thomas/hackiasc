@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { PHASE_LABELS } from './useWallDevice'
 
-// Telao read-only para projecao. Sem device token (p_device NULL). Polling 2s.
+// Telao read-only para projecao. Sem identidade (p_registration_id NULL). Polling 2s.
 const POLL_MS = 2000
 
 export default function WallScreen() {
@@ -17,7 +17,7 @@ export default function WallScreen() {
       setLoaded(true)
       return
     }
-    const { data, error: err } = await supabase.rpc('wall_list', { p_device: null })
+    const { data, error: err } = await supabase.rpc('wall_list', { p_registration_id: null })
     if (err) {
       setError(err.message)
     } else if (data) {
