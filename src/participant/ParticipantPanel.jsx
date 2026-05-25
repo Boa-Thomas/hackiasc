@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import TeamSection from './TeamSection'
 import EditProfile from './EditProfile'
 import DeliverablesSection from './DeliverablesSection'
+import ResourcesSection from './ResourcesSection'
 import CertificateSection from './CertificateSection'
 import { EVENT_CONFIG } from '../lib/config'
 import { QRCodeSVG } from 'qrcode.react'
@@ -10,6 +11,7 @@ const ALL_TABS = [
   { id: 'team', label: 'Equipe', icon: 'team' },
   { id: 'event', label: 'Evento', icon: 'event' },
   { id: 'deliverables', label: 'Entregáveis', icon: 'deliverables' },
+  { id: 'resources', label: 'Recursos', icon: 'resources' },
   { id: 'profile', label: 'Meus Dados', icon: 'profile' },
 ]
 
@@ -29,6 +31,11 @@ function TabIcon({ name }) {
   if (name === 'deliverables') return (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" />
+    </svg>
+  )
+  if (name === 'resources') return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
     </svg>
   )
   // default: event icon (calendar/location pin)
@@ -131,6 +138,7 @@ export default function ParticipantPanel({ auth }) {
         {tab === 'team' && isPaid && <TeamSection auth={auth} />}
         {tab === 'event' && isPaid && <EventInfoSection profile={profile} />}
         {tab === 'deliverables' && isPaid && <DeliverablesSection auth={auth} goToTeam={() => setTab('team')} />}
+        {tab === 'resources' && isPaid && <ResourcesSection auth={auth} />}
         {tab === 'profile' && <EditProfile auth={auth} />}
       </main>
     </div>
@@ -191,25 +199,8 @@ function EventInfoSection({ profile }) {
         </div>
       </div>
 
-      {/* Cronograma resumido */}
-      <div className="card-glass rounded-2xl p-6">
-        <p className="text-xs font-mono text-violet uppercase tracking-wider mb-4">Cronograma Resumido</p>
-        <div className="space-y-3">
-          {[
-            { day: 'Dia 1 — 29/Mai', desc: 'Abertura, formação de equipes e kick-off do desafio' },
-            { day: 'Dia 2 — 30/Mai', desc: 'Desenvolvimento, mentorias e checkpoint intermediário' },
-            { day: 'Dia 3 — 31/Mai', desc: 'Pitches finais, avaliação e premiação' },
-          ].map(({ day, desc }) => (
-            <div key={day} className="flex gap-3 items-start">
-              <div className="flex-shrink-0 w-2 h-2 rounded-full bg-violet mt-1.5" />
-              <div>
-                <p className="text-sm font-semibold text-white">{day}</p>
-                <p className="text-xs text-text-muted mt-0.5">{desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Cronograma detalhado */}
+      <DetailedSchedule />
 
       {/* O que levar */}
       <div className="card-glass rounded-2xl p-6">
@@ -270,6 +261,109 @@ function EventInfoSection({ profile }) {
 
       {/* Certificado de Participação */}
       <CertificateSection profile={profile} />
+    </div>
+  )
+}
+
+const SCHEDULE = [
+  {
+    day: 'Sexta · 29/Mai',
+    window: '18:30 – 22:00',
+    accent: 'cyan',
+    note: null,
+    items: [
+      { time: '18:30', activity: 'Welcome Coffee' },
+      { time: '19:00', activity: 'Abertura (organização, facilitadora, patrocinadores, mentores, dinâmica, critérios)' },
+      { time: '19:45', activity: 'Formação e apresentação de times' },
+      { time: '20:20', activity: 'Sessão Hard 1 — Basics First: eixos de governança, internacionalização, IA no produto' },
+      { time: '21:00', activity: 'Próximos passos (o que trazer no sábado)' },
+    ],
+  },
+  {
+    day: 'Sábado · 30/Mai',
+    window: '09:00 – madrugada',
+    accent: 'electric',
+    note: 'Abertura antecipada às 7h confirmada por e-mail/WhatsApp. Pode virar a noite.',
+    items: [
+      { time: '09:00', activity: 'Café + trabalho' },
+      { time: '10:00', activity: 'Sessão Hard 2 — O seu problema é real?' },
+      { time: '11:00', activity: 'Working Time' },
+      { time: '12:00', activity: 'Almoço' },
+      { time: '13:30', activity: 'Working Time' },
+      { time: '15:00', activity: 'Sessão Hard 3 — Escalabilidade e Modelo de Negócio' },
+      { time: '16:00', activity: 'Working Time (ideal ter MVP)' },
+      { time: '19:00', activity: 'Pitch de Guerrilha 1' },
+      { time: '19:30', activity: 'Working Time' },
+      { time: '21:00', activity: 'Avisos' },
+      { time: '21:15', activity: 'Jantar' },
+    ],
+  },
+  {
+    day: 'Domingo · 31/Mai',
+    window: '09:00 – 20:00',
+    accent: 'violet',
+    note: 'Abertura às 7h confirmada por e-mail/WhatsApp.',
+    items: [
+      { time: '09:00', activity: 'Café' },
+      { time: '10:00', activity: 'Sessão Hard 4 — Pitch de Alta Performance' },
+      { time: '10:30', activity: 'Pitch de Guerrilha 2' },
+      { time: '11:00', activity: 'Working Time' },
+      { time: '12:00', activity: 'Almoço' },
+      { time: '13:30', activity: 'Working Time' },
+      { time: '14:00', activity: 'Banca de Pré-Pitch 1' },
+      { time: '14:30', activity: 'Working Time' },
+      { time: '15:30', activity: 'Banca de Pré-Pitch 2' },
+      { time: '16:45', activity: 'Working Time Final' },
+      { time: '17:30', activity: 'Entrega do Pitch Final / Código / Solução (sem alterações depois) + Coffee' },
+      { time: '18:00', activity: 'Cerimônia de Pitches Finais e Premiação (até 20:00)' },
+    ],
+  },
+]
+
+const ACCENT = {
+  cyan: { text: 'text-cyan', dot: 'bg-cyan', border: 'border-cyan/30' },
+  electric: { text: 'text-electric', dot: 'bg-electric', border: 'border-electric/30' },
+  violet: { text: 'text-violet', dot: 'bg-violet', border: 'border-violet/30' },
+}
+
+function DetailedSchedule() {
+  return (
+    <div className="card-glass rounded-2xl p-6">
+      <p className="text-xs font-mono text-violet uppercase tracking-wider mb-4">Cronograma Detalhado</p>
+      <div className="space-y-3">
+        {SCHEDULE.map((day, idx) => {
+          const a = ACCENT[day.accent] || ACCENT.cyan
+          return (
+            <details key={day.day} open={idx === 0} className={`rounded-xl border ${a.border} bg-dark/60 overflow-hidden group`}>
+              <summary className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer list-none select-none hover:bg-white/5 transition-colors">
+                <div className="flex items-center gap-3">
+                  <span className={`w-2 h-2 rounded-full ${a.dot} flex-shrink-0`} />
+                  <div>
+                    <p className="text-sm font-semibold text-white">{day.day}</p>
+                    <p className={`text-xs font-mono ${a.text}`}>{day.window}</p>
+                  </div>
+                </div>
+                <svg className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </summary>
+              <div className="px-4 pb-4 pt-1">
+                {day.note && (
+                  <p className="text-[11px] text-text-muted italic mb-3 leading-relaxed">{day.note}</p>
+                )}
+                <ul className="space-y-2">
+                  {day.items.map((item) => (
+                    <li key={item.time} className="flex gap-3 items-start">
+                      <span className={`flex-shrink-0 font-mono text-xs font-semibold ${a.text} w-12 pt-0.5`}>{item.time}</span>
+                      <span className="text-sm text-white/90 leading-snug">{item.activity}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </details>
+          )
+        })}
+      </div>
     </div>
   )
 }

@@ -11,6 +11,7 @@ import AdminDeliverables from './AdminDeliverables'
 import AdminJurors from './AdminJurors'
 import AdminWall from './AdminWall'
 import AdminRanking from './AdminRanking'
+import AdminResources from './AdminResources'
 
 const ALL_TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
@@ -21,6 +22,7 @@ const ALL_TABS = [
   { id: 'mentors', label: 'Mentores', icon: '🎓', adminOnly: true },
   { id: 'jurors', label: 'Jurados', icon: '⚖️', adminOnly: true },
   { id: 'wall', label: 'Muro de Dores', icon: '🧱', adminOnly: true },
+  { id: 'resources', label: 'Recursos', icon: '📚', adminOnly: true },
   { id: 'financeiro', label: 'Financeiro', icon: '💰' },
   { id: 'bulk', label: 'Empresarial', icon: '🏢', adminOnly: true },
   { id: 'checkin', label: 'Check-in', icon: '✅', adminOnly: true },
@@ -103,6 +105,7 @@ export default function AdminPanel({ onLogout, role = 'viewer' }) {
         {!readOnly && activeTab === 'mentors' && <AdminMentors />}
         {!readOnly && activeTab === 'jurors' && <AdminJurors />}
         {!readOnly && activeTab === 'wall' && <AdminWall />}
+        {!readOnly && activeTab === 'resources' && <AdminResources />}
         {!readOnly && activeTab === 'checkin' && <AdminCheckin />}
         {!readOnly && activeTab === 'logs' && <AdminAuditLog />}
       </main>
