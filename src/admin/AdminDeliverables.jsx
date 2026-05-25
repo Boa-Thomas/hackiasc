@@ -115,7 +115,16 @@ export default function AdminDeliverables({ readOnly = false }) {
     const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
     const rows = teams.map(t => {
       const cells = [t.name, statusMeta(t.status).label, memberCount(t.id), t.updated_at || '']
-      for (const c of flat) cells.push((t[c.field] || {})[c.key] || '')
+      for (const c of flat) {
+        const obj = t[c.field] || {}
+        // O campo de slides é um upload: exporta o nome do arquivo (ou o link
+        // antigo, p/ equipes anteriores à migração), não a chave inexistente.
+        if (c.field === 'final_deliverables' && c.key === 'slides') {
+          cells.push(obj.slides_name || obj.slides_url || '')
+        } else {
+          cells.push(obj[c.key] || '')
+        }
+      }
       return cells.map(esc).join(',')
     })
     const csv = '﻿' + [headers.map(esc).join(','), ...rows].join('\r\n')
@@ -169,7 +178,8 @@ export default function AdminDeliverables({ readOnly = false }) {
         {sub === 'hypotheses' && <DeliverableForm readOnly eyebrow="Fase 1 · Ignição" title="Canvas de Hipóteses" fields={HYPOTHESES_FIELDS} value={selected.hypotheses_canvas} />}
         {sub === 'slc' && <DeliverableForm readOnly eyebrow="Fase 2 · Construção" title="Canvas SLC-IA" fields={SLC_IA_FIELDS} value={selected.slc_ia_canvas} />}
         {sub === 'diary' && <LearningDiary readOnly value={selected.learning_diary} />}
-        {sub === 'final' && <DeliverableForm readOnly eyebrow="Fase 3 · Apresentação" title="Entregas finais" fields={FINAL_FIELDS} value={selected.final_deliverables} gridClass="grid grid-cols-1 sm:grid-cols-2 gap-4" />}
+        {sub === 'final' && <DeliverableForm readOnly eyebrow="Fase 3 · Apresentação" title="Entregas finais" fields={FINAL_FIELDS} value={selected.final_deliverables} gridClass="grid grid-cols-1 sm:grid-cols-2 gap-4"
+          renderField={(f, ctx) => f.type === 'file-pdf' ? <AdminSlidesDownload deliverables={ctx.value} /> : null} />}
 
         <div className="card-glass rounded-2xl p-6 space-y-4">
           <div>
@@ -295,6 +305,47 @@ export default function AdminDeliverables({ readOnly = false }) {
           </tbody>
         </table>
       </div>
+    </div>
+  )
+}
+
+// Download dos slides (PDF) pelo admin. Admin é authenticated e a policy de
+// storage permite SELECT sob deliverables/ → gera signed URL direto.
+// Compat: se a equipe só tem slides_url (URL antiga), mostra o link.
+function AdminSlidesDownload({ deliverables }) {
+  const data = deliverables || {}
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+
+  if (!data.slides_path) {
+    if (data.slides_url) {
+      return (
+        <a href={data.slides_url} target="_blank" rel="noopener noreferrer" className="text-sm text-electric hover:underline break-all">
+          {data.slides_url}
+        </a>
+      )
+    }
+    return <p className="text-sm text-text-muted">Nenhum slide enviado.</p>
+  }
+
+  async function download() {
+    setError(null)
+    if (!supabase) { setError('Supabase não configurado.'); return }
+    setBusy(true)
+    const { data: signed, error: err } = await supabase.storage.from('files').createSignedUrl(data.slides_path, 60)
+    setBusy(false)
+    if (err || !signed?.signedUrl) { setError('Falha ao gerar o link.'); return }
+    window.open(signed.signedUrl, '_blank', 'noopener,noreferrer')
+  }
+
+  return (
+    <div className="flex items-center gap-3 flex-wrap">
+      <span className="text-sm text-white/80">{data.slides_name || 'slides.pdf'}</span>
+      <button type="button" onClick={download} disabled={busy}
+        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-electric/20 text-electric border border-electric/40 hover:bg-electric/30 disabled:opacity-50">
+        {busy ? '...' : 'Baixar slides'}
+      </button>
+      {error && <span className="text-xs text-hot">{error}</span>}
     </div>
   )
 }

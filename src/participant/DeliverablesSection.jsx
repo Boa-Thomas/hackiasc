@@ -4,6 +4,7 @@ import { relativeTime } from '../lib/relativeTime'
 import { PHASES, HYPOTHESES_FIELDS, SLC_IA_FIELDS, FINAL_FIELDS } from './deliverableFields'
 import DeliverableForm from './DeliverableForm'
 import LearningDiary from './LearningDiary'
+import SlidesUpload from './SlidesUpload'
 
 export default function DeliverablesSection({ auth, goToTeam }) {
   const team = auth.team
@@ -73,10 +74,17 @@ export default function DeliverablesSection({ auth, goToTeam }) {
       {sub === 'final' && (
         <DeliverableForm
           eyebrow="Fase 3 · Apresentação" title="Entregas finais"
-          description="Links públicos das entregas exigidas no edital."
+          description="Links públicos das entregas exigidas no edital. Os slides são enviados como PDF."
           fields={FINAL_FIELDS} value={team.final_deliverables} updatedAt={team.updated_at}
           onSave={d => saveDeliverable('final_deliverables', d)}
           gridClass="grid grid-cols-1 sm:grid-cols-2 gap-4" saveLabel="Salvar Entregas"
+          renderField={(f) => f.type === 'file-pdf' ? (
+            <SlidesUpload
+              token={auth.token}
+              deliverables={team.final_deliverables}
+              onPersist={extra => saveDeliverable('final_deliverables', { ...(team.final_deliverables || {}), ...extra })}
+            />
+          ) : null}
         />
       )}
 
