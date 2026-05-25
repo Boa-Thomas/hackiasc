@@ -29,9 +29,30 @@ export default function AdminMentors({ readOnly = false }) {
 
   const teamName = (id) => teams.find(t => t.id === id)?.name || '—'
 
-  // Map of team_id → mentor (for duplicate assignment warning)
-  const mentorByTeam = new Map()
-  mentors.forEach(m => { if (m.team_id) mentorByTeam.set(m.team_id, m) })
+  // Map of team_id → list of mentors. Multiple mentors per team is normal:
+  // several mentors can share the same team_id.
+  const mentorsByTeam = new Map()
+  mentors.forEach(m => {
+    if (!m.team_id) return
+    const list = mentorsByTeam.get(m.team_id)
+    if (list) list.push(m)
+    else mentorsByTeam.set(m.team_id, [m])
+  })
+
+  const mentorLabel = (m) => m.name || m.email
+
+  // Informative summary of mentors already paired to a team, e.g.
+  // "2 mentores: Fulano, Beltrano". Optionally excludes a mentor (the one
+  // being reassigned) so the dropdown describes the *other* mentors.
+  const teamMentorsSummary = (teamIdValue, excludeId = null) => {
+    const list = (mentorsByTeam.get(teamIdValue) || []).filter(m => m.id !== excludeId)
+    if (!list.length) return ''
+    const names = list.map(mentorLabel)
+    const shown = names.slice(0, 3).join(', ')
+    const extra = names.length > 3 ? ` e mais ${names.length - 3}` : ''
+    const word = list.length === 1 ? 'mentor' : 'mentores'
+    return `${list.length} ${word}: ${shown}${extra}`
+  }
 
   async function createMentor(e) {
     e.preventDefault()
@@ -104,10 +125,10 @@ export default function AdminMentors({ readOnly = false }) {
             <select value={teamId} onChange={e => setTeamId(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan/50">
               <option value="">Sem equipe</option>
               {teams.map(t => {
-                const existing = mentorByTeam.get(t.id)
+                const summary = teamMentorsSummary(t.id)
                 return (
                   <option key={t.id} value={t.id}>
-                    {t.name}{existing ? ` — já tem: ${existing.name || existing.email}` : ''}
+                    {t.name}{summary ? ` — ${summary}` : ''}
                   </option>
                 )
               })}
@@ -117,6 +138,22 @@ export default function AdminMentors({ readOnly = false }) {
             {creating ? 'Criando...' : 'Adicionar mentor'}
           </button>
         </form>
+      )}
+
+      {teams.some(t => (mentorsByTeam.get(t.id) || []).length > 1) && (
+        <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3">
+          <p className="text-xs text-white/60 uppercase tracking-wide mb-2">Equipes com co-mentoria</p>
+          <ul className="space-y-1">
+            {teams
+              .filter(t => (mentorsByTeam.get(t.id) || []).length > 1)
+              .map(t => (
+                <li key={t.id} className="text-sm text-white/80">
+                  <span className="text-white">{t.name}</span>
+                  <span className="text-white/50"> — {teamMentorsSummary(t.id)}</span>
+                </li>
+              ))}
+          </ul>
+        </div>
       )}
 
       <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
@@ -139,24 +176,17 @@ export default function AdminMentors({ readOnly = false }) {
                   {readOnly ? teamName(m.team_id) : (
                     <select
                       value={m.team_id || ''}
-                      onChange={e => {
-                        const newId = e.target.value
-                        const conflict = newId && mentorByTeam.has(newId) && mentorByTeam.get(newId).id !== m.id
-                        if (conflict) {
-                          const existing = mentorByTeam.get(newId)
-                          if (!window.confirm(`A equipe "${teamName(newId)}" já tem o mentor "${existing.name || existing.email}" atribuído. Confirmar mesmo assim?`)) return
-                        }
-                        reassign(m.id, newId)
-                      }}
+                      onChange={e => reassign(m.id, e.target.value)}
                       className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:border-cyan/50"
                     >
                       <option value="">Sem equipe</option>
                       {teams.map(t => {
-                        const existing = mentorByTeam.get(t.id)
-                        const conflict = existing && existing.id !== m.id
+                        // Informative count of *other* mentors already on the team
+                        // (excludes this mentor). Pairing a 2nd/3rd mentor is normal.
+                        const summary = teamMentorsSummary(t.id, m.id)
                         return (
                           <option key={t.id} value={t.id}>
-                            {t.name}{conflict ? ` — já tem: ${existing.name || existing.email}` : ''}
+                            {t.name}{summary ? ` — já tem ${summary}` : ''}
                           </option>
                         )
                       })}
