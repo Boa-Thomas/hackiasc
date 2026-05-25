@@ -1,39 +1,79 @@
-// Identidade leve do participante para o Muro de Dores.
-// Sem login Supabase: um UUID por dispositivo guardado em localStorage
-// (chave `hackiasc_wall_device`) + nome digitado. Decisao do orquestrador —
-// zero friccao na abertura presencial; fraude nao e risco critico (~100 pessoas).
+// Identidade FORTE do participante para o Muro de Dores.
+// Substitui o antigo "device token" (UUID em localStorage, forjavel) por
+// identificacao via CPF + DATA DE NASCIMENTO contra `registrations`: so entra
+// quem esta inscrito e com pagamento CONFIRMADO. O RPC wall_identify resolve o
+// registration_id no servidor; guardamos {registration_id, full_name} em
+// sessionStorage (limpa ao fechar a aba — identidade nao vaza entre sessoes).
+import { useState, useCallback } from 'react'
+import { supabase } from '../lib/supabase'
 
-const DEVICE_KEY = 'hackiasc_wall_device'
-const NAME_KEY = 'hackiasc_wall_name'
+const SESSION_KEY = 'hackiasc_wall_session'
 
-function makeUuid() {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
-  // Fallback para navegadores sem crypto.randomUUID
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0
-    const v = c === 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
-}
-
-export function getWallDevice() {
-  if (typeof localStorage === 'undefined') return makeUuid()
-  let token = localStorage.getItem(DEVICE_KEY)
-  if (!token) {
-    token = makeUuid()
-    localStorage.setItem(DEVICE_KEY, token)
+function readSession() {
+  if (typeof sessionStorage === 'undefined') return null
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (parsed && parsed.registration_id) return parsed
+    return null
+  } catch {
+    return null
   }
-  return token
 }
 
-export function getWallName() {
-  if (typeof localStorage === 'undefined') return ''
-  return localStorage.getItem(NAME_KEY) || ''
+function writeSession(session) {
+  if (typeof sessionStorage === 'undefined') return
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(session))
 }
 
-export function setWallName(name) {
-  if (typeof localStorage === 'undefined') return
-  localStorage.setItem(NAME_KEY, name)
+function clearSession() {
+  if (typeof sessionStorage === 'undefined') return
+  sessionStorage.removeItem(SESSION_KEY)
+}
+
+// Remove tudo que nao for digito (envia CPF limpo; o server tambem normaliza).
+export function cleanCpf(value) {
+  return (value || '').replace(/\D/g, '')
+}
+
+// Mascara progressiva 000.000.000-00 para exibicao no input.
+export function maskCpf(value) {
+  const d = cleanCpf(value).slice(0, 11)
+  return d
+    .replace(/^(\d{3})(\d)/, '$1.$2')
+    .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1-$2')
+}
+
+// Hook de sessao do muro: estado da identidade + identify()/logout().
+export function useWallSession() {
+  const [session, setSession] = useState(() => readSession())
+
+  const identify = useCallback(async (cpf, birthDate) => {
+    if (!supabase) {
+      throw new Error('Sistema indisponível no momento.')
+    }
+    const { data, error } = await supabase.rpc('wall_identify', {
+      p_cpf: cleanCpf(cpf),
+      p_birth_date: birthDate, // 'YYYY-MM-DD' do input date
+    })
+    if (error) throw error
+    const next = {
+      registration_id: data.registration_id,
+      full_name: data.full_name,
+    }
+    writeSession(next)
+    setSession(next)
+    return next
+  }, [])
+
+  const logout = useCallback(() => {
+    clearSession()
+    setSession(null)
+  }, [])
+
+  return { session, identify, logout }
 }
 
 export const ECONOMIC_AXES = [

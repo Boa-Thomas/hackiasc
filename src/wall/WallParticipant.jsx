@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import {
-  getWallDevice,
-  getWallName,
-  setWallName,
+  useWallSession,
+  maskCpf,
+  cleanCpf,
   ECONOMIC_AXES,
   PHASE_LABELS,
 } from './useWallDevice'
@@ -12,6 +12,10 @@ const POLL_MS = 3000
 
 // Mapeia codigos de erro server-side para mensagens em pt-BR.
 const ERROR_MESSAGES = {
+  not_found_or_not_confirmed:
+    'Inscrição não encontrada ou pagamento não confirmado. Verifique CPF e data de nascimento.',
+  not_confirmed:
+    'Sua inscrição não está confirmada. Procure a organização.',
   wall_not_open: 'O muro não está aberto para novas dores.',
   voting_not_open: 'A votação não está aberta.',
   title_required: 'Descreva a dor em uma frase.',
@@ -19,7 +23,7 @@ const ERROR_MESSAGES = {
   vote_limit_reached: 'Você já usou seus 3 votos.',
   vote_not_found: 'Você não votou nessa dor.',
   pain_not_found: 'Essa dor não está mais disponível.',
-  device_required: 'Identidade do dispositivo ausente. Recarregue a página.',
+  rate_limited: 'Calma! Aguarde alguns segundos antes de tentar de novo.',
 }
 
 function friendlyError(err) {
@@ -31,9 +35,7 @@ function friendlyError(err) {
 }
 
 export default function WallParticipant() {
-  const device = useRef(getWallDevice()).current
-  const [name, setName] = useState(getWallName())
-  const [nameDraft, setNameDraft] = useState('')
+  const { session, identify, logout } = useWallSession()
 
   const [phase, setPhase] = useState(null)
   const [pains, setPains] = useState([])
@@ -50,13 +52,21 @@ export default function WallParticipant() {
   const [submitting, setSubmitting] = useState(false)
   const [busyVote, setBusyVote] = useState(null)
 
+  const registrationId = session?.registration_id || null
+
   const load = useCallback(async () => {
     if (!supabase) {
       setError('Sistema indisponível no momento.')
       setLoading(false)
       return
     }
-    const { data, error: err } = await supabase.rpc('wall_list', { p_device: device })
+    if (!registrationId) {
+      setLoading(false)
+      return
+    }
+    const { data, error: err } = await supabase.rpc('wall_list', {
+      p_registration_id: registrationId,
+    })
     if (err) {
       setError(friendlyError(err))
     } else if (data) {
@@ -67,13 +77,14 @@ export default function WallParticipant() {
       setVotesLeft(typeof data.votos_restantes === 'number' ? data.votos_restantes : 3)
     }
     setLoading(false)
-  }, [device])
+  }, [registrationId])
 
   useEffect(() => {
+    if (!registrationId) return
     load() // eslint-disable-line react-hooks/set-state-in-effect
     const t = setInterval(load, POLL_MS)
     return () => clearInterval(t)
-  }, [load])
+  }, [load, registrationId])
 
   // Limpa o aviso temporario
   useEffect(() => {
@@ -82,22 +93,13 @@ export default function WallParticipant() {
     return () => clearTimeout(t)
   }, [notice])
 
-  function saveName(e) {
-    e.preventDefault()
-    const clean = nameDraft.trim()
-    if (!clean) return
-    setWallName(clean)
-    setName(clean)
-  }
-
   async function submitPain(e) {
     e.preventDefault()
-    if (!supabase || !title.trim() || submitting) return
+    if (!supabase || !title.trim() || submitting || !registrationId) return
     setSubmitting(true)
     setError(null)
     const { error: err } = await supabase.rpc('wall_submit_pain', {
-      p_device: device,
-      p_name: name,
+      p_registration_id: registrationId,
       p_title: title.trim(),
       p_description: description.trim() || null,
       p_axis: axis || null,
@@ -115,12 +117,15 @@ export default function WallParticipant() {
   }
 
   async function toggleVote(painId) {
-    if (!supabase || busyVote) return
+    if (!supabase || busyVote || !registrationId) return
     const hasVoted = myVotes.includes(painId)
     setBusyVote(painId)
     setError(null)
     const rpc = hasVoted ? 'wall_unvote' : 'wall_vote'
-    const { error: err } = await supabase.rpc(rpc, { p_device: device, p_pain_id: painId })
+    const { error: err } = await supabase.rpc(rpc, {
+      p_registration_id: registrationId,
+      p_pain_id: painId,
+    })
     setBusyVote(null)
     if (err) {
       setError(friendlyError(err))
@@ -128,33 +133,9 @@ export default function WallParticipant() {
     await load()
   }
 
-  // Tela: pedir nome na 1a vez
-  if (!name) {
-    return (
-      <WallShell>
-        <form onSubmit={saveName} className="card-glass rounded-2xl p-8 max-w-md w-full">
-          <h2 className="text-2xl font-display font-bold text-gradient-cyan mb-2">Muro de Dores</h2>
-          <p className="text-white/60 text-sm mb-6">
-            Antes de começar, como podemos te chamar?
-          </p>
-          <input
-            value={nameDraft}
-            onChange={(e) => setNameDraft(e.target.value)}
-            placeholder="Seu nome"
-            maxLength={60}
-            autoFocus
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan/50 mb-4"
-          />
-          <button
-            type="submit"
-            disabled={!nameDraft.trim()}
-            className="w-full px-4 py-3 rounded-lg font-semibold bg-cyan/20 text-cyan border border-cyan/40 hover:bg-cyan/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            Entrar
-          </button>
-        </form>
-      </WallShell>
-    )
+  // Tela de IDENTIFICACAO: CPF + data de nascimento (exige inscricao confirmada)
+  if (!session) {
+    return <IdentifyScreen onIdentify={identify} />
   }
 
   return (
@@ -164,7 +145,15 @@ export default function WallParticipant() {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h2 className="text-2xl font-display font-bold text-gradient-cyan">Muro de Dores</h2>
-            <p className="text-white/50 text-sm">Oi, {name} 👋</p>
+            <p className="text-white/50 text-sm">
+              Oi, {session.full_name} 👋
+              <button
+                onClick={logout}
+                className="ml-3 text-white/30 hover:text-white/60 text-xs underline transition-colors"
+              >
+                sair
+              </button>
+            </p>
           </div>
           <PhaseBadge phase={phase} />
         </div>
@@ -282,6 +271,73 @@ export default function WallParticipant() {
           </div>
         )}
       </div>
+    </WallShell>
+  )
+}
+
+// Tela inicial: identificacao por CPF + data de nascimento.
+function IdentifyScreen({ onIdentify }) {
+  const [cpf, setCpf] = useState('')
+  const [birthDate, setBirthDate] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+
+  const cpfDigits = cleanCpf(cpf)
+  const canSubmit = cpfDigits.length === 11 && !!birthDate && !busy
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!canSubmit) return
+    setBusy(true)
+    setError(null)
+    try {
+      await onIdentify(cpf, birthDate)
+    } catch (err) {
+      setError(friendlyError(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <WallShell>
+      <form onSubmit={handleSubmit} className="card-glass rounded-2xl p-8 max-w-md w-full">
+        <h2 className="text-2xl font-display font-bold text-gradient-cyan mb-2">Muro de Dores</h2>
+        <p className="text-white/60 text-sm mb-6">
+          Identifique-se para participar. Apenas inscritos com pagamento confirmado podem entrar.
+        </p>
+
+        <label className="block text-white/50 text-xs mb-1 font-mono uppercase tracking-wide">CPF</label>
+        <input
+          value={cpf}
+          onChange={(e) => setCpf(maskCpf(e.target.value))}
+          placeholder="000.000.000-00"
+          inputMode="numeric"
+          autoComplete="off"
+          autoFocus
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan/50 mb-4"
+        />
+
+        <label className="block text-white/50 text-xs mb-1 font-mono uppercase tracking-wide">Data de nascimento</label>
+        <input
+          type="date"
+          value={birthDate}
+          onChange={(e) => setBirthDate(e.target.value)}
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan/50 mb-4 [color-scheme:dark]"
+        />
+
+        {error && (
+          <div className="bg-hot/10 border border-hot/30 rounded-lg px-4 py-2.5 text-hot text-sm mb-4">{error}</div>
+        )}
+
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          className="w-full px-4 py-3 rounded-lg font-semibold bg-cyan/20 text-cyan border border-cyan/40 hover:bg-cyan/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {busy ? 'Entrando...' : 'Entrar'}
+        </button>
+      </form>
     </WallShell>
   )
 }
