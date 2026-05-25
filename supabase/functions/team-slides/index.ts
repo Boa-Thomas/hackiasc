@@ -74,6 +74,18 @@ Deno.serve(async (req: Request) => {
       if (typeof file_name !== 'string' || !/\.pdf$/i.test(file_name.trim())) {
         return json({ error: 'invalid_file_type' }, 400)
       }
+      // Prazo de envio (data de corte configurada pelo admin). A regra de tempo
+      // vive 100% no banco: slides_upload_allowed() compara now() vs o deadline
+      // do singleton slides_config — nenhum parse/timezone em JS aqui. Apenas o
+      // upload e barrado; o download (action 'download-url') continua liberado.
+      const { data: allowed, error: gateError } = await supabase.rpc('slides_upload_allowed')
+      if (gateError) {
+        console.error('slides_upload_allowed error:', gateError)
+        return json({ error: 'Internal server error' }, 500)
+      }
+      if (allowed === false) {
+        return json({ error: 'deadline_passed' }, 403)
+      }
       // Remove o slides anterior do time antes de gerar a nova URL assinada.
       // Belt-and-suspenders: garante que "Substituir" funcione mesmo que a
       // versão do supabase-js não suporte upsert em createSignedUploadUrl
