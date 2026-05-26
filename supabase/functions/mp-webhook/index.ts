@@ -121,22 +121,33 @@ Deno.serve(async (req: Request) => {
       return new Response('ok', { status: 200 })
     }
 
-    // Map MP status to our payment_status
-    let paymentStatus: string
+    // Categorize the MP status into an INTENT, not a 1:1 status map.
+    //
+    // A single registration can have MULTIPLE payments: a Pix QR expires unpaid
+    // and the payer generates a new one (same external_reference). Treating every
+    // notification as "last event wins" let an EXPIRED/cancelled charge that
+    // arrived AFTER an approved one downgrade an already-paid registration to
+    // cancelled (real incidents 2026-05: Jenyfer/Lucas/Jean — all had approved
+    // Pix yet were flipped to cancelled by a later "expired" notification of an
+    // earlier unpaid QR). So we map to intent instead:
+    //   approved              -> confirm  (run the amount gate, set confirmed)
+    //   refunded/charged_back -> reverse  (money actually returned: downgrade)
+    //   everything else       -> ignore   (cancelled/rejected = charge that never
+    //     succeeded; pending/in_process = still in flight). These MUST NOT
+    //     overwrite the registration: it already reflects the best payment made.
+    let intent: 'confirm' | 'reverse' | 'ignore'
     switch (payment.status) {
       case 'approved':
-        paymentStatus = 'confirmed'
+        intent = 'confirm'
         break
-      case 'rejected':
-      case 'cancelled':
       case 'refunded':
       case 'charged_back':
-        paymentStatus = 'cancelled'
+        intent = 'reverse'
         break
       default:
-        // pending, in_process, in_mediation — keep as pending
-        paymentStatus = 'pending'
+        intent = 'ignore'
     }
+    const paymentStatus = intent === 'confirm' ? 'confirmed' : 'cancelled'
 
     // Update registration in Supabase using service role (bypass RLS)
     const supabase = createClient(
@@ -158,6 +169,35 @@ Deno.serve(async (req: Request) => {
     }
 
     const isTeam = registration?.inscription_modality === 'team' && !!registration?.team_name
+
+    // Root-cause fix (2026-05): an 'ignore' event (a charge that never succeeded
+    // — expired Pix QR, rejected card — or one still pending) must NOT touch the
+    // registration. Previously these mapped to 'cancelled' and a later such event
+    // flipped an already-confirmed registration to cancelled. We record it for
+    // forensics and stop. The registration keeps whatever state its best payment
+    // produced; only an 'approved' (confirm) or a real refund/chargeback
+    // (reverse) changes payment_status from here on.
+    if (intent === 'ignore') {
+      await supabase.from('audit_log').insert({
+        action: 'payment.ignored_webhook',
+        actor_type: 'system',
+        target_table: 'registrations',
+        target_id: registrationId,
+        target_email: registration?.email ?? null,
+        new_data: {
+          mp_payment_id: paymentId,
+          mp_status: payment.status,
+          current_payment_status: registration?.payment_status ?? null,
+        },
+        metadata: {
+          reason: 'charge not successful (cancelled/rejected) or still in flight (pending) — registration status left unchanged',
+          team_name: registration?.team_name ?? null,
+          inscription_modality: registration?.inscription_modality ?? null,
+        },
+      })
+      console.log(`Payment ${paymentId} (${payment.status}) → registration ${registrationId}: ignored (status unchanged)`)
+      return new Response('ok', { status: 200 })
+    }
 
     // #31: Validate transaction_amount against expected ticket_price total BEFORE
     // any UPDATE that confirms the registration. This is the financial gate that
