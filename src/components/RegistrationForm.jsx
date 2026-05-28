@@ -465,7 +465,7 @@ export default function RegistrationForm() {
   // URL params — early access + DATI secret discount + voucher empresarial
   const urlParams = useMemo(() => new URLSearchParams(window.location.search), [])
   const earlyCode = urlParams.get('early')
-  const hasEarlyAccess = earlyCode === EVENT_CONFIG.earlyAccessCode
+  const hasEarlyAccess = !!EVENT_CONFIG.earlyAccessCode && earlyCode === EVENT_CONFIG.earlyAccessCode
   const datiCode = urlParams.get('dati')
   const hasDatiDiscount = !!EVENT_CONFIG.datiDiscountCode && datiCode === EVENT_CONFIG.datiDiscountCode
   const voucherCode = (urlParams.get('voucher') || '').trim().toUpperCase()
@@ -522,9 +522,11 @@ export default function RegistrationForm() {
   const earlyStart = hasEarlyAccess && EVENT_CONFIG.earlyAccessStart ? new Date(EVENT_CONFIG.earlyAccessStart) : null
   const effectiveStart = earlyStart || regStart
   const regEnd = EVENT_CONFIG.registrationEnd ? new Date(EVENT_CONFIG.registrationEnd) : null
-  const registrationOpen = (!effectiveStart || !regEnd) ? true : (now >= effectiveStart && now <= regEnd)
+  // Link secreto (early access) é um passe livre: ignora o encerramento da janela
+  const effectiveEnd = hasEarlyAccess ? null : regEnd
+  const registrationOpen = (!effectiveStart || !effectiveEnd) ? true : (now >= effectiveStart && now <= effectiveEnd)
   const registrationNotStarted = effectiveStart && now < effectiveStart
-  const registrationEnded = regEnd && now > regEnd
+  const registrationEnded = effectiveEnd && now > effectiveEnd
 
   // Scroll to top when form is submitted
   useEffect(() => {
@@ -1007,7 +1009,8 @@ export default function RegistrationForm() {
 
   // ─── Capacity full → waitlist ───────────────────────────────────────────────
   // Voucher mode bypassa: o ingresso já foi pago pela empresa, não precisa de vaga adicional.
-  if (capacityFull && !submitted && !isVoucherMode) {
+  // Link secreto (early access) também bypassa: inscrição excepcional autorizada.
+  if (capacityFull && !submitted && !isVoucherMode && !hasEarlyAccess) {
     return (
       <section id="inscricao" className="relative py-24 sm:py-32">
         <div className="max-w-2xl mx-auto px-4 sm:px-6">
