@@ -31,6 +31,16 @@ export default function MentorPanel({ auth }) {
               <p className="text-sm text-white truncate max-w-[200px]">{mentor?.name || mentor?.email}</p>
               <p className="text-xs text-text-muted truncate max-w-[200px]">{mentor?.email}</p>
             </div>
+            <button
+              onClick={() => { window.location.hash = '#mentor-guia' }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-violet/30 bg-violet/10 text-violet hover:bg-violet/20 transition-colors whitespace-nowrap"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+              </svg>
+              <span className="hidden sm:inline">Guia do Mentor</span>
+              <span className="sm:hidden">Guia</span>
+            </button>
             <button onClick={auth.logout} className="px-3 py-1.5 text-sm rounded-lg border border-dark-border text-text-muted hover:text-white hover:border-text-muted transition-colors">
               Sair
             </button>

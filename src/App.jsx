@@ -19,6 +19,7 @@ import ParticipantPanel from './participant/ParticipantPanel'
 import { useParticipantAuth } from './participant/useParticipantAuth'
 import MentorLogin from './mentor/MentorLogin'
 import MentorPanel from './mentor/MentorPanel'
+import MentorGuide from './mentor/MentorGuide'
 import { useMentorAuth } from './mentor/useMentorAuth'
 import CountdownFloat from './components/CountdownFloat'
 import ScrollToTop from './components/ScrollToTop'
@@ -118,6 +119,11 @@ export default function App() {
 
     if (!mentorAuth.isAuthenticated) {
       return <MentorLogin onLogin={mentorAuth.login} error={mentorAuth.error} loading={mentorAuth.loading} />
+    }
+
+    // Guia do Mentor — página de consulta restrita (herda o gate de auth acima)
+    if (page === '#mentor-guia') {
+      return <MentorGuide onBack={() => { window.location.hash = '#mentor' }} />
     }
 
     return <MentorPanel auth={mentorAuth} />
