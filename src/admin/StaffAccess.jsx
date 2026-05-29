@@ -28,8 +28,8 @@ export default function StaffAccess() {
         password: token,
       })
       if (err) { setError('Link inválido ou expirado. Peça um novo à organização.'); return }
-      // Sucesso: vai pro painel; useAdminAuth assume via SIGNED_IN.
-      try { window.history.replaceState(null, '', '#admin') } catch { /* ignore */ }
+      // Sucesso: navega pro painel. A URL atual é '#admin-acesso', então setar o
+      // hash para '#admin' dispara o hashchange; useAdminAuth assume via SIGNED_IN.
       window.location.hash = '#admin'
     })()
   }, [])
