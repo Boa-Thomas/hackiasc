@@ -7,9 +7,15 @@ import SectionMeta from '../participant/SectionMeta'
 import { relativeTime } from '../lib/relativeTime'
 
 export default function MentorPanel({ auth }) {
-  const { mentor, team } = auth
+  const { mentor, teams } = auth
   const [sub, setSub] = useState('hypotheses')
+  const [activeTeamId, setActiveTeamId] = useState(null)
+
+  // Equipe ativa: a selecionada, senão a primeira. teams vem ordenado por nome.
+  const team = teams.find(t => t.id === activeTeamId) ?? teams[0] ?? null
   const meta = team?.deliverable_meta
+  // Notas só da equipe ativa (auth.notes traz todas as equipes do mentor).
+  const teamNotes = (auth.notes || []).filter(n => n.team_id === team?.id)
 
   return (
     <div className="min-h-screen bg-dark text-white bg-grid">
@@ -49,7 +55,7 @@ export default function MentorPanel({ auth }) {
       </header>
 
       <main className="relative max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        {!team ? (
+        {teams.length === 0 ? (
           <div className="card-glass rounded-2xl p-6">
             <p className="text-xs font-mono text-violet uppercase tracking-wider mb-2">Aguardando pareamento</p>
             <h1 className="text-xl font-bold">Você ainda não foi pareado a uma equipe</h1>
@@ -59,6 +65,27 @@ export default function MentorPanel({ auth }) {
           </div>
         ) : (
           <>
+            {teams.length > 1 && (
+              <div className="card-glass rounded-2xl p-4">
+                <p className="text-xs font-mono text-violet uppercase tracking-wider mb-2">Suas equipes ({teams.length})</p>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {teams.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => setActiveTeamId(t.id)}
+                      className={`px-4 py-2 rounded-xl border whitespace-nowrap transition-all ${
+                        team?.id === t.id
+                          ? 'border-violet/50 bg-violet/15 text-white'
+                          : 'border-dark-border bg-dark text-text-muted hover:text-white hover:border-text-muted'
+                      }`}
+                    >
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="card-glass rounded-2xl p-6">
               <p className="text-xs font-mono text-violet uppercase tracking-wider">Sua equipe</p>
               <h1 className="text-2xl font-bold mt-1">{team.name}</h1>
@@ -110,7 +137,7 @@ export default function MentorPanel({ auth }) {
                 </p>
               </div>
               {METHOD_PHASES.map(mp => (
-                <MentorNotes key={mp.id} phase={mp.id} phaseLabel={mp.label} notes={auth.notes} auth={auth} />
+                <MentorNotes key={`${team.id}-${mp.id}`} phase={mp.id} phaseLabel={mp.label} notes={teamNotes} teamId={team.id} auth={auth} />
               ))}
             </div>
           </>
