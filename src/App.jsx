@@ -13,6 +13,7 @@ import SponsorshipPage from './components/SponsorshipPage'
 import PaymentReturn from './components/PaymentReturn'
 import AdminLogin from './admin/AdminLogin'
 import AdminPanel from './admin/AdminPanel'
+import StaffAccess from './admin/StaffAccess'
 import { useAdminAuth } from './admin/useAdminAuth'
 import ParticipantLogin from './participant/ParticipantLogin'
 import ParticipantPanel from './participant/ParticipantPanel'
@@ -65,6 +66,11 @@ export default function App() {
       }, 100)
     }
   }, [page])
+
+  // Auto-login da equipe (Muro + Check-in) — #admin-acesso?t=<token>
+  if (page.startsWith('#admin-acesso')) {
+    return <StaffAccess />
+  }
 
   // Admin routes
   if (page === '#admin' || page === '#admin-login') {
