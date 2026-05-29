@@ -35,7 +35,7 @@ export const EVENT_CONFIG = {
   social: {
     instagram: '@hackia.sc',
     instagramUrl: 'https://instagram.com/hackia.sc',
-    whatsappGroup: 'https://chat.whatsapp.com/EopEoGPpXmDAEl8Nz7auS3',
+    whatsappGroup: 'https://chat.whatsapp.com/JRy6y7Odmee22v1QsaHegb',
   },
 
   // Pagamento

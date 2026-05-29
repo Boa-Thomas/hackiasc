@@ -514,7 +514,7 @@ DECLARE
   v_token UUID;
   v_now TIMESTAMPTZ := now();
   v_max_attempts CONSTANT INTEGER := 10;
-  v_lockout_duration CONSTANT INTERVAL := interval '1 hour';
+  v_lockout_duration CONSTANT INTERVAL := interval '1 minute';
 BEGIN
   v_clean_cpf := REGEXP_REPLACE(COALESCE(p_cpf, ''), '\D', '', 'g');
 

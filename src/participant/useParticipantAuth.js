@@ -89,7 +89,7 @@ export function useParticipantAuth() {
       return false
     }
     if (!data) {
-      setError('Email ou CPF inválidos. Após várias tentativas o acesso é bloqueado por 1 hora.')
+      setError('Email ou CPF inválidos. Após várias tentativas o acesso é bloqueado por 1 minuto.')
       setLoading(false)
       return false
     }

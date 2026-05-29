@@ -77,7 +77,7 @@ export default function ParticipantLogin({ onLogin, error: authError, loading })
         </form>
 
         <p className="mt-6 text-xs text-white/40 leading-relaxed">
-          Use o email e CPF que você cadastrou na inscrição. Após múltiplas tentativas inválidas o acesso é bloqueado por 1 hora.
+          Use o email e CPF que você cadastrou na inscrição. Após múltiplas tentativas inválidas o acesso é bloqueado por 1 minuto.
         </p>
 
         <div className="mt-6 text-center space-y-2">
