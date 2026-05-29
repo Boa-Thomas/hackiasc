@@ -85,6 +85,8 @@ BEGIN
       ) ORDER BY n.created_at)
       FROM mentor_notes n
       WHERE n.mentor_id = p_mentor_id
+        -- So notas de equipes em que o mentor AINDA esta pareado. As notas
+        -- persistem ao desparear (decisao do spec), mas somem da visao do mentor.
         AND EXISTS (
           SELECT 1 FROM mentor_teams mt
           WHERE mt.mentor_id = p_mentor_id AND mt.team_id = n.team_id
