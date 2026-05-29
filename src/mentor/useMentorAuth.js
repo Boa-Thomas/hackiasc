@@ -112,7 +112,7 @@ export function useMentorAuth() {
       return false
     }
     if (!data) {
-      setError('Email ou código inválidos. Após várias tentativas o acesso é bloqueado por 1 hora.')
+      setError('Email ou código inválidos. Após várias tentativas o acesso é bloqueado por 1 minuto.')
       setLoading(false)
       return false
     }

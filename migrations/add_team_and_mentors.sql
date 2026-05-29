@@ -191,7 +191,7 @@ BEGIN
   RETURN v_id;
 END; $$;
 
--- Login: email + código; lockout de 1h após 10 tentativas (espelha participant_login)
+-- Login: email + código; lockout de 1min após 10 tentativas (espelha participant_login)
 CREATE OR REPLACE FUNCTION mentor_login(p_email TEXT, p_code TEXT)
 RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -199,7 +199,7 @@ DECLARE
   v_token UUID;
   v_now TIMESTAMPTZ := now();
   v_max CONSTANT INTEGER := 10;
-  v_lockout CONSTANT INTERVAL := interval '1 hour';
+  v_lockout CONSTANT INTERVAL := interval '1 minute';
 BEGIN
   IF p_email IS NULL OR p_email = '' OR p_code IS NULL OR p_code = '' THEN
     RETURN NULL;
