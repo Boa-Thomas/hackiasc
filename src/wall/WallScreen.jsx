@@ -35,6 +35,7 @@ export default function WallScreen() {
   }, [load])
 
   const maxVotes = pains.reduce((m, p) => Math.max(m, p.vote_count || 0), 0)
+  const totalVotes = pains.reduce((s, p) => s + (p.vote_count || 0), 0)
   const showVotes = phase === 'voting_open'
 
   return (
@@ -51,6 +52,20 @@ export default function WallScreen() {
           <h1 className="text-5xl xl:text-6xl font-display font-extrabold text-gradient-fire mt-2">
             Muro de Dores
           </h1>
+          {phase !== 'closed' && (
+            <div className="flex items-center gap-6 mt-4 font-mono">
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl xl:text-4xl font-bold text-cyan">{pains.length}</span>
+                <span className="text-white/50 text-lg">{pains.length === 1 ? 'dor' : 'dores'}</span>
+              </div>
+              {showVotes && (
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl xl:text-4xl font-bold text-gold">{totalVotes}</span>
+                  <span className="text-white/50 text-lg">{totalVotes === 1 ? 'voto' : 'votos'}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <div className="text-right">
           <span
