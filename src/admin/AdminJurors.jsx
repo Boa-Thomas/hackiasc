@@ -13,6 +13,7 @@ export default function AdminJurors() {
   const [email, setEmail] = useState('')
   const [creating, setCreating] = useState(false)
   const [copiedId, setCopiedId] = useState(null)
+  const [copiedAll, setCopiedAll] = useState(false)
 
   async function fetchData() {
     if (!supabase) { setError('Supabase não configurado.'); setLoading(false); return }
@@ -64,6 +65,20 @@ export default function AdminJurors() {
     }
   }
 
+  async function copyAllLinks() {
+    const active = jurors.filter(j => j.active)
+    if (!active.length) return
+    const text = active.map(j => `${j.name}: ${jurorLink(j.access_token)}`).join('\n')
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedAll(true)
+      setTimeout(() => setCopiedAll(false), 2500)
+    } catch {
+      window.prompt('Copie os links dos jurados:', text)
+    }
+  }
+
+
   if (loading) return <p className="text-white/60 font-mono">Carregando...</p>
 
   return (
@@ -91,6 +106,18 @@ export default function AdminJurors() {
           {creating ? 'Criando...' : 'Adicionar jurado'}
         </button>
       </form>
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={copyAllLinks}
+          disabled={!jurors.some(j => j.active)}
+          className="text-xs px-3 py-1.5 rounded-lg bg-cyan/10 text-cyan border border-cyan/30 hover:bg-cyan/20 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {copiedAll ? 'â links copiados' : 'copiar todos os links'}
+        </button>
+      </div>
+
 
       <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
         <table className="w-full text-sm">

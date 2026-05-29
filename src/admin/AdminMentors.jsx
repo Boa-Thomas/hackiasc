@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
+// Link de acesso direto do mentor (sem login). Espelha a rota lida em
+// useMentorAuth (#mentor?t=<access_token>, modo link).
+const mentorLink = (token) => `${window.location.origin}/#mentor?t=${token}`
+
 export default function AdminMentors({ readOnly = false }) {
   const [mentors, setMentors] = useState([])
   const [teams, setTeams] = useState([])
@@ -11,12 +15,14 @@ export default function AdminMentors({ readOnly = false }) {
   const [teamId, setTeamId] = useState('')
   const [creating, setCreating] = useState(false)
   const [generatedCode, setGeneratedCode] = useState(null)
+  const [copiedId, setCopiedId] = useState(null)
+  const [copiedAll, setCopiedAll] = useState(false)
 
   async function fetchData() {
     if (!supabase) { setError('Supabase não configurado.'); setLoading(false); return }
     setError(null)
     const [{ data: ms, error: mErr }, { data: ts, error: tErr }] = await Promise.all([
-      supabase.from('mentors').select('id, email, name, team_id').order('created_at', { ascending: true }),
+      supabase.from('mentors').select('id, email, name, team_id, access_token').order('created_at', { ascending: true }),
       supabase.from('teams').select('id, name').order('name', { ascending: true }),
     ])
     if (mErr) setError(mErr.message)
@@ -92,6 +98,30 @@ export default function AdminMentors({ readOnly = false }) {
     await fetchData()
   }
 
+  async function copyLink(m) {
+    const link = mentorLink(m.access_token)
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopiedId(m.id)
+      setTimeout(() => setCopiedId(null), 2500)
+    } catch {
+      window.prompt('Copie o link do mentor:', link)
+    }
+  }
+
+  async function copyAllLinks() {
+    if (!mentors.length) return
+    const text = mentors.map(m => `${m.name || m.email}: ${mentorLink(m.access_token)}`).join('\n')
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedAll(true)
+      setTimeout(() => setCopiedAll(false), 2500)
+    } catch {
+      window.prompt('Copie os links dos mentores:', text)
+    }
+  }
+
+
   if (loading) return <p className="text-white/60 font-mono">Carregando...</p>
 
   return (
@@ -156,6 +186,19 @@ export default function AdminMentors({ readOnly = false }) {
         </div>
       )}
 
+      {!readOnly && mentors.length > 0 && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={copyAllLinks}
+            className="text-xs px-3 py-1.5 rounded-lg bg-cyan/10 text-cyan border border-cyan/30 hover:bg-cyan/20"
+          >
+            {copiedAll ? 'â links copiados' : 'copiar todos os links'}
+          </button>
+        </div>
+      )}
+
+
       <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-white/5 text-white/60 text-xs uppercase">
@@ -195,6 +238,7 @@ export default function AdminMentors({ readOnly = false }) {
                 </td>
                 {!readOnly && (
                   <td className="px-4 py-2 text-right whitespace-nowrap">
+                    <button onClick={() => copyLink(m)} className="text-xs text-cyan hover:underline mr-3">{copiedId === m.id ? '✓ copiado' : 'copiar link'}</button>
                     <button onClick={() => resetCode(m.id, m.email)} className="text-xs text-electric hover:underline mr-3">novo código</button>
                     <button onClick={() => removeMentor(m.id, m.email)} className="text-xs text-hot hover:underline">remover</button>
                   </td>
