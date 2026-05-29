@@ -133,6 +133,23 @@ export default function WallScreen() {
                     {p.author_name && <span>{p.author_name}</span>}
                     {!showVotes && <span className="text-cyan/50">#{i + 1}</span>}
                   </div>
+                  {showVotes && p.voters && p.voters.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      {p.voters.slice(0, 6).map((v, vi) => (
+                        <span
+                          key={vi}
+                          className="px-3 py-1 rounded-full bg-white/5 text-white/60 text-base font-mono"
+                        >
+                          {v.display}
+                        </span>
+                      ))}
+                      {p.voters.length > 6 && (
+                        <span className="px-3 py-1 rounded-full bg-white/5 text-white/40 text-base font-mono">
+                          +{p.voters.length - 6} mais
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               )
             })}
