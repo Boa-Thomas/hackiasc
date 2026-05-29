@@ -39,17 +39,17 @@ export default function AdminMentors({ readOnly = false }) {
   const teamName = (id) => teams.find(t => t.id === id)?.name || '—'
   const mentorLabel = (m) => m.name || m.email
 
-  // team_id[] por mentor e mentor[] por equipe, derivados da junção.
+  // team_id[] por mentor e mentor[] por equipe, derivados da junção. Ignora
+  // links cujo mentor não está na lista (defensivo; o FK tem ON DELETE CASCADE).
   const teamIdsByMentor = new Map()
   const mentorsByTeam = new Map()
   links.forEach(({ mentor_id, team_id }) => {
+    const m = mentors.find(x => x.id === mentor_id)
+    if (!m) return
     const tids = teamIdsByMentor.get(mentor_id)
     if (tids) tids.push(team_id); else teamIdsByMentor.set(mentor_id, [team_id])
-    const m = mentors.find(x => x.id === mentor_id)
-    if (m) {
-      const list = mentorsByTeam.get(team_id)
-      if (list) list.push(m); else mentorsByTeam.set(team_id, [m])
-    }
+    const list = mentorsByTeam.get(team_id)
+    if (list) list.push(m); else mentorsByTeam.set(team_id, [m])
   })
 
   const mentorTeams = (mentorId) =>
@@ -87,15 +87,18 @@ export default function AdminMentors({ readOnly = false }) {
       return
     }
     // Atribui as equipes selecionadas como linhas em mentor_teams.
+    let linkErr = null
     if (createTeamIds.length) {
       const rows = createTeamIds.map(tid => ({ mentor_id: data.id, team_id: tid }))
-      const { error: linkErr } = await supabase.from('mentor_teams').insert(rows)
-      if (linkErr) setError(`Mentor criado, mas falhou ao vincular equipes: ${linkErr.message}`)
+      const res = await supabase.from('mentor_teams').insert(rows)
+      linkErr = res.error
     }
     setCreating(false)
     setGeneratedCode({ email: email.trim(), code: data.code })
     setEmail(''); setName(''); setCreateTeamIds([])
     await fetchData()
+    // setError DEPOIS do fetchData (que zera o erro), senão a msg sumiria na hora.
+    if (linkErr) setError(`Mentor criado, mas falhou ao vincular equipes: ${linkErr.message}`)
   }
 
   async function toggleTeam(mentorId, teamId, isAssigned) {
@@ -184,7 +187,7 @@ export default function AdminMentors({ readOnly = false }) {
               {createTeamIds.map(tid => (
                 <span key={tid} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-violet/15 text-violet border border-violet/30">
                   {teamName(tid)}
-                  <button type="button" onClick={() => setCreateTeamIds(ids => ids.filter(x => x !== tid))} className="hover:text-white">×</button>
+                  <button type="button" onClick={() => setCreateTeamIds(ids => ids.filter(x => x !== tid))} className="hover:text-white" aria-label={`Remover ${teamName(tid)}`}>×</button>
                 </span>
               ))}
               <select
@@ -257,7 +260,7 @@ export default function AdminMentors({ readOnly = false }) {
                         {assigned.map(t => (
                           <span key={t.id} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-violet/15 text-violet border border-violet/30">
                             {t.name}
-                            <button onClick={() => toggleTeam(m.id, t.id, true)} className="hover:text-white" title="Remover equipe">×</button>
+                            <button type="button" onClick={() => toggleTeam(m.id, t.id, true)} className="hover:text-white" title="Remover equipe" aria-label={`Remover ${t.name}`}>×</button>
                           </span>
                         ))}
                         {free.length > 0 && (
