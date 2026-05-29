@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { EDITAL_RUBRIC } from '../lib/iaEvaluator'
+import { EDITAL_RUBRIC, aggregateTeamEvaluation } from '../lib/iaEvaluator'
 
 // Ranking final do evento.
 // OFICIAL = média das notas dos jurados humanos (evaluator_type='human').
@@ -51,7 +51,7 @@ export default function AdminRanking() {
     setError(null)
     const [t, e, j] = await Promise.all([
       supabase.from('teams').select('id, name, status').order('name'),
-      supabase.from('team_evaluations').select('team_id, evaluator_type, total_score, scores, eliminated, summary, model, created_at'),
+      supabase.from('team_evaluations').select('team_id, evaluator_type, deliverable, total_score, scores, eliminated, summary, model, created_at'),
       supabase.from('jurors').select('id', { count: 'exact', head: true }).eq('active', true),
     ])
     const firstErr = [t, e, j].find(x => x.error)
@@ -68,9 +68,8 @@ export default function AdminRanking() {
   const rows = teams.map(t => {
     const teamEvals = evals.filter(ev => ev.team_id === t.id)
     const human = teamEvals.filter(ev => ev.evaluator_type === 'human')
-    const ai = teamEvals
-      .filter(ev => ev.evaluator_type === 'ai')
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0] || null
+    const aiRows = teamEvals.filter(ev => ev.evaluator_type === 'ai' && ev.deliverable != null)
+    const aiAgg = aggregateTeamEvaluation(aiRows)
 
     const officialScore = round1(avg(human.map(ev => ev.total_score).filter(Number.isFinite)))
     const critAverages = {}
@@ -83,8 +82,9 @@ export default function AdminRanking() {
       officialScore,
       critAverages,
       eliminatedVotes: human.filter(ev => ev.eliminated).length,
-      aiScore: ai ? round1(ai.total_score) : null,
-      aiModel: ai?.model || null,
+      aiScore: aiAgg.total_score,
+      aiPartial: aiAgg.partial && aiAgg.scoredCriteria > 0,
+      aiUnits: aiAgg.evaluatedUnits.length,
     }
   })
 
@@ -211,7 +211,7 @@ export default function AdminRanking() {
             <>
               <p className="text-sm text-white">
                 🏅 Melhor avaliada pela IA: <strong>{aiTop.team.name}</strong> — <span className="font-mono text-violet">{aiTop.aiScore}/100</span>
-                {aiTop.aiModel ? <span className="text-text-muted text-xs"> ({aiTop.aiModel})</span> : null}
+                <span className="text-text-muted text-xs"> ({aiTop.aiUnits}/3 entregáveis)</span>
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {[...rows].filter(r => r.aiScore != null).sort((a, b) => b.aiScore - a.aiScore).map(r => (
@@ -221,6 +221,11 @@ export default function AdminRanking() {
                   </div>
                 ))}
               </div>
+              {rows.some(r => r.aiPartial) && (
+                <p className="text-xs text-text-muted">
+                  Parciais (entregáveis incompletos, fora do ranking IA): {rows.filter(r => r.aiPartial).map(r => r.team.name).join(', ')}
+                </p>
+              )}
             </>
           ) : <p className="text-sm text-text-muted">Nenhuma avaliação da IA registrada ainda.</p>
         )}
