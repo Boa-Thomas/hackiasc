@@ -5,7 +5,7 @@ import LearningDiary from '../participant/LearningDiary'
 import { PHASES, HYPOTHESES_FIELDS, SLC_IA_FIELDS, FINAL_FIELDS } from '../participant/deliverableFields'
 import SectionMeta from '../participant/SectionMeta'
 import { relativeTime } from '../lib/relativeTime'
-import { buildEvaluationPrompt, parseEvaluation, EDITAL_RUBRIC } from '../lib/iaEvaluator'
+import { buildDeliverablePrompt, parseDeliverableEvaluation, aggregateTeamEvaluation, EDITAL_RUBRIC, DELIVERABLE_UNITS } from '../lib/iaEvaluator'
 
 const STATUS = [
   { id: 'draft', label: 'Rascunho', cls: 'bg-white/5 text-white/50 border-white/10' },
@@ -39,15 +39,6 @@ export default function AdminDeliverables({ readOnly = false }) {
   const [deadlineMsg, setDeadlineMsg] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
   const [sub, setSub] = useState('hypotheses')
-  // IA Evaluator (human-in-the-loop) — estado por equipe selecionada
-  const [pitchNotes, setPitchNotes] = useState('')
-  const [jsonInput, setJsonInput] = useState('')
-  const [packageText, setPackageText] = useState('')
-  const [evalError, setEvalError] = useState(null)
-  const [evalSaving, setEvalSaving] = useState(false)
-  const [copied, setCopied] = useState(false)
-  // Limpa o fluxo de avaliação ao trocar de equipe
-  useEffect(() => { setPitchNotes(''); setJsonInput(''); setPackageText(''); setEvalError(null); setCopied(false) }, [selectedId]) // eslint-disable-line react-hooks/set-state-in-effect
 
   async function fetchData() {
     if (!supabase) { setError('Supabase não configurado.'); setLoading(false); return }
@@ -56,7 +47,7 @@ export default function AdminDeliverables({ readOnly = false }) {
       supabase.from('teams').select('id, name, status, hypotheses_canvas, slc_ia_canvas, learning_diary, final_deliverables, updated_at, updated_by').order('name', { ascending: true }),
       supabase.from('registrations').select('team_id, full_name, is_team_leader, payment_status, occupation_type, economic_axes, project_name'),
       supabase.from('mentor_notes').select('id, team_id, phase, body, is_public, created_at, mentors(name, email)').order('created_at', { ascending: false }),
-      supabase.from('team_evaluations').select('id, team_id, evaluator_type, rubric_version, total_score, eliminated, summary, scores, model, status, created_at').order('created_at', { ascending: false }),
+      supabase.from('team_evaluations').select('id, team_id, evaluator_type, deliverable, rubric_version, total_score, eliminated, summary, scores, model, status, created_at, updated_at').order('created_at', { ascending: false }),
       supabase.from('team_deliverable_meta').select('team_id, field, updated_by_name, updated_at'),
       supabase.rpc('get_slides_deadline'),
     ])
@@ -79,6 +70,40 @@ export default function AdminDeliverables({ readOnly = false }) {
       .map(m => [m.field, { updated_by_name: m.updated_by_name, updated_at: m.updated_at }])
   )
   const selected = teams.find(t => t.id === selectedId) || null
+
+  // ---- IA Evaluator por entregável ----
+  const aiEvalsFor = (teamId) => evals.filter(ev => ev.team_id === teamId && ev.evaluator_type === 'ai' && ev.deliverable != null)
+  const aiEvalFor = (teamId, unitId) => evals.find(ev => ev.team_id === teamId && ev.evaluator_type === 'ai' && ev.deliverable === unitId) || null
+
+  const UNIT_FIELDS = { fase1: ['hypotheses_canvas'], fase2: ['slc_ia_canvas', 'learning_diary'], fase3: ['final_deliverables'] }
+  function unitFilled(team, unit) {
+    if (unit.id === 'fase2') {
+      const slc = team.slc_ia_canvas || {}
+      const diary = team.learning_diary
+      const slcFilled = Object.values(slc).some(v => v != null && String(v).trim() !== '')
+      const diaryFilled = Array.isArray(diary) ? diary.length > 0 : (diary != null && Object.keys(diary || {}).length > 0)
+      return slcFilled || diaryFilled
+    }
+    const obj = team[unit.source] || {}
+    return Object.values(obj).some(v => v != null && String(v).trim() !== '')
+  }
+  function unitStale(team, unit, evalRow) {
+    if (!evalRow) return false
+    const fields = UNIT_FIELDS[unit.id]
+    const evalAt = new Date(evalRow.updated_at || evalRow.created_at).getTime()
+    const metaTimes = deliverableMeta
+      .filter(m => m.team_id === team.id && fields.includes(m.field) && m.updated_at)
+      .map(m => new Date(m.updated_at).getTime())
+    return metaTimes.length ? Math.max(...metaTimes) > evalAt : false
+  }
+  // Fila de pendentes (equipe × entregável): preenchido e (sem avaliação OU editado depois).
+  const pendingItems = teams.flatMap(t =>
+    DELIVERABLE_UNITS.filter(u => unitFilled(t, u)).map(u => {
+      const evalRow = aiEvalFor(t.id, u.id)
+      if (!evalRow) return { team: t, unit: u, stale: false }
+      return unitStale(t, u, evalRow) ? { team: t, unit: u, stale: true, existing: evalRow } : null
+    }).filter(Boolean)
+  )
 
   // Grava o prazo de envio dos slides. O input datetime-local é interpretado no
   // fuso do admin (provável BRT) e convertido para ISO UTC; toda a comparação de
@@ -115,49 +140,6 @@ export default function AdminDeliverables({ readOnly = false }) {
     const { error: err } = await supabase.from('teams').update({ status }).eq('id', teamId)
     if (err) { alert(`Erro: ${err.message}`); return }
     setTeams(ts => ts.map(t => t.id === teamId ? { ...t, status } : t))
-  }
-
-  async function copyPackage(team) {
-    setEvalError(null)
-    const teamMembers = members.filter(m => m.team_id === team.id && m.payment_status === 'confirmed')
-    const teamNotes = notes.filter(n => n.team_id === team.id && n.is_public)
-    const pkg = buildEvaluationPrompt({ team, members: teamMembers, mentorNotes: teamNotes, pitchNotes })
-    try {
-      await navigator.clipboard.writeText(pkg)
-      setCopied(true)
-      setPackageText('')
-      setTimeout(() => setCopied(false), 2500)
-    } catch {
-      // Sem permissão de clipboard — expõe o texto para cópia manual
-      setPackageText(pkg)
-    }
-  }
-
-  async function saveEvaluation(team) {
-    setEvalError(null)
-    let parsed
-    try {
-      parsed = parseEvaluation(jsonInput)
-    } catch (e) {
-      setEvalError(e.message)
-      return
-    }
-    setEvalSaving(true)
-    const { error: err } = await supabase.from('team_evaluations').insert({
-      team_id: team.id,
-      evaluator_type: 'ai',
-      rubric_version: EDITAL_RUBRIC.version,
-      scores: parsed.scores,
-      total_score: parsed.total_score,
-      eliminated: parsed.eliminated,
-      summary: parsed.summary,
-      model: parsed.model,
-      status: 'done',
-    })
-    setEvalSaving(false)
-    if (err) { setEvalError(`Erro ao gravar: ${err.message}`); return }
-    setJsonInput(''); setPitchNotes(''); setPackageText('')
-    await fetchData()
   }
 
   function exportCSV() {
@@ -258,70 +240,58 @@ export default function AdminDeliverables({ readOnly = false }) {
           ))}
         </div>
 
-        <div className="card-glass rounded-2xl p-6 space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <p className="text-xs font-mono text-gold uppercase tracking-wider">Avaliação — IA Evaluator</p>
-            <span className="text-[10px] text-text-muted font-mono">{EDITAL_RUBRIC.version} · Técnica 30% (elim.) · Validação 25% · Escala 25% · Pitch 20%</span>
-          </div>
-
-          {!tevals.length && <p className="text-sm text-text-muted">Nenhuma avaliação registrada ainda.</p>}
-          {tevals.map(ev => (
-            <div key={ev.id} className="border border-dark-border rounded-xl p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-white">{ev.evaluator_type === 'ai' ? 'IA Evaluator' : 'Humano'}{ev.model ? ` · ${ev.model}` : ''}</span>
-                <span className="text-sm font-mono text-gold">{ev.total_score != null ? `${ev.total_score} / 100` : ev.status}</span>
+        {(() => {
+          const teamAi = aiEvalsFor(selected.id)
+          const agg = aggregateTeamEvaluation(teamAi)
+          const humanEvals = tevals.filter(ev => ev.evaluator_type === 'human')
+          return (
+            <div className="card-glass rounded-2xl p-6 space-y-5">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <p className="text-xs font-mono text-gold uppercase tracking-wider">Avaliações por entregável — IA Evaluator</p>
+                <span className="text-[10px] text-text-muted font-mono">{EDITAL_RUBRIC.version} · Técnica 30% (elim.) · Validação 25% · Escala 25% · Pitch 20%</span>
               </div>
-              {ev.eliminated && <span className="inline-block text-xs text-hot border border-hot/30 bg-hot/10 rounded px-2 py-0.5">Eliminado (critério técnico)</span>}
-              {Array.isArray(ev.scores) && ev.scores.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
-                  {ev.scores.map(s => (
-                    <div key={s.criterion_key} className="bg-white/5 rounded-lg p-2">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-white/70">{s.label} <span className="text-white/40">({s.weight}%)</span></span>
-                        <span className="font-mono text-cyan">{s.score}</span>
-                      </div>
-                      {s.justification && <p className="text-[11px] text-text-muted mt-1 whitespace-pre-wrap">{s.justification}</p>}
+
+              {/* Nota IA agregada da equipe */}
+              <div className="flex items-center justify-between flex-wrap gap-2 bg-white/5 rounded-xl px-4 py-3">
+                <span className="text-sm text-white/70">Nota IA agregada</span>
+                <span className="font-mono text-gold text-sm">
+                  {agg.total_score != null
+                    ? `${agg.total_score} / 100`
+                    : agg.scoredCriteria > 0
+                      ? `parcial (${agg.scoredCriteria}/4 critérios)`
+                      : '—'}
+                  {agg.eliminated && <span className="ml-2 text-hot">⚠ eliminado</span>}
+                </span>
+              </div>
+
+              {DELIVERABLE_UNITS.map(unit => (
+                <DeliverableEvaluator
+                  key={`${selected.id}:${unit.id}`}
+                  unit={unit}
+                  team={selected}
+                  members={members}
+                  notes={notes}
+                  existing={aiEvalFor(selected.id, unit.id)}
+                  onSaved={fetchData}
+                  readOnly={readOnly}
+                />
+              ))}
+
+              {/* Notas dos jurados (holístico, leitura) */}
+              {humanEvals.length > 0 && (
+                <div className="border-t border-dark-border pt-4 space-y-2">
+                  <p className="text-xs font-mono text-electric uppercase tracking-wider">Notas dos jurados (oficial)</p>
+                  {humanEvals.map(ev => (
+                    <div key={ev.id} className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-1.5 text-sm">
+                      <span className="text-white/70">Jurado</span>
+                      <span className="font-mono text-cyan">{ev.total_score != null ? `${ev.total_score} / 100` : ev.status}{ev.eliminated ? ' · ⚠' : ''}</span>
                     </div>
                   ))}
                 </div>
               )}
-              {ev.summary && <p className="text-sm text-white/80 mt-1 whitespace-pre-wrap">{ev.summary}</p>}
             </div>
-          ))}
-
-          {!readOnly && (
-            <div className="border-t border-dark-border pt-4 space-y-3">
-              <p className="text-xs font-mono text-electric uppercase tracking-wider">Avaliar com o Claude</p>
-              <div>
-                <label className="text-xs text-text-muted">Observações do pitch / demo ao vivo (opcional — entram no pacote)</label>
-                <textarea value={pitchNotes} onChange={e => setPitchNotes(e.target.value)} rows={3}
-                  placeholder="O que você viu no pitch e na demo: a IA rodou de verdade? evidências de tração mostradas? clareza e respostas aos jurados?"
-                  className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan/50" />
-              </div>
-              <button onClick={() => copyPackage(selected)} className="px-4 py-2 rounded-lg text-sm font-semibold bg-electric/20 text-electric border border-electric/40 hover:bg-electric/30">
-                {copied ? '✓ Pacote copiado' : '1. Copiar pacote para o Claude'}
-              </button>
-              {packageText && (
-                <div>
-                  <p className="text-[11px] text-text-muted mb-1">Cópia automática bloqueada — selecione tudo e copie manualmente:</p>
-                  <textarea readOnly value={packageText} rows={5} onFocus={e => e.target.select()}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/70 text-xs font-mono" />
-                </div>
-              )}
-              <div>
-                <label className="text-xs text-text-muted">2. Cole o JSON que o Claude devolveu</label>
-                <textarea value={jsonInput} onChange={e => setJsonInput(e.target.value)} rows={6}
-                  placeholder={'{ "scores": [...], "eliminated": false, "summary": "...", "model": "..." }'}
-                  className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-cyan/50" />
-              </div>
-              {evalError && <div className="bg-hot/10 border border-hot/30 rounded-lg px-3 py-2 text-hot text-sm">{evalError}</div>}
-              <button onClick={() => saveEvaluation(selected)} disabled={evalSaving || !jsonInput.trim()}
-                className="px-4 py-2 rounded-lg text-sm font-semibold bg-cyan/20 text-cyan border border-cyan/40 hover:bg-cyan/30 disabled:opacity-40 disabled:cursor-not-allowed">
-                {evalSaving ? 'Gravando...' : '3. Processar e gravar avaliação'}
-              </button>
-            </div>
-          )}
-        </div>
+          )
+        })()}
       </div>
     )
   }
@@ -365,37 +335,50 @@ export default function AdminDeliverables({ readOnly = false }) {
         )}
       </div>
 
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <p className="text-sm text-white/60">{teams.length} equipes</p>
-        <button onClick={exportCSV} className="px-4 py-2 rounded-lg text-sm font-semibold bg-electric/20 text-electric border border-electric/40 hover:bg-electric/30">Exportar CSV</button>
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <p className="text-sm text-white/60">{teams.length} equipes</p>
+            <button onClick={exportCSV} className="px-4 py-2 rounded-lg text-sm font-semibold bg-electric/20 text-electric border border-electric/40 hover:bg-electric/30">Exportar CSV</button>
+          </div>
 
-      <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-white/5 text-white/60 text-xs uppercase">
-            <tr>
-              <th className="text-left px-4 py-2">Equipe</th>
-              <th className="text-left px-4 py-2">Status</th>
-              <th className="text-right px-4 py-2">Membros</th>
-              <th className="text-right px-4 py-2">Comentários</th>
-              <th className="text-left px-4 py-2">Atualizado</th>
-              <th className="text-right px-4 py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {teams.map(t => (
-              <tr key={t.id} className="border-t border-white/5 hover:bg-white/5 cursor-pointer" onClick={() => { setSelectedId(t.id); setSub('hypotheses') }}>
-                <td className="px-4 py-2 text-white font-medium">{t.name}</td>
-                <td className="px-4 py-2"><span className={`px-2.5 py-0.5 rounded-full text-xs border ${statusMeta(t.status).cls}`}>{statusMeta(t.status).label}</span></td>
-                <td className="px-4 py-2 text-right text-white/70">{memberCount(t.id)}</td>
-                <td className="px-4 py-2 text-right text-white/70">{notesFor(t.id).length}</td>
-                <td className="px-4 py-2 text-white/50 text-xs">{t.updated_at ? relativeTime(t.updated_at) : '—'}</td>
-                <td className="px-4 py-2 text-right"><span className="text-xs text-electric">ver →</span></td>
-              </tr>
-            ))}
-            {!teams.length && <tr><td colSpan={6} className="px-4 py-6 text-center text-white/40">Nenhuma equipe ainda.</td></tr>}
-          </tbody>
-        </table>
+          <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-white/5 text-white/60 text-xs uppercase">
+                <tr>
+                  <th className="text-left px-4 py-2">Equipe</th>
+                  <th className="text-left px-4 py-2">Status</th>
+                  <th className="text-right px-4 py-2">Membros</th>
+                  <th className="text-right px-4 py-2">Comentários</th>
+                  <th className="text-left px-4 py-2">Atualizado</th>
+                  <th className="text-right px-4 py-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {teams.map(t => (
+                  <tr key={t.id} className="border-t border-white/5 hover:bg-white/5 cursor-pointer" onClick={() => { setSelectedId(t.id); setSub('hypotheses') }}>
+                    <td className="px-4 py-2 text-white font-medium">{t.name}</td>
+                    <td className="px-4 py-2"><span className={`px-2.5 py-0.5 rounded-full text-xs border ${statusMeta(t.status).cls}`}>{statusMeta(t.status).label}</span></td>
+                    <td className="px-4 py-2 text-right text-white/70">{memberCount(t.id)}</td>
+                    <td className="px-4 py-2 text-right text-white/70">{notesFor(t.id).length}</td>
+                    <td className="px-4 py-2 text-white/50 text-xs">{t.updated_at ? relativeTime(t.updated_at) : '—'}</td>
+                    <td className="px-4 py-2 text-right"><span className="text-xs text-electric">ver →</span></td>
+                  </tr>
+                ))}
+                {!teams.length && <tr><td colSpan={6} className="px-4 py-6 text-center text-white/40">Nenhuma equipe ainda.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {!readOnly && (
+          <PendingQueue
+            items={pendingItems}
+            members={members}
+            notes={notes}
+            onSaved={fetchData}
+          />
+        )}
       </div>
     </div>
   )
@@ -439,5 +422,160 @@ function AdminSlidesDownload({ deliverables }) {
       </button>
       {error && <span className="text-xs text-hot">{error}</span>}
     </div>
+  )
+}
+
+// Avaliador de UM entregável (copiar pacote → colar JSON → gravar). Reutilizado no
+// detalhe da equipe e no card lateral de pendentes. SELECT-then-UPDATE/INSERT
+// (índice parcial não é conflict target confiável no PostgREST).
+function DeliverableEvaluator({ unit, team, members, notes, existing, onSaved, readOnly, compact = false }) {
+  const [pitchNotes, setPitchNotes] = useState('')
+  const [jsonInput, setJsonInput] = useState('')
+  const [packageText, setPackageText] = useState('')
+  const [copied, setCopied] = useState(false)
+  const [error, setError] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  const teamMembers = members.filter(m => m.team_id === team.id && m.payment_status === 'confirmed')
+  const teamNotes = notes.filter(n => n.team_id === team.id && n.is_public)
+
+  async function copyPackage() {
+    setError(null)
+    const pkg = buildDeliverablePrompt({ unit, team, members: teamMembers, mentorNotes: teamNotes, pitchNotes })
+    try {
+      await navigator.clipboard.writeText(pkg)
+      setCopied(true); setPackageText(''); setTimeout(() => setCopied(false), 2500)
+    } catch {
+      setPackageText(pkg)
+    }
+  }
+
+  async function save() {
+    setError(null)
+    let parsed
+    try { parsed = parseDeliverableEvaluation(jsonInput, unit) }
+    catch (e) { setError(e.message); return }
+    if (!supabase) { setError('Supabase não configurado.'); return }
+    setSaving(true)
+    const payload = {
+      team_id: team.id, evaluator_type: 'ai', deliverable: unit.id,
+      rubric_version: EDITAL_RUBRIC.version, scores: parsed.scores,
+      total_score: parsed.total_score, eliminated: parsed.eliminated,
+      summary: parsed.summary, model: parsed.model, status: 'done',
+      updated_at: new Date().toISOString(),
+    }
+    const { error: err } = existing
+      ? await supabase.from('team_evaluations').update(payload).eq('id', existing.id)
+      : await supabase.from('team_evaluations').insert(payload)
+    setSaving(false)
+    if (err) { setError(`Erro ao gravar: ${err.message}`); return }
+    setJsonInput(''); setPitchNotes(''); setPackageText('')
+    onSaved?.()
+  }
+
+  return (
+    <div className="border border-dark-border rounded-xl p-4 space-y-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <span className="text-sm font-semibold text-white">{unit.label}</span>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {unit.criteria.map(k => {
+            const c = EDITAL_RUBRIC.criteria.find(x => x.key === k)
+            return <span key={k} className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/5 text-white/60 border border-white/10">{c.label} {c.weight}%</span>
+          })}
+        </div>
+      </div>
+
+      {/* Avaliação gravada */}
+      {existing && Array.isArray(existing.scores) && existing.scores.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-text-muted">Nota do entregável</span>
+            <span className="font-mono text-cyan text-sm">{existing.total_score != null ? existing.total_score : '—'}{existing.eliminated ? ' · ⚠ eliminado' : ''}</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {existing.scores.map(s => (
+              <div key={s.criterion_key} className="bg-white/5 rounded-lg p-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-white/70">{s.label} <span className="text-white/40">({s.weight}%)</span></span>
+                  <span className="font-mono text-cyan">{s.score}</span>
+                </div>
+                {s.justification && <p className="text-[11px] text-text-muted mt-1 whitespace-pre-wrap">{s.justification}</p>}
+              </div>
+            ))}
+          </div>
+          {existing.summary && <p className="text-sm text-white/80 whitespace-pre-wrap">{existing.summary}</p>}
+        </div>
+      )}
+
+      {/* Controles (copiar → colar → gravar) */}
+      {!readOnly && (
+        <div className="space-y-2 pt-1">
+          {unit.showsPitchNotes && (
+            <textarea value={pitchNotes} onChange={e => setPitchNotes(e.target.value)} rows={compact ? 2 : 3}
+              placeholder="Observações do pitch / demo ao vivo (entram no pacote): a IA rodou? evidências de tração? respostas aos jurados?"
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan/50" />
+          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button onClick={copyPackage} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-electric/20 text-electric border border-electric/40 hover:bg-electric/30">
+              {copied ? '✓ copiado' : '1. Copiar pacote'}
+            </button>
+            <button onClick={save} disabled={saving || !jsonInput.trim()}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan/20 text-cyan border border-cyan/40 hover:bg-cyan/30 disabled:opacity-40 disabled:cursor-not-allowed">
+              {saving ? 'Gravando...' : existing ? '3. Regravar' : '3. Gravar'}
+            </button>
+          </div>
+          {packageText && (
+            <textarea readOnly value={packageText} rows={4} onFocus={e => e.target.select()}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/70 text-xs font-mono" />
+          )}
+          <textarea value={jsonInput} onChange={e => setJsonInput(e.target.value)} rows={compact ? 3 : 5}
+            placeholder='2. Cole o JSON do Claude: { "scores": [...], "summary": "...", "model": "..." }'
+            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-cyan/50" />
+          {error && <div className="bg-hot/10 border border-hot/30 rounded-lg px-3 py-2 text-hot text-sm">{error}</div>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Card lateral: fila de (equipe × entregável) pendentes. Expande 1 por vez.
+function PendingQueue({ items, members, notes, onSaved }) {
+  const [activeKey, setActiveKey] = useState(null)
+  return (
+    <aside className="card-glass rounded-2xl p-4 lg:sticky lg:top-20 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-mono text-gold uppercase tracking-wider">Pendentes</p>
+        <span className="text-xs font-mono text-white/50">{items.length}</span>
+      </div>
+      {!items.length && <p className="text-sm text-text-muted">Nada pendente — tudo avaliado. 🎉</p>}
+      <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
+        {items.map(({ team, unit, stale, existing }) => {
+          const key = `${team.id}:${unit.id}`
+          const open = activeKey === key
+          return (
+            <div key={key} className="border border-dark-border rounded-xl">
+              <button onClick={() => setActiveKey(open ? null : key)}
+                className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-white/5 rounded-xl">
+                <span className="text-sm text-white truncate">▸ {team.name} <span className="text-white/40">· {unit.label.split(' · ')[0]}</span></span>
+                {stale && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-gold/10 text-gold border border-gold/30 whitespace-nowrap">atualizado</span>}
+              </button>
+              {open && (
+                <div className="p-2 pt-0">
+                  <DeliverableEvaluator
+                    unit={unit}
+                    team={team}
+                    members={members}
+                    notes={notes}
+                    existing={existing || null}
+                    onSaved={onSaved}
+                    compact
+                  />
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </aside>
   )
 }

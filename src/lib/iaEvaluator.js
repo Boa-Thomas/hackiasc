@@ -1,7 +1,9 @@
-// IA Evaluator — human-in-the-loop.
-// O sistema monta um pacote de avaliação (dados da equipe + rubrica do edital +
-// instruções + formato JSON). O avaliador roda esse pacote num modelo (Claude) e
-// cola o JSON de volta, que é parseado e gravado em `team_evaluations`.
+// IA Evaluator — human-in-the-loop, por entregável.
+// O sistema monta um pacote por ENTREGÁVEL (dados daquele entregável + os
+// critérios do edital que se aplicam a ele + formato JSON). O avaliador roda no
+// Claude e cola o JSON de volta, que é parseado e gravado em `team_evaluations`
+// (1 linha por equipe × entregável, evaluator_type='ai', deliverable setado).
+// `aggregateTeamEvaluation` combina os entregáveis na nota IA da equipe.
 // Nada de API key/Whisper: o input/output da informação é feito pelo operador.
 
 import { HYPOTHESES_FIELDS, SLC_IA_FIELDS, FINAL_FIELDS } from '../participant/deliverableFields'
@@ -41,11 +43,32 @@ export const EDITAL_RUBRIC = {
         'respostas aos jurados. Demonstração da solução funcional. Leitura integral do pitch reduz a nota.',
     },
   ],
-  // Extra: não soma nos 100, registrado como contexto.
   extra: { key: 'mentor', label: 'Avaliação do Mentor', describe: 'Parecer padronizado do mentor fixo (extra).' },
 }
 
-const VALID_KEYS = EDITAL_RUBRIC.criteria.map(c => c.key)
+const CRIT_BY_KEY = Object.fromEntries(EDITAL_RUBRIC.criteria.map(c => [c.key, c]))
+
+// Unidades de avaliação por entregável. `criteria` = subconjunto do edital avaliado
+// naquele entregável (um critério pode aparecer em + de uma unidade; a agregação
+// faz a média entre as unidades que o pontuam).
+export const DELIVERABLE_UNITS = [
+  {
+    id: 'fase1', label: 'Fase 1 · Hipóteses', phase: 'Ignição',
+    source: 'hypotheses_canvas', fields: HYPOTHESES_FIELDS, includesDiary: false,
+    showsPitchNotes: false, criteria: ['validacao_problema'],
+  },
+  {
+    id: 'fase2', label: 'Fase 2 · SLC-IA + Diário', phase: 'Construção',
+    source: 'slc_ia_canvas', fields: SLC_IA_FIELDS, includesDiary: true,
+    showsPitchNotes: false, criteria: ['tecnica_ia', 'validacao_problema'],
+  },
+  {
+    id: 'fase3', label: 'Fase 3 · Entregas + Pitch', phase: 'Apresentação',
+    source: 'final_deliverables', fields: FINAL_FIELDS, includesDiary: false,
+    showsPitchNotes: true, criteria: ['tecnica_ia', 'escala_negocio', 'pitch_equipe'],
+  },
+]
+export const UNIT_BY_ID = Object.fromEntries(DELIVERABLE_UNITS.map(u => [u.id, u]))
 
 // ---- Montagem do pacote -----------------------------------------------------
 
@@ -63,7 +86,6 @@ function renderFields(fields, data) {
 
 function renderDiary(diary) {
   if (!diary) return '_(vazio)_'
-  // O diário é um JSONB livre (lista de ciclos BML). Serializa de forma legível.
   if (Array.isArray(diary)) {
     if (!diary.length) return '_(nenhum ciclo registrado)_'
     return diary
@@ -73,44 +95,59 @@ function renderDiary(diary) {
   return `\`\`\`json\n${JSON.stringify(diary, null, 2)}\n\`\`\``
 }
 
-function renderRubric() {
-  const lines = EDITAL_RUBRIC.criteria
-    .map(c => `- \`${c.key}\` — **${c.label}** (peso ${c.weight}%${c.eliminatory ? ', ELIMINATÓRIO' : ''}): ${c.describe}`)
+function renderUnitRubric(unit) {
+  return unit.criteria
+    .map(k => {
+      const c = CRIT_BY_KEY[k]
+      return `- \`${c.key}\` — **${c.label}** (peso ${c.weight}%${c.eliminatory ? ', ELIMINATÓRIO' : ''}): ${c.describe}`
+    })
     .join('\n')
-  return lines
 }
 
-const OUTPUT_EXAMPLE = `{
+function unitOutputExample(unit) {
+  const scores = unit.criteria
+    .map(k => `    { "criterion_key": "${k}", "score": 0, "justification": "..." }`)
+    .join(',\n')
+  const elim = unit.criteria.includes('tecnica_ia') ? '\n  "eliminated": false,' : ''
+  return `{
   "scores": [
-    { "criterion_key": "tecnica_ia", "score": 0, "justification": "..." },
-    { "criterion_key": "validacao_problema", "score": 0, "justification": "..." },
-    { "criterion_key": "escala_negocio", "score": 0, "justification": "..." },
-    { "criterion_key": "pitch_equipe", "score": 0, "justification": "..." }
-  ],
-  "eliminated": false,
-  "summary": "Parecer geral em 2-4 frases, citando evidências.",
+${scores}
+  ],${elim}
+  "summary": "Parecer do entregável em 2-4 frases, citando evidências.",
   "model": "claude-opus-4-x"
 }`
+}
 
 /**
- * Monta o texto completo a ser copiado e colado no Claude.
+ * Monta o pacote (markdown) para avaliar UM entregável da equipe.
  * @param {object} params
- * @param {object} params.team  linha de `teams` (canvases JSONB + final_deliverables)
- * @param {Array}  params.members  membros confirmados [{ full_name, occupation_type, ... }]
+ * @param {object} params.unit  entrada de DELIVERABLE_UNITS
+ * @param {object} params.team  linha de `teams`
+ * @param {Array}  params.members
  * @param {Array}  params.mentorNotes  notas públicas do mentor [{ phase, body }]
- * @param {string} params.pitchNotes  observações do operador sobre o pitch/demo (opcional)
- * @returns {string} pacote em markdown
+ * @param {string} params.pitchNotes  observações do pitch (só usado se unit.showsPitchNotes)
+ * @returns {string}
  */
-export function buildEvaluationPrompt({ team, members = [], mentorNotes = [], pitchNotes = '' }) {
+export function buildDeliverablePrompt({ unit, team, members = [], mentorNotes = [], pitchNotes = '' }) {
+  if (!unit) throw new Error('Unidade de avaliação inválida.')
   const memberList = members.length
     ? members.map(m => `- ${m.full_name}${m.occupation_type ? ` (${m.occupation_type})` : ''}${m.is_team_leader ? ' — líder' : ''}`).join('\n')
     : '_(sem membros confirmados registrados)_'
-
   const axes = Array.from(new Set(members.flatMap(m => m.economic_axes || []))).filter(Boolean)
   const project = members.map(m => m.project_name).find(Boolean)
 
-  return `Você é um jurado experiente avaliando uma equipe do **HackIA SC — AI Hackathon Blumenau 2026**.
-Avalie a equipe abaixo de forma rigorosa e justa, **estritamente pela rubrica do edital**, e responda
+  let deliverableBlock = `## ${unit.label}\n${renderFields(unit.fields, team[unit.source])}\n`
+  if (unit.includesDiary) {
+    deliverableBlock += `\n### Diário de Aprendizado (ciclos BML)\n${renderDiary(team.learning_diary)}\n`
+  }
+  if (unit.showsPitchNotes) {
+    deliverableBlock += `\n### Observações do operador sobre o pitch / demo ao vivo\n${pitchNotes && pitchNotes.trim() ? pitchNotes.trim() : '_(o operador não registrou observações do pitch — avalie o critério "Pitch e Equipe" com cautela, sinalizando a ausência de dados na justificativa)_'}\n`
+  }
+
+  const hasElim = unit.criteria.includes('tecnica_ia')
+
+  return `Você é um jurado experiente do **HackIA SC — AI Hackathon Blumenau 2026** avaliando UM entregável de uma equipe.
+Avalie **somente** este entregável (${unit.label}), de forma rigorosa e justa, **estritamente pelos critérios listados**, e responda
 APENAS com o JSON no formato especificado no final (sem texto fora do bloco JSON).
 
 Princípios do evento: a IA precisa rodar de verdade (slide/print de ChatGPT não conta); pivotar com base em
@@ -124,42 +161,26 @@ ${section('Membros', memberList)}
 ${section('Projeto declarado', project || '_(não informado)_')}
 ${section('Eixos econômicos de Blumenau', axes.length ? axes.join(', ') : '_(nenhum declarado)_')}
 
-## Fase 1 — Canvas de Hipóteses
-${renderFields(HYPOTHESES_FIELDS, team.hypotheses_canvas)}
-
-## Fase 2 — Canvas SLC-IA
-${renderFields(SLC_IA_FIELDS, team.slc_ia_canvas)}
-
-## Fase 2 — Diário de Aprendizado (ciclos BML)
-${renderDiary(team.learning_diary)}
-
-## Fase 3 — Entregas finais
-${renderFields(FINAL_FIELDS, team.final_deliverables)}
-
+${deliverableBlock}
 ## Comentários públicos do mentor fixo
 ${mentorNotes.length ? mentorNotes.map(n => `- [${n.phase || 'geral'}] ${n.body}`).join('\n') : '_(nenhum)_'}
 
-## Observações do operador sobre o pitch / demo ao vivo
-${pitchNotes && pitchNotes.trim() ? pitchNotes.trim() : '_(o operador não registrou observações do pitch — avalie o critério "Pitch e Equipe" com cautela, sinalizando a ausência de dados na justificativa)_'}
-
 ---
 
-## Rubrica oficial (edital) — total 100 pontos
-${renderRubric()}
-
-> A **Avaliação do Mentor** é um extra e NÃO entra nos 100 pontos.
+## Critérios deste entregável (rubrica do edital)
+${renderUnitRubric(unit)}
 
 ## Como pontuar
-- Dê a cada critério uma nota de **0 a 100** (qualidade dentro daquele critério).
-- O sistema calcula a nota final ponderada automaticamente (não calcule o total você mesmo).
-- Justifique cada nota citando **evidências concretas** dos dados acima.
-- Defina \`eliminated: true\` **apenas** se o critério ELIMINATÓRIO (Execução Técnica e IA) falhar de forma
-  grave — por exemplo, não há IA real funcional/deployed. Explique no \`summary\`.
-- Seja honesto sobre lacunas: campos vazios indicam falta de entrega, não devem ser presumidos como prontos.
+- Dê a **cada critério acima** uma nota de **0 a 100** (qualidade dentro daquele critério, neste entregável).
+- Avalie SOMENTE os critérios listados — não pontue critérios de outras fases.
+- Justifique cada nota citando **evidências concretas** do conteúdo acima. Campos vazios indicam falta de
+  entrega: trate como lacuna, não presuma que está pronto.${hasElim ? `
+- O critério **Execução Técnica e IA** é ELIMINATÓRIO: defina \`eliminated: true\` apenas se a IA não roda de
+  verdade / não há solução funcional e deployable. Explique no \`summary\`.` : ''}
 
 ## Formato de saída (responda SOMENTE com este JSON)
 \`\`\`json
-${OUTPUT_EXAMPLE}
+${unitOutputExample(unit)}
 \`\`\`
 `
 }
@@ -169,13 +190,11 @@ ${OUTPUT_EXAMPLE}
 function extractJson(text) {
   const trimmed = (text || '').trim()
   if (!trimmed) throw new Error('Cole o JSON da avaliação antes de gravar.')
-  // Tolera ```json ... ``` ou ``` ... ```
   const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)
   const candidate = fence ? fence[1].trim() : trimmed
   try {
     return JSON.parse(candidate)
   } catch {
-    // Tenta achar o primeiro objeto { ... } no texto
     const start = candidate.indexOf('{')
     const end = candidate.lastIndexOf('}')
     if (start !== -1 && end > start) {
@@ -186,15 +205,15 @@ function extractJson(text) {
 }
 
 /**
- * Valida e normaliza o JSON de avaliação colado. Lança Error (mensagem PT-BR) se inválido.
+ * Valida/normaliza o JSON colado para UM entregável. Lança Error (PT-BR) se inválido.
+ * @param {string} text
+ * @param {object} unit  entrada de DELIVERABLE_UNITS
  * @returns {{ scores: Array, total_score: number, eliminated: boolean, summary: string, model: string|null }}
  */
-export function parseEvaluation(text) {
+export function parseDeliverableEvaluation(text, unit) {
+  if (!unit) throw new Error('Unidade de avaliação inválida.')
   const raw = extractJson(text)
-
-  if (!Array.isArray(raw.scores)) {
-    throw new Error('O JSON precisa ter um array "scores".')
-  }
+  if (!Array.isArray(raw.scores)) throw new Error('O JSON precisa ter um array "scores".')
 
   const byKey = new Map()
   for (const s of raw.scores) {
@@ -202,19 +221,26 @@ export function parseEvaluation(text) {
     byKey.set(s.criterion_key, s)
   }
 
-  const missing = VALID_KEYS.filter(k => !byKey.has(k))
+  const expected = unit.criteria
+  const missing = expected.filter(k => !byKey.has(k))
   if (missing.length) {
-    throw new Error(`Faltam critérios no JSON: ${missing.join(', ')}.`)
+    const labels = missing.map(k => CRIT_BY_KEY[k].label).join(', ')
+    throw new Error(`Faltam critérios no JSON deste entregável: ${labels}.`)
+  }
+  const extra = [...byKey.keys()].filter(k => !expected.includes(k))
+  if (extra.length) {
+    throw new Error(`Critérios fora deste entregável no JSON: ${extra.join(', ')}. Avalie apenas: ${expected.join(', ')}.`)
   }
 
-  const scores = EDITAL_RUBRIC.criteria.map(c => {
-    const s = byKey.get(c.key)
+  const scores = expected.map(k => {
+    const c = CRIT_BY_KEY[k]
+    const s = byKey.get(k)
     const score = Number(s.score)
     if (!Number.isFinite(score) || score < 0 || score > 100) {
-      throw new Error(`Nota inválida em "${c.key}": deve ser número de 0 a 100.`)
+      throw new Error(`Nota inválida em "${k}": deve ser número de 0 a 100.`)
     }
     return {
-      criterion_key: c.key,
+      criterion_key: k,
       label: c.label,
       weight: c.weight,
       score,
@@ -222,14 +248,57 @@ export function parseEvaluation(text) {
     }
   })
 
-  const total = scores.reduce((sum, s) => sum + (s.score * s.weight) / 100, 0)
-  const total_score = Math.round(total * 10) / 10
+  // Nota do entregável (display): média simples das notas da unidade. O total da
+  // EQUIPE é recalculado por aggregateTeamEvaluation a partir de `scores`.
+  const mean = scores.reduce((sum, s) => sum + s.score, 0) / scores.length
+  const total_score = Math.round(mean * 10) / 10
 
+  const coversElim = expected.includes('tecnica_ia')
   return {
     scores,
     total_score,
-    eliminated: raw.eliminated === true,
+    eliminated: coversElim ? raw.eliminated === true : false,
     summary: typeof raw.summary === 'string' ? raw.summary.trim() : '',
     model: typeof raw.model === 'string' && raw.model.trim() ? raw.model.trim() : null,
   }
+}
+
+// ---- Agregação por equipe ---------------------------------------------------
+
+/**
+ * Agrega as avaliações por entregável de UMA equipe na nota IA da equipe.
+ * Cada critério do edital recebe a média das notas das unidades que o pontuaram.
+ * total_score só é definido quando os 4 critérios têm nota (senão `partial`).
+ * @param {Array} rows  linhas `team_evaluations` da equipe (evaluator_type='ai', deliverable != null)
+ * @returns {{ criteria, scoredCriteria, partial, total_score, eliminated, evaluatedUnits }}
+ */
+export function aggregateTeamEvaluation(rows = []) {
+  const valid = (rows || []).filter(r => r && r.deliverable && Array.isArray(r.scores))
+
+  const criteria = EDITAL_RUBRIC.criteria.map(c => {
+    const vals = []
+    const contributors = []
+    for (const r of valid) {
+      const s = r.scores.find(x => x && x.criterion_key === c.key)
+      if (s && Number.isFinite(Number(s.score))) {
+        vals.push(Number(s.score))
+        contributors.push(r.deliverable)
+      }
+    }
+    const score = vals.length ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10 : null
+    return { key: c.key, label: c.label, weight: c.weight, score, contributors }
+  })
+
+  const scoredCriteria = criteria.filter(c => c.score != null).length
+  const partial = scoredCriteria < EDITAL_RUBRIC.criteria.length
+  const total_score = partial
+    ? null
+    : Math.round(criteria.reduce((sum, c) => sum + (c.score * c.weight) / 100, 0) * 10) / 10
+
+  const eliminated = valid.some(r => {
+    const coversElim = Array.isArray(r.scores) && r.scores.some(s => s && s.criterion_key === 'tecnica_ia')
+    return coversElim && r.eliminated === true
+  })
+
+  return { criteria, scoredCriteria, partial, total_score, eliminated, evaluatedUnits: valid.map(r => r.deliverable) }
 }
