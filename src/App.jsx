@@ -136,7 +136,7 @@ export default function App() {
 
   // Muro de Dores / Telão — telas fullscreen, sem login
   if (page === '#muro') {
-    return <WallParticipant />
+    return <WallParticipant participantAuth={participantAuth} />
   }
   if (page === '#telao') {
     return <WallScreen />

@@ -34,8 +34,23 @@ function friendlyError(err) {
   return raw || 'Algo deu errado. Tente novamente.'
 }
 
-export default function WallParticipant() {
-  const { session, identify, logout } = useWallSession()
+export default function WallParticipant({ participantAuth }) {
+  const { session: wallSession, identify, logout: wallLogout } = useWallSession()
+
+  // Sessao herdada: se o participante ja esta logado no painel E com pagamento
+  // confirmado, reaproveitamos a identidade dele - sem pedir CPF + nascimento de
+  // novo. A sessao propria do muro (quem entrou direto em #muro) tem prioridade.
+  const inheritedSession =
+    participantAuth?.isAuthenticated &&
+    participantAuth.profile?.payment_status === 'confirmed'
+      ? {
+          registration_id: participantAuth.profile.id,
+          full_name: participantAuth.profile.full_name,
+          inherited: true,
+        }
+      : null
+
+  const session = wallSession || inheritedSession
 
   const [phase, setPhase] = useState(null)
   const [pains, setPains] = useState([])
@@ -133,8 +148,16 @@ export default function WallParticipant() {
     await load()
   }
 
-  // Tela de IDENTIFICACAO: CPF + data de nascimento (exige inscricao confirmada)
+  // Sem sessao: espera o auth do participante resolver (evita piscar a tela de
+  // identificacao para quem ja esta logado) e entao pede CPF + data de nascimento.
   if (!session) {
+    if (participantAuth?.loading) {
+      return (
+        <WallShell>
+          <p className="text-white/60 font-mono">Carregando...</p>
+        </WallShell>
+      )
+    }
     return <IdentifyScreen onIdentify={identify} />
   }
 
@@ -147,12 +170,21 @@ export default function WallParticipant() {
             <h2 className="text-2xl font-display font-bold text-gradient-cyan">Muro de Dores</h2>
             <p className="text-white/50 text-sm">
               Oi, {session.full_name} 👋
-              <button
-                onClick={logout}
-                className="ml-3 text-white/30 hover:text-white/60 text-xs underline transition-colors"
-              >
-                sair
-              </button>
+              {session.inherited ? (
+                <button
+                  onClick={() => { window.location.hash = '#participante' }}
+                  className="ml-3 text-white/30 hover:text-white/60 text-xs underline transition-colors"
+                >
+                  voltar ao painel
+                </button>
+              ) : (
+                <button
+                  onClick={wallLogout}
+                  className="ml-3 text-white/30 hover:text-white/60 text-xs underline transition-colors"
+                >
+                  sair
+                </button>
+              )}
             </p>
           </div>
           <PhaseBadge phase={phase} />
