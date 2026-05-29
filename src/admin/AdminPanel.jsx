@@ -51,45 +51,46 @@ export default function AdminPanel({ onLogout, role = 'viewer' }) {
   return (
     <div className="min-h-screen bg-dark">
       {/* Top bar */}
-      <header className="bg-white/5 border-b border-white/10 px-6 py-3 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md">
-        <div className="flex items-center gap-4">
-          <h1 className="text-lg font-bold text-gradient-cyan font-display">
-            HackIA Admin
-            {readOnly && <span className="ml-2 text-xs font-mono text-electric/60 border border-electric/20 px-2 py-0.5 rounded-full">visualização</span>}
-            {checkinOnly && <span className="ml-2 text-xs font-mono text-cyan/60 border border-cyan/20 px-2 py-0.5 rounded-full">check-in</span>}
-            {staffOnly && <span className="ml-2 text-xs font-mono text-violet/60 border border-violet/20 px-2 py-0.5 rounded-full">equipe</span>}
+      <header className="bg-white/5 border-b border-white/10 px-4 sm:px-6 py-3 sticky top-0 z-50 backdrop-blur-md">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-base sm:text-lg font-bold text-gradient-cyan font-display flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+            <span>HackIA Admin</span>
+            {readOnly && <span className="text-xs font-mono text-electric/60 border border-electric/20 px-2 py-0.5 rounded-full">visualização</span>}
+            {checkinOnly && <span className="text-xs font-mono text-cyan/60 border border-cyan/20 px-2 py-0.5 rounded-full">check-in</span>}
+            {staffOnly && <span className="text-xs font-mono text-violet/60 border border-violet/20 px-2 py-0.5 rounded-full">equipe</span>}
           </h1>
-          <nav className="flex gap-1 ml-6">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id)
-                  setSelectedRegistrationId(null)
-                }}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-cyan/20 text-cyan border border-cyan/30'
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <span className="mr-1.5">{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
-          </nav>
+
+          <button
+            onClick={onLogout}
+            className="text-white/50 hover:text-hot text-sm transition-colors flex-shrink-0"
+          >
+            Sair
+          </button>
         </div>
 
-        <button
-          onClick={onLogout}
-          className="text-white/50 hover:text-hot text-sm transition-colors"
-        >
-          Sair
-        </button>
+        <nav className="flex gap-1 mt-3 overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-0.5">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveTab(tab.id)
+                setSelectedRegistrationId(null)
+              }}
+              className={`flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'bg-cyan/20 text-cyan border border-cyan/30'
+                  : 'text-white/60 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <span className="mr-1.5">{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </nav>
       </header>
 
       {/* Content */}
-      <main className="p-6 max-w-[1400px] mx-auto">
+      <main className="p-4 sm:p-6 max-w-[1400px] mx-auto">
         {activeTab === 'dashboard' && (
           <AdminDashboard onViewRegistration={handleViewRegistration} readOnly={readOnly} />
         )}
