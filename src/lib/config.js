@@ -57,3 +57,7 @@ export const EVENT_CONFIG = {
     whatsappUrl: import.meta.env.VITE_SPONSOR_WHATSAPP_URL || '',
   },
 }
+
+// Conta dedicada usada pelo link de auto-login da equipe (#admin-acesso?t=<senha>).
+// O email nao e segredo; o token do link e a senha desta conta (role 'staff').
+export const STAFF_ACCESS_EMAIL = 'equipe-muro@hackiasc.com'

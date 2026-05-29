@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
-const VALID_ROLES = ['admin', 'viewer', 'checkin']
+const VALID_ROLES = ['admin', 'viewer', 'checkin', 'staff']
 
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes of inactivity
 const MAX_FAILED_ATTEMPTS = 5
@@ -92,12 +92,20 @@ export function useAdminAuth() {
 
     let authSubscription = null
     if (supabase) {
-      const { data } = supabase.auth.onAuthStateChange((event) => {
+      const { data } = supabase.auth.onAuthStateChange((event, session) => {
         // Session revoked/expired elsewhere (logout, token revocation, expiry).
         // Only do UI cleanup here — calling signOut() would re-fire SIGNED_OUT
         // and loop forever.
         if (event === 'SIGNED_OUT') {
           clearAuthState()
+        } else if (event === 'SIGNED_IN' && session) {
+          // Auto-login (link da equipe) ou login em outra aba: assume a sessao.
+          const userRole = session.user.app_metadata?.role ?? null
+          if (VALID_ROLES.includes(userRole)) {
+            setRole(userRole)
+            setIsAuthenticated(true)
+            startActivityTracking()
+          }
         }
       })
       authSubscription = data?.subscription
