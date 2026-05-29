@@ -1,3 +1,9 @@
+> **⚠️ Histórico — parcialmente superado.** O modelo de identidade descrito abaixo
+> (`device_token` em localStorage) foi substituído por **CPF + data de nascimento**
+> em `2026-05-24-wall-identity.md`. A fiação em `App.jsx`/`AdminPanel.jsx` (descrita
+> como pendente) já foi feita. O arquivo `useWallDevice.js` foi renomeado para
+> `useWallSession.js`.
+
 # feat: Muro de Dores + votação digital (Fase 1 — sexta abertura)
 
 **Data:** 2026-05-24

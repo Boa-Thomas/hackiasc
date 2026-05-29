@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import { PHASE_LABELS } from './useWallDevice'
+import { PHASE_LABELS } from './useWallSession'
 
 // Telao read-only para projecao. Sem identidade (p_registration_id NULL). Polling 2s.
 const POLL_MS = 2000

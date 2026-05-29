@@ -6,7 +6,7 @@ import {
   cleanCpf,
   ECONOMIC_AXES,
   PHASE_LABELS,
-} from './useWallDevice'
+} from './useWallSession'
 
 const POLL_MS = 3000
 
