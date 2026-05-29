@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 
 // Editor de ponderações do mentor para uma fase da metodologia.
 // `notes` são todas as notas da equipe; filtramos pela fase.
-export default function MentorNotes({ phase, phaseLabel, notes, auth }) {
+export default function MentorNotes({ phase, phaseLabel, notes, teamId, auth }) {
   const phaseNotes = (notes || []).filter(n => n.phase === phase)
   const [body, setBody] = useState('')
   const [isPublic, setIsPublic] = useState(false)
@@ -25,7 +25,7 @@ export default function MentorNotes({ phase, phaseLabel, notes, auth }) {
     if (!supabase) return setError('Sistema indisponível.')
     setSaving(true)
     const { error: err } = await supabase.rpc('mentor_save_note', {
-      p_token: auth.token, p_phase: phase, p_body: body.trim(), p_is_public: isPublic, p_note_id: editingId,
+      p_token: auth.token, p_phase: phase, p_body: body.trim(), p_is_public: isPublic, p_note_id: editingId, p_team_id: teamId,
     })
     setSaving(false)
     if (err) return setError('Erro ao salvar. Tente novamente.')
