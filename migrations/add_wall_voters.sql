@@ -141,6 +141,7 @@ REVOKE ALL ON FUNCTION wall_admin_list() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION wall_admin_list() TO authenticated;
 
 -- Admin cadastra dor em nome de um participante confirmado. So em wall_open.
+-- Sem o cap de 5 dores/throttle do fluxo publico: e ajuda manual da organizacao.
 CREATE OR REPLACE FUNCTION wall_admin_add_pain(
   p_registration_id UUID,
   p_title TEXT,

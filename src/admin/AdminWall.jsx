@@ -232,8 +232,11 @@ function AddPainForm({ phase, onAdded }) {
     setSearching(true); setError(null)
     const q = query.trim()
     const digits = q.replace(/\D/g, '')
-    const ors = [`full_name.ilike.%${q}%`, `email.ilike.%${q}%`]
+    const safe = q.replace(/[,()*%]/g, ' ').trim()
+    const ors = []
+    if (safe) ors.push(`full_name.ilike.%${safe}%`, `email.ilike.%${safe}%`)
     if (digits) ors.push(`cpf.ilike.%${digits}%`)
+    if (!ors.length) { setSearching(false); setResults([]); return }
     const { data, error: err } = await supabase
       .from('registrations')
       .select('id, full_name, email, cpf, payment_status')
