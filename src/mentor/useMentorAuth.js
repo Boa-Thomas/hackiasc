@@ -140,7 +140,7 @@ export function useMentorAuth() {
     token,
     me,
     mentor: me?.mentor ?? null,
-    team: me?.team ?? null,
+    teams: me?.teams ?? [],
     notes: me?.notes ?? [],
     loading,
     error,
