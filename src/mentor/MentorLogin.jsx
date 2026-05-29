@@ -69,7 +69,7 @@ export default function MentorLogin({ onLogin, error: authError, loading }) {
         </form>
 
         <p className="mt-6 text-xs text-white/40 leading-relaxed">
-          Use o email e o código de 4 dígitos fornecidos pela organização. Após múltiplas tentativas inválidas o acesso é bloqueado por 1 hora.
+          Use o email e o código de 4 dígitos fornecidos pela organização. Após múltiplas tentativas inválidas o acesso é bloqueado por 1 minuto.
         </p>
 
         <div className="mt-6 text-center">
