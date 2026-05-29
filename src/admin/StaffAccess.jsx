@@ -21,12 +21,14 @@ export default function StaffAccess() {
         if (qIdx !== -1) token = new URLSearchParams(hash.slice(qIdx + 1)).get('t')
       } catch { /* hash malformado */ }
       if (!token) { setError('Link inválido.'); return }
+      // Remove o token da URL ANTES do signIn (cobre tambem o caminho de erro).
+      try { window.history.replaceState(null, '', '#admin-acesso') } catch { /* ignore */ }
       const { error: err } = await supabase.auth.signInWithPassword({
         email: STAFF_ACCESS_EMAIL,
         password: token,
       })
       if (err) { setError('Link inválido ou expirado. Peça um novo à organização.'); return }
-      // Remove o token da URL e vai pro painel; useAdminAuth assume via SIGNED_IN.
+      // Sucesso: vai pro painel; useAdminAuth assume via SIGNED_IN.
       try { window.history.replaceState(null, '', '#admin') } catch { /* ignore */ }
       window.location.hash = '#admin'
     })()
