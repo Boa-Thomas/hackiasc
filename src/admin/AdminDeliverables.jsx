@@ -266,7 +266,7 @@ export default function AdminDeliverables({ readOnly = false }) {
 
               {DELIVERABLE_UNITS.map(unit => (
                 <DeliverableEvaluator
-                  key={unit.id}
+                  key={`${selected.id}:${unit.id}`}
                   unit={unit}
                   team={selected}
                   members={members}

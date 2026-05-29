@@ -51,7 +51,7 @@ export default function AdminRanking() {
     setError(null)
     const [t, e, j] = await Promise.all([
       supabase.from('teams').select('id, name, status').order('name'),
-      supabase.from('team_evaluations').select('team_id, evaluator_type, deliverable, total_score, scores, eliminated, summary, model, created_at'),
+      supabase.from('team_evaluations').select('team_id, evaluator_type, deliverable, total_score, scores, eliminated, created_at'),
       supabase.from('jurors').select('id', { count: 'exact', head: true }).eq('active', true),
     ])
     const firstErr = [t, e, j].find(x => x.error)
