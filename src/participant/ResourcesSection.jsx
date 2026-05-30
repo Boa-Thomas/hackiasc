@@ -50,7 +50,7 @@ export default function ResourcesSection({ auth }) {
         <p className="text-xs font-mono text-cyan uppercase tracking-wider">Recursos</p>
         <h2 className="text-xl font-bold text-white mt-1">Materiais do evento</h2>
         <p className="text-sm text-text-muted mt-1">
-          Templates, slides e materiais de apoio disponibilizados pela organização.
+          Templates, slides, links e materiais de apoio disponibilizados pela organização.
         </p>
       </div>
 
@@ -69,26 +69,40 @@ export default function ResourcesSection({ auth }) {
       ) : (
         <div className="space-y-3">
           {resources.map(r => {
+            const isLink = !!r.url
             const size = formatSize(r.size_bytes)
             return (
               <div key={r.id} className="card-glass rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-white">{r.title}</p>
                   {r.description && <p className="text-xs text-text-muted mt-1">{r.description}</p>}
+                  {isLink && r.body && <p className="text-sm text-white/70 mt-2 whitespace-pre-wrap">{r.body}</p>}
                   <p className="text-xs text-text-muted mt-1 font-mono">
-                    {r.file_name || 'arquivo'}{size ? ` · ${size}` : ''}
+                    {isLink ? 'link' : `${r.file_name || 'arquivo'}${size ? ` · ${size}` : ''}`}
                   </p>
                 </div>
-                <button
-                  onClick={() => handleDownload(r)}
-                  disabled={downloadingId === r.id}
-                  className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-cyan/10 text-cyan border border-cyan/30 hover:bg-cyan/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M7 10l5 5 5-5M12 15V3" />
-                  </svg>
-                  {downloadingId === r.id ? 'Gerando...' : 'Baixar'}
-                </button>
+                {isLink ? (
+                  <a
+                    href={r.url} target="_blank" rel="noopener noreferrer"
+                    className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-cyan/10 text-cyan border border-cyan/30 hover:bg-cyan/20 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-8.5M15 3h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    Abrir
+                  </a>
+                ) : (
+                  <button
+                    onClick={() => handleDownload(r)}
+                    disabled={downloadingId === r.id}
+                    className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-cyan/10 text-cyan border border-cyan/30 hover:bg-cyan/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M7 10l5 5 5-5M12 15V3" />
+                    </svg>
+                    {downloadingId === r.id ? 'Gerando...' : 'Baixar'}
+                  </button>
+                )}
               </div>
             )
           })}

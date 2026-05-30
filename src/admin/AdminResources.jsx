@@ -17,13 +17,31 @@ function safeExtension(name) {
   return ext ? `.${ext}` : ''
 }
 
+// Normaliza e valida uma URL de link. Prefixa https:// se faltar esquema.
+// Retorna a URL normalizada ou null se inválida.
+function normalizeUrl(raw) {
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+  try {
+    const u = new URL(withScheme)
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
+    return u.toString()
+  } catch {
+    return null
+  }
+}
+
 export default function AdminResources() {
   const [resources, setResources] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [kind, setKind] = useState('file') // 'file' | 'link'
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [file, setFile] = useState(null)
+  const [url, setUrl] = useState('')
+  const [body, setBody] = useState('')
   const [uploading, setUploading] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
 
@@ -32,7 +50,7 @@ export default function AdminResources() {
     setError(null)
     const { data, error: err } = await supabase
       .from('resources')
-      .select('id, title, description, file_path, file_name, content_type, size_bytes, created_at')
+      .select('id, title, description, url, body, file_path, file_name, content_type, size_bytes, created_at')
       .order('created_at', { ascending: false })
     if (err) { setError(err.message); setLoading(false); return }
     setResources(data ?? [])
@@ -40,13 +58,45 @@ export default function AdminResources() {
   }
   useEffect(() => { fetchData() }, [])
 
-  async function handleUpload(e) {
+  function resetForm(formEl) {
+    setTitle(''); setDescription(''); setFile(null); setUrl(''); setBody('')
+    if (formEl) formEl.reset() // limpa o input de arquivo antes de re-renderizar a lista
+  }
+
+  async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
     if (!supabase) { setError('Supabase não configurado.'); return }
     if (!title.trim()) { setError('Informe um título.'); return }
-    if (!file) { setError('Selecione um arquivo.'); return }
 
+    const formEl = e.target
+
+    if (kind === 'link') {
+      const normalized = normalizeUrl(url)
+      if (!normalized) { setError('Informe uma URL válida (ex: https://...).'); return }
+      setUploading(true)
+      try {
+        const { data: { user } = {} } = await supabase.auth.getUser()
+        const { error: insErr } = await supabase.from('resources').insert({
+          title: title.trim(),
+          description: description.trim() || null,
+          url: normalized,
+          body: body.trim() || null,
+          created_by: user?.id ?? null,
+        })
+        if (insErr) throw new Error(`Falha ao registrar link: ${insErr.message}`)
+        resetForm(formEl)
+        await fetchData()
+      } catch (err) {
+        setError(err.message)
+      } finally {
+        setUploading(false)
+      }
+      return
+    }
+
+    // kind === 'file'
+    if (!file) { setError('Selecione um arquivo.'); return }
     setUploading(true)
     try {
       const path = `resources/${crypto.randomUUID()}${safeExtension(file.name)}`
@@ -72,8 +122,7 @@ export default function AdminResources() {
         throw new Error(`Falha ao registrar recurso: ${insErr.message}`)
       }
 
-      setTitle(''); setDescription(''); setFile(null)
-      e.target.reset() // limpa o input de arquivo antes de re-renderizar a lista
+      resetForm(formEl)
       await fetchData()
     } catch (err) {
       setError(err.message)
@@ -88,8 +137,11 @@ export default function AdminResources() {
     setDeletingId(resource.id)
     setError(null)
     try {
-      const { error: stErr } = await supabase.storage.from('files').remove([resource.file_path])
-      if (stErr) throw new Error(`Falha ao remover arquivo: ${stErr.message}`)
+      // Link não tem objeto no storage — só remove o arquivo quando houver.
+      if (resource.file_path) {
+        const { error: stErr } = await supabase.storage.from('files').remove([resource.file_path])
+        if (stErr) throw new Error(`Falha ao remover arquivo: ${stErr.message}`)
+      }
       const { error: delErr } = await supabase.from('resources').delete().eq('id', resource.id)
       if (delErr) throw new Error(`Falha ao remover registro: ${delErr.message}`)
       await fetchData()
@@ -106,14 +158,28 @@ export default function AdminResources() {
         <p className="text-xs font-mono text-cyan uppercase tracking-wider">Recursos</p>
         <h1 className="text-2xl font-bold text-white mt-1">Materiais para participantes</h1>
         <p className="text-sm text-white/60 mt-1">
-          Disponível apenas para participantes com pagamento confirmado. Os arquivos ficam em armazenamento privado.
+          Disponível apenas para participantes com pagamento confirmado. Arquivos ficam em armazenamento privado; links abrem direto.
         </p>
       </div>
 
       {error && <div className="bg-hot/10 border border-hot/30 rounded-lg px-4 py-2.5 text-hot text-sm">{error}</div>}
 
-      <form onSubmit={handleUpload} className="card-glass rounded-2xl p-6 space-y-4">
+      <form onSubmit={handleSubmit} className="card-glass rounded-2xl p-6 space-y-4">
         <p className="text-xs font-mono text-electric uppercase tracking-wider">Novo material</p>
+
+        <div className="inline-flex rounded-lg border border-white/10 p-0.5 bg-white/5">
+          {[['file', 'Arquivo'], ['link', 'Link']].map(([value, label]) => (
+            <button
+              key={value} type="button" onClick={() => { setKind(value); setError(null) }}
+              className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${
+                kind === value ? 'bg-cyan/20 text-cyan' : 'text-white/50 hover:text-white/80'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div>
           <label className="text-xs text-white/60">Título</label>
           <input
@@ -130,18 +196,41 @@ export default function AdminResources() {
             className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan/50"
           />
         </div>
-        <div>
-          <label className="text-xs text-white/60">Arquivo</label>
-          <input
-            type="file" onChange={e => setFile(e.target.files?.[0] ?? null)}
-            className="w-full mt-1 text-sm text-white/70 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-cyan/20 file:text-cyan file:text-sm file:font-semibold hover:file:bg-cyan/30"
-          />
-        </div>
+
+        {kind === 'file' ? (
+          <div>
+            <label className="text-xs text-white/60">Arquivo</label>
+            <input
+              type="file" onChange={e => setFile(e.target.files?.[0] ?? null)}
+              className="w-full mt-1 text-sm text-white/70 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-cyan/20 file:text-cyan file:text-sm file:font-semibold hover:file:bg-cyan/30"
+            />
+          </div>
+        ) : (
+          <>
+            <div>
+              <label className="text-xs text-white/60">URL</label>
+              <input
+                type="text" value={url} onChange={e => setUrl(e.target.value)}
+                placeholder="https://drive.google.com/..."
+                className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan/50"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-white/60">Texto (opcional)</label>
+              <textarea
+                value={body} onChange={e => setBody(e.target.value)} rows={3}
+                placeholder="Instruções, contexto ou recado que acompanha o link"
+                className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan/50"
+              />
+            </div>
+          </>
+        )}
+
         <button
           type="submit" disabled={uploading}
           className="px-4 py-2 rounded-lg text-sm font-semibold bg-cyan/20 text-cyan border border-cyan/40 hover:bg-cyan/30 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {uploading ? 'Enviando...' : 'Adicionar material'}
+          {uploading ? 'Salvando...' : kind === 'link' ? 'Adicionar link' : 'Adicionar material'}
         </button>
       </form>
 
@@ -150,7 +239,7 @@ export default function AdminResources() {
           <thead className="bg-white/5 text-white/60 text-xs uppercase">
             <tr>
               <th className="text-left px-4 py-2">Título</th>
-              <th className="text-left px-4 py-2">Arquivo</th>
+              <th className="text-left px-4 py-2">Arquivo / Link</th>
               <th className="text-right px-4 py-2">Tamanho</th>
               <th className="text-left px-4 py-2">Enviado</th>
               <th className="text-right px-4 py-2"></th>
@@ -163,9 +252,18 @@ export default function AdminResources() {
                 <td className="px-4 py-2">
                   <p className="text-white font-medium">{r.title}</p>
                   {r.description && <p className="text-xs text-white/50 mt-0.5">{r.description}</p>}
+                  {r.body && <p className="text-xs text-white/40 mt-0.5 whitespace-pre-wrap">{r.body}</p>}
                 </td>
-                <td className="px-4 py-2 text-white/70 text-xs">{r.file_name || '—'}</td>
-                <td className="px-4 py-2 text-right text-white/70">{formatSize(r.size_bytes)}</td>
+                <td className="px-4 py-2 text-xs">
+                  {r.url ? (
+                    <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-cyan hover:underline break-all">
+                      {r.url}
+                    </a>
+                  ) : (
+                    <span className="text-white/70">{r.file_name || '—'}</span>
+                  )}
+                </td>
+                <td className="px-4 py-2 text-right text-white/70">{r.url ? '—' : formatSize(r.size_bytes)}</td>
                 <td className="px-4 py-2 text-white/50 text-xs">{r.created_at ? relativeTime(r.created_at) : '—'}</td>
                 <td className="px-4 py-2 text-right">
                   <button
