@@ -785,9 +785,47 @@ function PendingRequestsForTeam({ requests, onApprove, onReject, readOnly }) {
   )
 }
 
+// ─── LunchToggle ──────────────────────────────────────────────────────────────
+
+function LunchToggle({ lunchAt, onChange }) {
+  const [busy, setBusy] = useState(false)
+  const done = !!lunchAt
+
+  async function handleClick(e) {
+    e.stopPropagation()
+    if (busy) return
+    setBusy(true)
+    await onChange(!done)
+    setBusy(false)
+  }
+
+  const timeLabel = lunchAt
+    ? new Date(lunchAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    : null
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={busy}
+      title={done ? (timeLabel ? `Almoçou às ${timeLabel} — clique para desmarcar` : 'Almoçou') : 'Marcar que a equipe almoçou'}
+      className={`flex-shrink-0 self-stretch px-4 flex items-center gap-2 text-sm font-medium border-l transition-colors disabled:opacity-50 ${
+        done
+          ? 'bg-cyan/15 text-cyan border-cyan/30 hover:bg-cyan/25'
+          : 'bg-white/[0.02] text-white/40 border-white/10 hover:text-white/70 hover:bg-white/5'
+      }`}
+    >
+      <span className={`inline-flex items-center justify-center w-4 h-4 rounded border text-[10px] ${done ? 'bg-cyan/30 border-cyan/50' : 'border-white/30'}`}>
+        {done ? '✓' : ''}
+      </span>
+      <span className="whitespace-nowrap">🍽 Almoçou</span>
+    </button>
+  )
+}
+
 // ─── TeamCard ─────────────────────────────────────────────────────────────────
 
-function TeamCard({ team, idea, mentors, allTeamNames, expanded, onToggle, actions, readOnly, requests }) {
+function TeamCard({ team, idea, lunchAt, mentors, allTeamNames, expanded, onToggle, actions, readOnly, requests }) {
   const { name, members } = team
   const status = getTeamStatus(members)
   const confirmedCount = members.filter(m => m.payment_status === 'confirmed').length
@@ -808,9 +846,10 @@ function TeamCard({ team, idea, mentors, allTeamNames, expanded, onToggle, actio
 
   return (
     <div className="card-glass rounded-2xl overflow-hidden">
+      <div className="flex items-stretch">
       <button
         onClick={onToggle}
-        className="w-full text-left px-5 py-4 flex items-center gap-4 hover:bg-white/3 transition-colors"
+        className="flex-1 min-w-0 text-left px-5 py-4 flex items-center gap-4 hover:bg-white/3 transition-colors"
       >
         <StatusDot status={status} />
 
@@ -847,6 +886,8 @@ function TeamCard({ team, idea, mentors, allTeamNames, expanded, onToggle, actio
           ▼
         </span>
       </button>
+        <LunchToggle lunchAt={lunchAt} onChange={done => actions.toggleLunch(name, done)} />
+      </div>
 
       {expanded && (
         <div className="px-5 pb-5 space-y-3 border-t border-white/5 pt-4">
@@ -1173,7 +1214,7 @@ export default function AdminTeams({ readOnly, confirmedOnly }) {
         .order('created_at', { ascending: true }),
       supabase
         .from('teams')
-        .select('name, idea_description'),
+        .select('name, idea_description, lunch_at'),
       supabase
         .from('mentors')
         .select('id, name, email'),
@@ -1281,8 +1322,9 @@ export default function AdminTeams({ readOnly, confirmedOnly }) {
     const incomplete  = total - complete
     const solo        = individuals.length
     const pending     = requests.length
-    return { total, complete, incomplete, solo, pending }
-  }, [sortedTeamNames, teamsMap, individuals, requests])
+    const lunched     = sortedTeamNames.filter(n => (teamsMeta.find(t => t.name === n) || {}).lunch_at).length
+    return { total, complete, incomplete, solo, pending, lunched }
+  }, [sortedTeamNames, teamsMap, individuals, requests, teamsMeta])
 
   function toggleTeam(name) {
     setExpandedTeam(prev => (prev === name ? null : name))
@@ -1569,11 +1611,36 @@ export default function AdminTeams({ readOnly, confirmedOnly }) {
     await fetchData()
   }
 
+  async function toggleLunch(teamName, done) {
+    if (!supabase) return
+    const teamId = teamsMap[teamName]?.[0]?.team_id
+    if (!teamId) { alert('Erro: time sem identificador (team_id).'); return }
+    const prevMeta = teamsMeta
+    // Otimista: reflete na hora; reverte se a RPC falhar.
+    setTeamsMeta(prev => prev.map(t => (t.name === teamName ? { ...t, lunch_at: done ? new Date().toISOString() : null } : t)))
+    const { data, error: err } = await supabase.rpc('set_team_lunch', { p_team_id: teamId, p_done: done })
+    if (err) {
+      setTeamsMeta(prevMeta)
+      alert(`Erro ao marcar almoço: ${err.message}`)
+      return
+    }
+    setTeamsMeta(prev => prev.map(t => (t.name === teamName ? { ...t, lunch_at: data ?? null } : t)))
+    audit({
+      action: 'team.set_lunch',
+      actorType: 'admin',
+      targetTable: 'teams',
+      targetId: teamId,
+      newData: { lunch_at: done ? (data ?? 'now') : null },
+      metadata: { team_name: teamName },
+    })
+  }
+
   const actions = {
     moveMember,
     removeMember,
     promoteLeader,
     toggleRemote,
+    toggleLunch,
     openTransfer: setTransferSource,
     openRename: ({ teamName }) => setRenameTarget({ teamName }),
     openEditIdea: ({ teamName, idea }) => setEditIdeaTarget({ teamName, idea }),
@@ -1611,13 +1678,14 @@ export default function AdminTeams({ readOnly, confirmedOnly }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
         {[
           { label: 'Total de times',     value: stats.total,      color: 'text-electric' },
           { label: 'Times completos',    value: stats.complete,   color: 'text-cyan',    note: '6 membros' },
           { label: 'Times incompletos',  value: stats.incomplete, color: 'text-gold',    note: '< 6 membros' },
           { label: 'Individuais',        value: stats.solo,       color: 'text-white/60' },
           { label: 'Pedidos pendentes',  value: stats.pending,    color: 'text-cyan' },
+          { label: 'Almoçaram',          value: `${stats.lunched}/${stats.total}`, color: 'text-cyan' },
         ].map(stat => (
           <div key={stat.label} className="card-glass rounded-xl px-4 py-3">
             <div className={`text-2xl font-display font-bold ${stat.color}`}>{stat.value}</div>
@@ -1665,6 +1733,7 @@ export default function AdminTeams({ readOnly, confirmedOnly }) {
               key={name}
               team={{ name, members: teamsMap[name] }}
               idea={(teamsMeta.find(t => t.name === name) || {}).idea_description}
+              lunchAt={(teamsMeta.find(t => t.name === name) || {}).lunch_at}
               mentors={mentorsByTeamId.get(teamsMap[name]?.[0]?.team_id) || []}
               allTeamNames={sortedTeamNames}
               expanded={expandedTeam === name}
