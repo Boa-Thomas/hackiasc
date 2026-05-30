@@ -138,7 +138,7 @@ GRANT EXECUTE ON FUNCTION mentor_save_note(UUID, TEXT, TEXT, BOOLEAN, UUID, UUID
 DROP FUNCTION IF EXISTS admin_create_mentor(TEXT, TEXT, UUID);
 CREATE OR REPLACE FUNCTION admin_create_mentor(p_email TEXT, p_name TEXT)
 RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public AS $$
+SET search_path = public, extensions AS $$  -- pgcrypto (gen_random_bytes/crypt/gen_salt) vive em `extensions`
 DECLARE v_code TEXT; v_id UUID; v_rand BYTEA;
 BEGIN
   IF NOT is_admin() THEN RAISE EXCEPTION 'unauthorized'; END IF;
