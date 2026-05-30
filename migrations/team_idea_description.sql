@@ -69,7 +69,7 @@ BEGIN
         WHERE r.team_id = t.id AND r.payment_status = 'confirmed'
       ),
       'economic_axes', COALESCE((
-        SELECT json_agg(DISTINCT ax)
+        SELECT json_agg(DISTINCT ax ORDER BY ax)
         FROM registrations r2, unnest(r2.economic_axes) AS ax
         WHERE r2.team_id = t.id AND r2.payment_status = 'confirmed'
       ), '[]'::json)
