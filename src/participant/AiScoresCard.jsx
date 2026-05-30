@@ -26,6 +26,7 @@ export default function AiScoresCard({ token }) {
   if (state.loading || !state.visible) return null
 
   const rows = buildFaseScoreRows(state.scores)
+  const hasAnyScore = rows.some(r => r.score != null)
 
   return (
     <div className="card-glass rounded-2xl p-6">
@@ -50,9 +51,23 @@ export default function AiScoresCard({ token }) {
           </div>
         ))}
       </div>
-      <p className="text-[11px] text-text-muted mt-4 leading-relaxed">
-        Nota orientativa gerada por IA com base nos seus entregáveis. A avaliação oficial é feita pelos jurados.
-      </p>
+      {hasAnyScore ? (
+        // Algumas equipes questionam a nota. Ela é orientativa e sem justificativa
+        // aqui; o parecer completo da IA (o porquê de cada nota) fica com o mentor.
+        // Redirecionamos para o mentor em tom construtivo, não defensivo.
+        <div className="mt-4 rounded-xl bg-violet/5 border border-violet/20 px-4 py-3">
+          <p className="text-xs text-white/80 leading-relaxed">
+            💬 <strong className="text-violet">Achou a nota mais baixa do que esperava?</strong> Ela é
+            orientativa e automática — a avaliação que vale é a dos jurados. O seu mentor tem o
+            parecer completo da IA, com o motivo de cada nota e onde focar para melhorar.{' '}
+            <strong className="text-white">Procure seu mentor</strong> para conversar sobre os pontos.
+          </p>
+        </div>
+      ) : (
+        <p className="text-[11px] text-text-muted mt-4 leading-relaxed">
+          Nota orientativa gerada por IA com base nos seus entregáveis. A avaliação oficial é feita pelos jurados.
+        </p>
+      )}
     </div>
   )
 }
