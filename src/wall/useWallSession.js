@@ -89,4 +89,5 @@ export const PHASE_LABELS = {
   closed: 'Fechado',
   wall_open: 'Muro aberto',
   voting_open: 'Votação aberta',
+  results: 'Resultado',
 }

@@ -257,9 +257,14 @@ export default function WallParticipant({ participantAuth }) {
             <span className="font-mono text-lg text-gold">{votesLeft} <span className="text-white/40 text-sm">votos restantes</span></span>
           </div>
         )}
+        {phase === 'results' && (
+          <div className="card-glass rounded-2xl p-4 text-center">
+            <span className="text-white/70 text-sm">Votação encerrada. Veja o resultado no telão. 🏆</span>
+          </div>
+        )}
 
         {/* Lista de dores */}
-        {(phase === 'wall_open' || phase === 'voting_open') && (
+        {(phase === 'wall_open' || phase === 'voting_open' || phase === 'results') && (
           <div className="space-y-3">
             {loading && !pains.length && <p className="text-white/40 font-mono text-sm">Carregando...</p>}
             {!loading && !pains.length && (
@@ -379,6 +384,7 @@ function PhaseBadge({ phase }) {
     closed: 'text-white/50 border-white/20',
     wall_open: 'text-hot border-hot/40 bg-hot/10',
     voting_open: 'text-gold border-gold/40 bg-gold/10',
+    results: 'text-cyan border-cyan/40 bg-cyan/10',
   }
   return (
     <span className={`text-xs font-mono px-3 py-1 rounded-full border ${styles[phase] || styles.closed}`}>

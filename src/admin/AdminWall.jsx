@@ -6,6 +6,7 @@ const PHASES = [
   { id: 'closed', label: 'Fechado', help: 'Ninguém registra nem vota.' },
   { id: 'wall_open', label: 'Muro aberto', help: 'Participantes registram dores.' },
   { id: 'voting_open', label: 'Votação aberta', help: 'Participantes votam (até 3).' },
+  { id: 'results', label: 'Resultado', help: 'Votação encerrada. Telão revela o ranking. Ninguém vota.' },
 ]
 
 // Painel de moderacao do Muro de Dores. Alterna a fase global, lista dores
@@ -74,7 +75,7 @@ export default function AdminWall() {
       <div className="bg-white/5 border border-white/10 rounded-xl p-4">
         <h3 className="text-white font-semibold mb-1">Fase do muro</h3>
         <p className="text-white/50 text-xs mb-4">Controla o que os participantes podem fazer em <span className="font-mono">/#muro</span> e o que o telão (<span className="font-mono">/#telao</span>) exibe.</p>
-        <div className="grid sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {PHASES.map(p => (
             <button
               key={p.id}
