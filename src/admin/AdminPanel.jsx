@@ -42,6 +42,17 @@ export default function AdminPanel({ onLogout, role = 'viewer' }) {
         : ALL_TABS
   const [activeTab, setActiveTab] = useState(staffOnly ? 'wall' : checkinOnly ? 'checkin' : 'dashboard')
   const [selectedRegistrationId, setSelectedRegistrationId] = useState(null)
+  const [confirmedOnly, setConfirmedOnly] = useState(() => {
+    try { return localStorage.getItem('admin.confirmedOnly') !== 'false' } catch { return true }
+  })
+
+  function toggleConfirmedOnly() {
+    setConfirmedOnly(prev => {
+      const next = !prev
+      try { localStorage.setItem('admin.confirmedOnly', String(next)) } catch { /* ignore */ }
+      return next
+    })
+  }
 
   function handleViewRegistration(id) {
     setSelectedRegistrationId(id)
@@ -60,12 +71,28 @@ export default function AdminPanel({ onLogout, role = 'viewer' }) {
             {staffOnly && <span className="text-xs font-mono text-violet/60 border border-violet/20 px-2 py-0.5 rounded-full">equipe</span>}
           </h1>
 
-          <button
-            onClick={onLogout}
-            className="text-white/50 hover:text-hot text-sm transition-colors flex-shrink-0"
-          >
-            Sair
-          </button>
+          <div className="flex items-center gap-3 flex-shrink-0">
+            {!checkinOnly && !staffOnly && (
+              <button
+                onClick={toggleConfirmedOnly}
+                title="Mostrar apenas inscrições com pagamento confirmado (Inscrições e Times)"
+                className={`flex items-center gap-2 text-xs font-mono px-2.5 py-1 rounded-full border transition-colors ${
+                  confirmedOnly
+                    ? 'bg-cyan/15 text-cyan border-cyan/30'
+                    : 'bg-white/5 text-white/50 border-white/10 hover:text-white/70'
+                }`}
+              >
+                <span className={`inline-block w-2 h-2 rounded-full ${confirmedOnly ? 'bg-cyan' : 'bg-white/30'}`} />
+                Apenas confirmadas
+              </button>
+            )}
+            <button
+              onClick={onLogout}
+              className="text-white/50 hover:text-hot text-sm transition-colors"
+            >
+              Sair
+            </button>
+          </div>
         </div>
 
         <nav className="flex gap-1 mt-3 overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-0.5">
@@ -100,9 +127,10 @@ export default function AdminPanel({ onLogout, role = 'viewer' }) {
             onClearSelection={() => setSelectedRegistrationId(null)}
             onSelect={(id) => setSelectedRegistrationId(id)}
             readOnly={readOnly}
+            confirmedOnly={confirmedOnly}
           />
         )}
-        {activeTab === 'teams' && <AdminTeams readOnly={readOnly} />}
+        {activeTab === 'teams' && <AdminTeams readOnly={readOnly} confirmedOnly={confirmedOnly} />}
         {activeTab === 'deliverables' && <AdminDeliverables readOnly={readOnly} />}
         {activeTab === 'ranking' && <AdminRanking />}
         {activeTab === 'financeiro' && <AdminFinanceiro readOnly={readOnly} />}

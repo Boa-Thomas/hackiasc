@@ -879,7 +879,7 @@ function isStalePayment(r) {
   return r.payment_status === 'pending' && r.created_at && (new Date() - new Date(r.created_at)) > 3 * 86400000
 }
 
-function ListView({ registrations, onSelect, onRefetch, loading, readOnly }) {
+function ListView({ registrations, onSelect, onRefetch, loading, readOnly, confirmedOnly }) {
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [filterOccupation, setFilterOccupation] = useState('')
@@ -893,6 +893,7 @@ function ListView({ registrations, onSelect, onRefetch, loading, readOnly }) {
 
   const filtered = useMemo(() => {
     let data = registrations
+    if (confirmedOnly) data = data.filter(r => r.payment_status === 'confirmed')
     if (search.trim()) {
       const q = search.trim().toLowerCase()
       data = data.filter(r =>
@@ -904,7 +905,7 @@ function ListView({ registrations, onSelect, onRefetch, loading, readOnly }) {
     if (filterOccupation) data = data.filter(r => r.occupation_type === filterOccupation)
     if (filterModality) data = data.filter(r => r.inscription_modality === filterModality)
     return data
-  }, [registrations, search, filterStatus, filterOccupation, filterModality])
+  }, [registrations, confirmedOnly, search, filterStatus, filterOccupation, filterModality])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -997,6 +998,7 @@ function ListView({ registrations, onSelect, onRefetch, loading, readOnly }) {
           className="flex-1 min-w-[180px] bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-electric/50 transition-colors"
         />
 
+        {!confirmedOnly && (
         <select
           value={filterStatus}
           onChange={e => updateFilterStatus(e.target.value)}
@@ -1007,6 +1009,7 @@ function ListView({ registrations, onSelect, onRefetch, loading, readOnly }) {
           <option value="confirmed" className="text-dark bg-white">Confirmado</option>
           <option value="cancelled" className="text-dark bg-white">Cancelado</option>
         </select>
+        )}
 
         <select
           value={filterOccupation}
@@ -1166,7 +1169,7 @@ function ListView({ registrations, onSelect, onRefetch, loading, readOnly }) {
 
 // ─── Root component ───────────────────────────────────────────────────────────
 
-export default function AdminRegistrations({ selectedId, onClearSelection, onSelect, readOnly }) {
+export default function AdminRegistrations({ selectedId, onClearSelection, onSelect, readOnly, confirmedOnly }) {
   const [registrations, setRegistrations] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -1266,6 +1269,7 @@ export default function AdminRegistrations({ selectedId, onClearSelection, onSel
       onSelect={id => onSelect?.(id)}
       onRefetch={fetchRegistrations}
       readOnly={readOnly}
+      confirmedOnly={confirmedOnly}
     />
   )
 }
