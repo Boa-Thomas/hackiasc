@@ -5,6 +5,8 @@ import LearningDiary from '../participant/LearningDiary'
 import MentorNotes from './MentorNotes'
 import SectionMeta from '../participant/SectionMeta'
 import { relativeTime } from '../lib/relativeTime'
+import { aggregateTeamEvaluation, DELIVERABLE_UNITS } from '../lib/iaEvaluator'
+import AiEvaluationView from '../lib/AiEvaluationView'
 
 export default function MentorPanel({ auth }) {
   const { mentor, teams } = auth
@@ -16,6 +18,9 @@ export default function MentorPanel({ auth }) {
   const meta = team?.deliverable_meta
   // Notas só da equipe ativa (auth.notes traz todas as equipes do mentor).
   const teamNotes = (auth.notes || []).filter(n => n.team_id === team?.id)
+  // Avaliacoes da IA da equipe ativa (auth.evaluations traz todas as equipes do mentor).
+  const teamEvals = (auth.evaluations || []).filter(e => e.team_id === team?.id)
+  const agg = aggregateTeamEvaluation(teamEvals)
 
   return (
     <div className="min-h-screen bg-dark text-white bg-grid">
@@ -133,6 +138,46 @@ export default function MentorPanel({ auth }) {
             {sub === 'diary' && <div className="space-y-2"><SectionMeta meta={meta} field="learning_diary" /><LearningDiary readOnly value={team.learning_diary} /></div>}
             {sub === 'final' && <div className="space-y-2"><SectionMeta meta={meta} field="final_deliverables" /><DeliverableForm readOnly eyebrow="Fase 3 · Apresentação" title="Entregas finais" fields={FINAL_FIELDS} value={team.final_deliverables} gridClass="grid grid-cols-1 sm:grid-cols-2 gap-4"
               renderField={(f, ctx) => f.type === 'file-pdf' ? <MentorSlidesInfo deliverables={ctx.value} /> : null} /></div>}
+
+            {/* Avaliação da IA — completa para o mentor (nota + justificativa + parecer) */}
+            <div className="card-glass rounded-2xl p-6 space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <p className="text-xs font-mono text-gold uppercase tracking-wider">Avaliação da IA</p>
+                <span className="text-[10px] text-text-muted font-mono">avaliação automática · orientativa</span>
+              </div>
+
+              {teamEvals.length === 0 ? (
+                <p className="text-sm text-text-muted">A organização ainda não rodou a avaliação da IA desta equipe.</p>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between flex-wrap gap-2 bg-white/5 rounded-xl px-4 py-3">
+                    <span className="text-sm text-white/70">Nota IA agregada</span>
+                    <span className="font-mono text-gold text-sm">
+                      {agg.total_score != null
+                        ? `${agg.total_score} / 100`
+                        : agg.scoredCriteria > 0
+                          ? `parcial (${agg.scoredCriteria}/4 critérios)`
+                          : '—'}
+                      {agg.eliminated && <span className="ml-2 text-hot">⚠ eliminado</span>}
+                    </span>
+                  </div>
+
+                  {DELIVERABLE_UNITS.map(unit => {
+                    const ev = teamEvals.find(e => e.deliverable === unit.id)
+                    if (!ev) return null
+                    return (
+                      <div key={unit.id} className="border border-dark-border rounded-xl p-4">
+                        <AiEvaluationView evaluation={ev} label={unit.label} />
+                      </div>
+                    )
+                  })}
+
+                  <p className="text-[11px] text-text-muted leading-relaxed">
+                    Nota orientativa gerada por IA com base nos entregáveis da equipe. A avaliação oficial é feita pelos jurados.
+                  </p>
+                </>
+              )}
+            </div>
 
             <div className="card-glass rounded-2xl p-6 space-y-4">
               <div>
