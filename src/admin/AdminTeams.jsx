@@ -787,7 +787,7 @@ function PendingRequestsForTeam({ requests, onApprove, onReject, readOnly }) {
 
 // ─── TeamCard ─────────────────────────────────────────────────────────────────
 
-function TeamCard({ team, idea, allTeamNames, expanded, onToggle, actions, readOnly, requests }) {
+function TeamCard({ team, idea, mentors, allTeamNames, expanded, onToggle, actions, readOnly, requests }) {
   const { name, members } = team
   const status = getTeamStatus(members)
   const confirmedCount = members.filter(m => m.payment_status === 'confirmed').length
@@ -829,6 +829,14 @@ function TeamCard({ team, idea, allTeamNames, expanded, onToggle, actions, readO
                 {pendingCount} {pendingCount === 1 ? 'pedido' : 'pedidos'}
               </span>
             )}
+            {mentors?.length > 0 && (
+              <span
+                className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-violet/15 text-violet border border-violet/30 max-w-[220px] truncate"
+                title={mentors.map(m => m.name || m.email).join(', ')}
+              >
+                🎓 {mentors.length === 1 ? (mentors[0].name || mentors[0].email) : `${mentors.length} mentores`}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-3 mt-1">
             <ProfileComposition members={members} />
@@ -848,6 +856,21 @@ function TeamCard({ team, idea, allTeamNames, expanded, onToggle, actions, readO
               ? <p className="text-sm text-white/80 whitespace-pre-wrap">{idea}</p>
               : <p className="text-sm text-white/30 italic">{readOnly ? 'Sem descrição.' : 'Sem descrição — clique em "Editar descrição".'}</p>
             }
+          </div>
+          <div className="rounded-xl border border-violet/20 bg-violet/5 px-4 py-3">
+            <p className="text-[10px] font-mono uppercase tracking-wider text-violet/70 mb-2">Mentoria</p>
+            {mentors?.length ? (
+              <div className="flex flex-wrap gap-2">
+                {mentors.map(m => (
+                  <span key={m.id} className="inline-flex flex-col px-3 py-1.5 rounded-lg bg-violet/15 border border-violet/30">
+                    <span className="text-sm text-violet leading-tight">{m.name || m.email}</span>
+                    {m.name && <span className="text-[10px] text-violet/60 font-mono leading-tight">{m.email}</span>}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-white/30 italic">{readOnly ? 'Nenhum mentor atribuído.' : 'Nenhum mentor atribuído — atribua na aba Mentores.'}</p>
+            )}
           </div>
           {!readOnly && (
             <div className="flex flex-wrap gap-2">
@@ -1091,6 +1114,8 @@ export default function AdminTeams({ readOnly, confirmedOnly }) {
   const [search, setSearch] = useState('')
   const [expandedTeam, setExpandedTeam] = useState(null)
   const [transferSource, setTransferSource] = useState(null)
+  const [mentors, setMentors] = useState([])
+  const [mentorLinks, setMentorLinks] = useState([])
 
   const [renameTarget, setRenameTarget] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -1105,7 +1130,7 @@ export default function AdminTeams({ readOnly, confirmedOnly }) {
       return
     }
     setError(null)
-    const [{ data: regs, error: regErr }, { data: reqs, error: reqErr }, { data: teamRows }] = await Promise.all([
+    const [{ data: regs, error: regErr }, { data: reqs, error: reqErr }, { data: teamRows }, { data: mentorRows, error: mentorErr }, { data: linkRows, error: linkErr }] = await Promise.all([
       supabase
         .from('registrations')
         .select('id, full_name, email, phone, occupation_type, ai_experience_level, team_name, team_id, is_team_leader, inscription_modality, payment_status, ticket_price, ticket_tier, payment_method, payment_confirmed_at, transferred_to_id, transferred_from_id, transferred_at, created_at, is_remote')
@@ -1118,6 +1143,12 @@ export default function AdminTeams({ readOnly, confirmedOnly }) {
       supabase
         .from('teams')
         .select('name, idea_description'),
+      supabase
+        .from('mentors')
+        .select('id, name, email'),
+      supabase
+        .from('mentor_teams')
+        .select('mentor_id, team_id'),
     ])
 
     if (regErr) {
@@ -1128,6 +1159,15 @@ export default function AdminTeams({ readOnly, confirmedOnly }) {
       setRegistrations(regs ?? [])
       setRequests(reqs ?? [])
       setTeamsMeta(teamRows ?? [])
+      // Mentoria é informativa: se a leitura falhar, não derruba a visão de times.
+      if (mentorErr || linkErr) {
+        console.warn('[AdminTeams] Erro ao carregar mentores:', (mentorErr || linkErr).message)
+        setMentors([])
+        setMentorLinks([])
+      } else {
+        setMentors(mentorRows ?? [])
+        setMentorLinks(linkRows ?? [])
+      }
     }
     setLoading(false)
   }
@@ -1185,6 +1225,24 @@ export default function AdminTeams({ readOnly, confirmedOnly }) {
     }
     return map
   }, [requests])
+
+  // mentor[] por team_id, derivado de mentor_teams + mentors. A junção usa
+  // team_id (chave estável), então cada card resolve seus mentores pelo team_id
+  // de qualquer membro (registrations.team_id).
+  const mentorsByTeamId = useMemo(() => {
+    const map = new Map()
+    for (const { mentor_id, team_id } of mentorLinks) {
+      const m = mentors.find(x => x.id === mentor_id)
+      if (!m) continue
+      const list = map.get(team_id)
+      if (list) list.push(m)
+      else map.set(team_id, [m])
+    }
+    for (const list of map.values()) {
+      list.sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email))
+    }
+    return map
+  }, [mentors, mentorLinks])
 
   const stats = useMemo(() => {
     const total       = sortedTeamNames.length
@@ -1576,6 +1634,7 @@ export default function AdminTeams({ readOnly, confirmedOnly }) {
               key={name}
               team={{ name, members: teamsMap[name] }}
               idea={(teamsMeta.find(t => t.name === name) || {}).idea_description}
+              mentors={mentorsByTeamId.get(teamsMap[name]?.[0]?.team_id) || []}
               allTeamNames={sortedTeamNames}
               expanded={expandedTeam === name}
               onToggle={() => toggleTeam(name)}
