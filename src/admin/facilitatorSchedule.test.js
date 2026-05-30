@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { flattenSchedule, computeNowNext, neighborToSwap } from './facilitatorSchedule'
+import { flattenSchedule, computeNowNext, neighborToSwap, parseTime, formatTime, cascadeShift } from './facilitatorSchedule'
 
 const DAYS = [
   { day_key: 'sat', label: 'Sab', sort_order: 20 },
@@ -77,5 +77,70 @@ describe('neighborToSwap', () => {
 
   it('null para item inexistente', () => {
     expect(neighborToSwap(ITEMS, 'sat', 'zzz', 'up')).toBeNull()
+  })
+})
+
+describe('parseTime / formatTime', () => {
+  it('parseia HH:MM, HHhMM, HHh, HH', () => {
+    expect(parseTime('21:30')).toBe(1290)
+    expect(parseTime('21h30')).toBe(1290)
+    expect(parseTime('9h')).toBe(540)
+    expect(parseTime('09')).toBe(540)
+  })
+
+  it('retorna null para textual / vazio / invalido', () => {
+    expect(parseTime('madrugada')).toBeNull()
+    expect(parseTime('')).toBeNull()
+    expect(parseTime(null)).toBeNull()
+    expect(parseTime('25:00')).toBeNull()
+    expect(parseTime('10:75')).toBeNull()
+  })
+
+  it('formata minutos com mod 24h', () => {
+    expect(formatTime(1290)).toBe('21:30')
+    expect(formatTime(540)).toBe('09:00')
+    expect(formatTime(1500)).toBe('01:00') // 25:00 -> 01:00
+  })
+})
+
+describe('cascadeShift', () => {
+  const DAY = [
+    { id: 'a', day_key: 'fri', sort_order: 10, time: '19:00' },
+    { id: 'b', day_key: 'fri', sort_order: 20, time: '20:00' },
+    { id: 'c', day_key: 'fri', sort_order: 30, time: '21:00' },
+    { id: 'd', day_key: 'fri', sort_order: 40, time: 'madrugada' },
+    { id: 'e', day_key: 'fri', sort_order: 50, time: '23:00' },
+    { id: 'z', day_key: 'sat', sort_order: 10, time: '09:00' },
+  ]
+
+  it('desloca os seguintes do mesmo dia pelo delta (exemplo do usuario)', () => {
+    // 'b' de 20:00 -> 21:30 (delta +1:30). 'c' 21:00 -> 22:30.
+    const r = cascadeShift(DAY, 'fri', 'b', '20:00', '21:30')
+    expect(r.delta).toBe(90)
+    expect(r.updates).toEqual([
+      { id: 'c', time: '22:30' },
+      { id: 'e', time: '00:30' }, // 23:00 + 1:30 -> 00:30 (mod 24h)
+    ])
+    // 'd' (madrugada) foi pulado; 'a' (anterior) e 'z' (outro dia) intactos.
+  })
+
+  it('delta negativo desloca para tras', () => {
+    const r = cascadeShift(DAY, 'fri', 'a', '19:00', '18:30')
+    expect(r.delta).toBe(-30)
+    expect(r.updates).toEqual([
+      { id: 'b', time: '19:30' },
+      { id: 'c', time: '20:30' },
+      { id: 'e', time: '22:30' },
+    ])
+  })
+
+  it('sem cascata quando horario novo/antigo nao parseia ou delta zero', () => {
+    expect(cascadeShift(DAY, 'fri', 'b', '20:00', 'depois').updates).toEqual([])
+    expect(cascadeShift(DAY, 'fri', 'b', '20:00', '20:00').updates).toEqual([])
+    expect(cascadeShift(DAY, 'fri', 'd', 'madrugada', '02:00').updates).toEqual([])
+  })
+
+  it('ultimo bloco do dia nao tem seguintes', () => {
+    expect(cascadeShift(DAY, 'fri', 'e', '23:00', '23:30').updates).toEqual([])
   })
 })

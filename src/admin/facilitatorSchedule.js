@@ -43,3 +43,54 @@ export function neighborToSwap(items, dayKey, itemId, direction) {
   if (target < 0 || target >= inDay.length) return null
   return [inDay[idx], inDay[target]]
 }
+
+// "HH:MM" (ou "HHhMM"/"HHh"/"HH") -> minutos desde 00:00, ou null se nao parseavel.
+export function parseTime(t) {
+  if (!t) return null
+  const s = String(t).trim()
+  let m = s.match(/^(\d{1,2})[:h](\d{2})$/)
+  if (m) {
+    const h = +m[1]
+    const mn = +m[2]
+    return h < 24 && mn < 60 ? h * 60 + mn : null
+  }
+  m = s.match(/^(\d{1,2})h?$/)
+  if (m) {
+    const h = +m[1]
+    return h < 24 ? h * 60 : null
+  }
+  return null
+}
+
+// minutos -> "HH:MM" (mod 24h, pois o evento entra pela madrugada).
+export function formatTime(min) {
+  const v = ((Math.round(min) % 1440) + 1440) % 1440
+  const h = Math.floor(v / 60)
+  const mn = v % 60
+  return `${String(h).padStart(2, '0')}:${String(mn).padStart(2, '0')}`
+}
+
+// Ao mudar o horario de um bloco, calcula o deslocamento dos blocos SEGUINTES
+// do MESMO dia pelo mesmo delta (mantendo os intervalos). Blocos com horario
+// nao parseavel (texto) sao pulados. Retorna { delta (min) | null, updates:[{id,time}] }.
+export function cascadeShift(items, dayKey, editedId, oldTime, newTime) {
+  const oldM = parseTime(oldTime)
+  const newM = parseTime(newTime)
+  if (oldM === null || newM === null) return { delta: null, updates: [] }
+  const delta = newM - oldM
+  if (delta === 0) return { delta: 0, updates: [] }
+
+  const inDay = items
+    .filter((it) => it.day_key === dayKey)
+    .sort((a, b) => a.sort_order - b.sort_order)
+  const idx = inDay.findIndex((it) => it.id === editedId)
+  if (idx === -1) return { delta, updates: [] }
+
+  const updates = []
+  for (const it of inDay.slice(idx + 1)) {
+    const m = parseTime(it.time)
+    if (m === null) continue
+    updates.push({ id: it.id, time: formatTime(m + delta) })
+  }
+  return { delta, updates }
+}

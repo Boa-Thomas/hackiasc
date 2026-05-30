@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import { computeNowNext, neighborToSwap } from './facilitatorSchedule'
+import { computeNowNext, neighborToSwap, cascadeShift } from './facilitatorSchedule'
 import FacilitatorGuide from '../facilitator/FacilitatorGuide'
 
 const ACCENT = {
@@ -159,12 +159,36 @@ function NowNext({ days, items, onError, onChanged }) {
   )
 }
 
+// Formata um delta em minutos como "+1:30" / "−0:15".
+function fmtDelta(min) {
+  const sign = min < 0 ? '−' : '+'
+  const a = Math.abs(min)
+  return `${sign}${Math.floor(a / 60)}:${String(a % 60).padStart(2, '0')}`
+}
+
 function ScheduleEditor({ days, items, onError, onChanged }) {
   const itemsOf = (dayKey) => items.filter((it) => it.day_key === dayKey).sort((a, b) => a.sort_order - b.sort_order)
 
   async function patchItem(id, patch) {
     const { error: err } = await supabase.from('schedule_items').update(patch).eq('id', id)
     if (err) { onError(`Erro ao salvar: ${err.message}`); return }
+    await onChanged()
+  }
+
+  // Edita o horario de um bloco. Se houver blocos seguintes no mesmo dia com
+  // horario valido, oferece deslocar todos pelo mesmo delta (mantem intervalos).
+  async function changeTime(it, oldTime, rawNew) {
+    const newTime = rawNew.trim()
+    if (newTime === (it.time || '')) return
+    const { delta, updates } = cascadeShift(items, it.day_key, it.id, oldTime, newTime)
+    let toApply = [{ id: it.id, time: newTime }]
+    if (updates.length > 0 && window.confirm(`Deslocar os ${updates.length} bloco(s) seguintes de hoje em ${fmtDelta(delta)}? (mantém os intervalos)`)) {
+      toApply = toApply.concat(updates)
+    }
+    for (const u of toApply) {
+      const { error: err } = await supabase.from('schedule_items').update({ time: u.time }).eq('id', u.id)
+      if (err) { onError(`Erro ao salvar horário: ${err.message}`); return }
+    }
     await onChanged()
   }
 
@@ -205,7 +229,7 @@ function ScheduleEditor({ days, items, onError, onChanged }) {
   return (
     <div className="card-glass rounded-2xl p-5">
       <p className="text-xs font-mono text-violet uppercase tracking-wider mb-1">Cronograma (fonte única)</p>
-      <p className="text-white/40 text-xs mb-4">Edições aqui valem para a landing e o painel do participante. Os checks são internos.</p>
+      <p className="text-white/40 text-xs mb-4">Edições aqui valem para a landing e o painel do participante. Ao mudar um horário, os blocos seguintes do dia podem ser deslocados junto. Os checks são internos.</p>
 
       <div className="space-y-5">
         {days.map((day) => {
@@ -242,6 +266,7 @@ function ScheduleEditor({ days, items, onError, onChanged }) {
                     onMoveUp={() => move(day.day_key, it.id, 'up')}
                     onMoveDown={() => move(day.day_key, it.id, 'down')}
                     onPatch={(patch) => patchItem(it.id, patch)}
+                    onTimeChange={(oldT, newT) => changeTime(it, oldT, newT)}
                     onRemove={() => removeItem(it)}
                   />
                 ))}
@@ -260,9 +285,9 @@ function ScheduleEditor({ days, items, onError, onChanged }) {
   )
 }
 
-function ItemRow({ item, accent, isFirst, isLast, onToggleDone, onMoveUp, onMoveDown, onPatch, onRemove }) {
+function ItemRow({ item, accent, isFirst, isLast, onToggleDone, onMoveUp, onMoveDown, onPatch, onTimeChange, onRemove }) {
   function saveField(field, value) {
-    const v = field === 'time' || field === 'title' ? value.trim() : (value.trim() || null)
+    const v = field === 'title' ? value.trim() : (value.trim() || null)
     const cur = item[field] ?? (field === 'description' ? null : '')
     if (v === cur) return
     if (field === 'title' && !v) return
@@ -282,8 +307,9 @@ function ItemRow({ item, accent, isFirst, isLast, onToggleDone, onMoveUp, onMove
       </button>
 
       <input
+        key={`time-${item.id}-${item.time}`}
         defaultValue={item.time || ''}
-        onBlur={(e) => saveField('time', e.target.value)}
+        onBlur={(e) => onTimeChange(item.time || '', e.target.value)}
         placeholder="HH:MM"
         className={`mt-0.5 flex-shrink-0 w-16 bg-dark/40 border border-white/10 rounded px-2 py-1 font-mono text-xs ${accent.text} focus:outline-none focus:border-white/30`}
       />
