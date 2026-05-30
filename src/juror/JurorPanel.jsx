@@ -149,6 +149,18 @@ export default function JurorPanel() {
   }, [teams, scoreByTeam])
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  // Aviso ao sair com rascunho não salvo (o autosave local protege, mas reforça).
+  useEffect(() => {
+    function onBeforeUnload(e) {
+      if (Object.values(statusByTeam).some(s => s === 'draft')) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [statusByTeam])
+
   function goTo(id) {
     setExpandedId(id)
     requestAnimationFrame(() => {
@@ -315,6 +327,7 @@ export default function JurorPanel() {
             key={team.id}
             team={team}
             existing={scoreByTeam.get(team.id) || null}
+            token={token}
             expanded={expandedId === team.id}
             onToggle={toggle}
             onStatusChange={handleStatus}

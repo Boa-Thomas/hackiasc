@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { EDITAL_RUBRIC } from '../lib/iaEvaluator'
 
 const CRITERIA = EDITAL_RUBRIC.criteria
+const DRAFT_PREFIX = 'hackiasc_juror_draft_'
 
 // Faixa de desempenho por nota — cor + rótulo curtos, usados no slider, na
 // contribuição ponderada e no status. Espelha a leitura usual de rubrica.
@@ -30,6 +31,22 @@ function buildInitial(existing) {
     summary: existing?.summary || '',
     eliminated: existing?.eliminated === true,
   }
+}
+
+// Assinatura estável do formulário (compara rascunho local vs. estado salvo).
+function formSig(f) {
+  return JSON.stringify({
+    s: CRITERIA.map(c => [f.scores[c.key]?.score ?? '', f.scores[c.key]?.justification ?? '']),
+    summary: f.summary ?? '',
+    eliminated: !!f.eliminated,
+  })
+}
+function formEquals(a, b) { return formSig(a) === formSig(b) }
+
+function draftKey(token, teamId) { return `${DRAFT_PREFIX}${token || 'anon'}_${teamId}` }
+
+function fmtTime(iso) {
+  try { return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) } catch { return '' }
 }
 
 // Total ponderado prévio (espelha o cálculo server-side; o servidor é a fonte da verdade).
@@ -61,25 +78,154 @@ const STATUS_META = {
   pending: { dot: 'bg-white/25', label: 'Pendente', chip: 'text-text-muted border-white/10 bg-white/5' },
 }
 
-export default function JurorTeamCard({ team, existing, expanded, onToggle, onSubmit, onStatusChange }) {
-  const [form, setForm] = useState(() => buildInitial(existing))
+// -------------------------------------------------------------------------
+// TeamContext — bloco enxuto de contexto para o jurado julgar: ideia,
+// membros/eixos, entregas finais (Fase 3, com links) e transcrição do pitch.
+// Sem avaliação da IA por decisão de produto (julgamento independente).
+// -------------------------------------------------------------------------
+function TeamContext({ team }) {
+  const [showPitch, setShowPitch] = useState(false)
+  const members = team.members || []
+  const axes = team.economic_axes || []
+  const fd = team.final_deliverables || {}
+  const transcript = (team.pitch_transcript || '').trim()
+  const hasFinal = fd.repo_url || fd.deploy_url || fd.slides_path || fd.slides_url || (fd.proximos_passos || '').trim()
+  const hasAny = team.idea_description || members.length || axes.length || hasFinal || transcript
+  if (!hasAny) return null
+
+  return (
+    <div className="space-y-3 pb-1">
+      {/* Ideia / solução */}
+      {team.idea_description && (
+        <div className="rounded-xl border border-violet/20 bg-violet/5 px-4 py-3">
+          <p className="text-[10px] font-mono uppercase tracking-wider text-violet/70 mb-1">Ideia</p>
+          <p className="text-sm text-white/85 whitespace-pre-wrap leading-relaxed">{team.idea_description}</p>
+        </div>
+      )}
+
+      {/* Membros + eixos econômicos */}
+      {(members.length > 0 || axes.length > 0) && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {members.map((m, i) => (
+            <span key={`m${i}`} className="px-2.5 py-1 rounded-full text-[11px] bg-white/5 border border-white/10 text-white/70">
+              {m.full_name}{m.is_team_leader ? ' · líder' : ''}
+            </span>
+          ))}
+          {axes.map((a, i) => (
+            <span key={`a${i}`} className="px-2.5 py-1 rounded-full text-[11px] bg-electric/10 border border-electric/20 text-electric/90">
+              {a}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Entregas finais (Fase 3) */}
+      {hasFinal && (
+        <div className="rounded-xl border border-dark-border px-4 py-3">
+          <p className="text-[10px] font-mono uppercase tracking-wider text-text-muted mb-2">Entregas finais · Fase 3</p>
+          <div className="flex flex-col gap-1.5 text-sm">
+            {fd.repo_url && (
+              <a href={fd.repo_url} target="_blank" rel="noopener noreferrer" className="text-electric hover:underline break-all inline-flex items-center gap-1.5">
+                <span className="text-text-muted text-xs font-mono w-20 flex-shrink-0">repositório</span>{fd.repo_url}
+              </a>
+            )}
+            {fd.deploy_url && (
+              <a href={fd.deploy_url} target="_blank" rel="noopener noreferrer" className="text-cyan hover:underline break-all inline-flex items-center gap-1.5">
+                <span className="text-text-muted text-xs font-mono w-20 flex-shrink-0">deploy</span>{fd.deploy_url}
+              </a>
+            )}
+            {fd.slides_path ? (
+              <p className="text-white/70 inline-flex items-center gap-1.5">
+                <span className="text-text-muted text-xs font-mono w-20 flex-shrink-0">slides</span>
+                {fd.slides_name || 'slides.pdf'} <span className="text-text-muted text-xs">· PDF enviado</span>
+              </p>
+            ) : fd.slides_url ? (
+              <a href={fd.slides_url} target="_blank" rel="noopener noreferrer" className="text-electric hover:underline break-all inline-flex items-center gap-1.5">
+                <span className="text-text-muted text-xs font-mono w-20 flex-shrink-0">slides</span>{fd.slides_url}
+              </a>
+            ) : null}
+            {(fd.proximos_passos || '').trim() && (
+              <div className="flex gap-1.5">
+                <span className="text-text-muted text-xs font-mono w-20 flex-shrink-0 pt-0.5">próximos</span>
+                <span className="text-white/70 whitespace-pre-wrap">{fd.proximos_passos}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Transcrição do pitch (recolhível) */}
+      {transcript && (
+        <div className="rounded-xl border border-dark-border overflow-hidden">
+          <button type="button" onClick={() => setShowPitch(v => !v)} className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-white/[0.02] transition-colors">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-gold/80">Transcrição do pitch</span>
+            <span className="text-xs font-mono text-text-muted">{showPitch ? 'ocultar' : 'mostrar'}</span>
+          </button>
+          {showPitch && (
+            <p className="px-4 pb-3 text-sm text-white/70 whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto">{transcript}</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function JurorTeamCard({ team, existing, expanded, onToggle, onSubmit, onStatusChange, token }) {
+  // Estado-base + rascunho local (autosave). baseRef guarda o estado salvo no
+  // servidor; o rascunho do localStorage, se divergir, é restaurado na montagem.
+  // Estado-base + rascunho local computados uma única vez (useState lazy, sem
+  // ler ref durante o render). init.base = estado salvo; init.draft = rascunho.
+  const [init] = useState(() => {
+    const base = buildInitial(existing)
+    let draft = null
+    try {
+      const raw = localStorage.getItem(draftKey(token, team.id))
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed && parsed.form && !formEquals(parsed.form, base)) draft = parsed
+      }
+    } catch { /* private mode / corrupted draft */ }
+    return { base, draft }
+  })
+  // Baseline mutável (atualizada ao salvar no servidor); lida apenas em handlers.
+  const baselineRef = useRef(init.base)
+
+  const [form, setForm] = useState(() => init.draft?.form || init.base)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
   const [saved, setSaved] = useState(false)
-  const [dirty, setDirty] = useState(false)
+  const [dirty, setDirty] = useState(() => !!init.draft)
+  const [draftAt, setDraftAt] = useState(() => init.draft?.at || null)
+  const [restored, setRestored] = useState(() => !!init.draft)
   const [confirmElim, setConfirmElim] = useState(false)
 
   const savedTotal = existing?.total_score
   const preview = previewTotal(form.scores)
   const filled = filledCount(form.scores)
 
-  // Status do card para a navegação no painel: rascunho > avaliada > pendente.
   const status = dirty ? 'draft' : existing ? 'saved' : filled > 0 ? 'draft' : 'pending'
   const sm = STATUS_META[status]
 
   useEffect(() => {
     if (onStatusChange) onStatusChange(team.id, status)
   }, [status, team.id, onStatusChange])
+
+  // Autosave do rascunho no localStorage (debounce). Só persiste quando há
+  // alterações não salvas; some quando o jurado salva no servidor.
+  useEffect(() => {
+    if (!dirty) return undefined
+    const k = draftKey(token, team.id)
+    const id = setTimeout(() => {
+      const at = new Date().toISOString()
+      try { localStorage.setItem(k, JSON.stringify({ form, at })) } catch { /* ignore */ }
+      setDraftAt(at)
+    }, 700)
+    return () => clearTimeout(id)
+  }, [form, dirty, token, team.id])
+
+  function clearDraft() {
+    try { localStorage.removeItem(draftKey(token, team.id)) } catch { /* ignore */ }
+  }
 
   function setScore(key, field, value) {
     setSaved(false); setDirty(true)
@@ -116,9 +262,17 @@ export default function JurorTeamCard({ team, existing, expanded, onToggle, onSu
       setError(res.error?.includes('invalid_token') ? 'Sua sessão expirou. Reabra o link enviado pela organização.' : `Erro ao salvar: ${res.error}`)
       return
     }
-    setDirty(false)
+    // Salvo no servidor: o rascunho local deixa de ser necessário.
+    setDirty(false); setRestored(false); setDraftAt(null); clearDraft()
+    baselineRef.current = { scores: { ...form.scores }, summary: form.summary, eliminated: form.eliminated }
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
+  }
+
+  function discardDraft() {
+    setForm(baselineRef.current)
+    setDirty(false); setRestored(false); setDraftAt(null); clearDraft()
+    setSaved(false); setError(null)
   }
 
   // Eliminar só liga após confirmação explícita; desligar é direto.
@@ -173,9 +327,21 @@ export default function JurorTeamCard({ team, existing, expanded, onToggle, onSu
         </svg>
       </button>
 
-      {/* Corpo — formulário de avaliação */}
+      {/* Corpo — contexto + formulário de avaliação */}
       {expanded && (
         <div className="px-5 sm:px-6 pb-6 pt-1 space-y-5 border-t border-dark-border">
+          <TeamContext team={team} />
+
+          {/* Aviso de rascunho local restaurado */}
+          {restored && dirty && (
+            <div className="flex items-center justify-between gap-3 bg-gold/10 border border-gold/30 rounded-xl px-4 py-2.5">
+              <span className="text-xs text-gold/90">
+                Rascunho local restaurado{draftAt ? ` (salvo às ${fmtTime(draftAt)})` : ''}. Lembre-se de salvar no servidor.
+              </span>
+              <button type="button" onClick={discardDraft} className="text-xs font-mono text-white/60 hover:text-white underline flex-shrink-0">descartar</button>
+            </div>
+          )}
+
           <div className="space-y-4">
             {CRITERIA.map(c => {
               const raw = form.scores[c.key].score
@@ -275,7 +441,7 @@ export default function JurorTeamCard({ team, existing, expanded, onToggle, onSu
 
           {error && <div className="bg-hot/10 border border-hot/30 rounded-lg px-3 py-2 text-hot text-sm">{error}</div>}
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <button
               onClick={handleSave}
               disabled={saving}
@@ -283,8 +449,12 @@ export default function JurorTeamCard({ team, existing, expanded, onToggle, onSu
             >
               {saving ? 'Salvando...' : existing ? 'Atualizar notas' : 'Salvar notas'}
             </button>
-            {saved && <span className="text-sm text-cyan font-mono">✓ salvo</span>}
-            {!saved && dirty && <span className="text-sm text-gold font-mono">alterações não salvas</span>}
+            {saved && <span className="text-sm text-cyan font-mono">✓ salvo no servidor</span>}
+            {!saved && dirty && (
+              <span className="text-xs text-gold font-mono">
+                {draftAt ? `rascunho salvo localmente às ${fmtTime(draftAt)}` : 'alterações não salvas'}
+              </span>
+            )}
           </div>
         </div>
       )}
