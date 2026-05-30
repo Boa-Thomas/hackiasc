@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
 import TeamSection from './TeamSection'
 import EditProfile from './EditProfile'
 import DeliverablesSection from './DeliverablesSection'
@@ -93,6 +94,7 @@ export default function ParticipantPanel({ auth }) {
       </header>
 
       <main className="relative max-w-5xl mx-auto px-4 sm:px-6 py-8">
+        <AnnouncementBanner />
         {/* Status banner */}
         <div className="card-glass rounded-2xl p-5 mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -327,11 +329,21 @@ const ACCENT = {
 }
 
 function DetailedSchedule() {
+  const [days, setDays] = useState(SCHEDULE)
+  useEffect(() => {
+    if (!supabase) return
+    let active = true
+    supabase.rpc('get_public_schedule').then(({ data, error }) => {
+      if (!active || error || !Array.isArray(data) || data.length === 0) return
+      setDays(toParticipantSchedule(data))
+    })
+    return () => { active = false }
+  }, [])
   return (
     <div className="card-glass rounded-2xl p-6">
       <p className="text-xs font-mono text-violet uppercase tracking-wider mb-4">Cronograma Detalhado</p>
       <div className="space-y-3">
-        {SCHEDULE.map((day, idx) => {
+        {days.map((day, idx) => {
           const a = ACCENT[day.accent] || ACCENT.cyan
           return (
             <details key={day.day} open={idx === 0} className={`rounded-xl border ${a.border} bg-dark/60 overflow-hidden group`}>
@@ -435,4 +447,44 @@ function PaymentBadge({ status }) {
     )
   }
   return null
+}
+
+// Converte get_public_schedule (banco) para o formato do cronograma detalhado.
+function toParticipantSchedule(rows) {
+  return rows.map((d) => ({
+    day: d.label || '',
+    window: d.window || '',
+    accent: d.accent || 'cyan',
+    note: d.note || null,
+    items: (d.items || []).map((it) => ({
+      time: it.time || '',
+      activity: it.description ? `${it.title} — ${it.description}` : it.title,
+    })),
+  }))
+}
+
+// Aviso ao vivo publicado pela facilitadora (aba Facilitador). Polling leve.
+function AnnouncementBanner() {
+  const [aviso, setAviso] = useState(null)
+  useEffect(() => {
+    if (!supabase) return
+    let active = true
+    const load = () => supabase.rpc('get_active_announcement').then(({ data, error }) => {
+      if (!active || error) return
+      setAviso(data || null)
+    })
+    load()
+    const t = setInterval(load, 30000)
+    return () => { active = false; clearInterval(t) }
+  }, [])
+  if (!aviso) return null
+  return (
+    <div className="card-glass rounded-2xl px-5 py-4 mb-6 border border-gold/40 bg-gold/10 flex items-start gap-3">
+      <span className="text-gold text-lg flex-shrink-0" aria-hidden="true">📣</span>
+      <div>
+        <p className="text-xs font-mono text-gold/70 uppercase tracking-wider">Aviso da organização</p>
+        <p className="text-sm text-white/90 mt-1 leading-relaxed">{aviso.body}</p>
+      </div>
+    </div>
+  )
 }

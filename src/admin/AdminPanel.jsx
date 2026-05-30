@@ -12,9 +12,11 @@ import AdminJurors from './AdminJurors'
 import AdminWall from './AdminWall'
 import AdminRanking from './AdminRanking'
 import AdminResources from './AdminResources'
+import AdminFacilitator from './AdminFacilitator'
 
 const ALL_TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+  { id: 'facilitator', label: 'Facilitador', icon: '🎤', adminOnly: true },
   { id: 'registrations', label: 'Inscrições', icon: '📋' },
   { id: 'teams', label: 'Times', icon: '👥' },
   { id: 'deliverables', label: 'Entregas', icon: '📦' },
@@ -139,6 +141,7 @@ export default function AdminPanel({ onLogout, role = 'viewer' }) {
         {!readOnly && activeTab === 'jurors' && <AdminJurors />}
         {!readOnly && activeTab === 'wall' && <AdminWall />}
         {!readOnly && activeTab === 'resources' && <AdminResources />}
+        {!readOnly && activeTab === 'facilitator' && <AdminFacilitator />}
         {!readOnly && activeTab === 'checkin' && <AdminCheckin />}
         {!readOnly && activeTab === 'logs' && <AdminAuditLog />}
       </main>

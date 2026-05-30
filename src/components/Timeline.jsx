@@ -1,4 +1,11 @@
-const DAYS = [
+import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
+
+// Fonte de verdade do cronograma vive no banco (schedule_days/schedule_items),
+// editada na aba Facilitador e lida via RPC publica get_public_schedule(). Este
+// array e o FALLBACK: usado se o Supabase nao estiver configurado, falhar ou
+// ainda nao tiver dados — assim a landing nunca renderiza vazia.
+const FALLBACK_DAYS = [
   {
     day: 'Sexta',
     date: '29/05',
@@ -45,7 +52,34 @@ const DAYS = [
   },
 ]
 
+// Converte as linhas do banco (get_public_schedule) para o formato deste componente.
+// label "Sexta · 29/Mai" -> day "Sexta" + date "29/Mai".
+function toTimelineDays(rows) {
+  return rows.map((d) => {
+    const parts = (d.label || '').split('·').map((s) => s.trim())
+    return {
+      day: parts[0] || d.label || '',
+      date: parts[1] || '',
+      time: d.window || '',
+      color: d.accent || 'cyan',
+      events: (d.items || []).map((it) => ({ time: it.time || '', title: it.title, desc: it.description || '' })),
+    }
+  })
+}
+
 export default function Timeline() {
+  const [days, setDays] = useState(FALLBACK_DAYS)
+
+  useEffect(() => {
+    if (!supabase) return
+    let active = true
+    supabase.rpc('get_public_schedule').then(({ data, error }) => {
+      if (!active || error || !Array.isArray(data) || data.length === 0) return
+      setDays(toTimelineDays(data))
+    })
+    return () => { active = false }
+  }, [])
+
   return (
     <section id="cronograma" className="relative py-24 sm:py-32 bg-grid">
       <div className="orb w-[400px] h-[400px] bg-electric/10 top-0 right-0 animate-pulse-glow" />
@@ -59,7 +93,7 @@ export default function Timeline() {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
-          {DAYS.map(({ day, date, time, color, events }) => (
+          {days.map(({ day, date, time, color, events }) => (
             <div key={day} className="card-glass rounded-2xl overflow-hidden">
               {/* Day header */}
               <div className={`px-6 py-5 border-b border-dark-border bg-${color}/5`}>
