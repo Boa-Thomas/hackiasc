@@ -27,6 +27,7 @@ import ScrollToTop from './components/ScrollToTop'
 import JurorPanel from './juror/JurorPanel'
 import WallParticipant from './wall/WallParticipant'
 import WallScreen from './wall/WallScreen'
+import TeamsShowcase from './teams/TeamsShowcase'
 
 const PAYMENT_HASHES = ['#pagamento-sucesso', '#pagamento-erro', '#pagamento-pendente']
 const ADMIN_HASHES = ['#admin', '#admin-login']
@@ -146,6 +147,9 @@ export default function App() {
   }
   if (page === '#telao') {
     return <WallScreen />
+  }
+  if (page === '#vitrine') {
+    return <TeamsShowcase />
   }
 
   if (page === '#privacidade') {
