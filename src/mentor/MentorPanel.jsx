@@ -101,6 +101,12 @@ export default function MentorPanel({ auth }) {
                   Entregáveis · última edição por {team.updated_by_name} há {relativeTime(team.updated_at)}
                 </p>
               )}
+              {team.idea_description && (
+                <div className="mt-4 rounded-xl border border-violet/20 bg-violet/5 px-4 py-3">
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-violet/70 mb-1">Ideia</p>
+                  <p className="text-sm text-white/80 whitespace-pre-wrap">{team.idea_description}</p>
+                </div>
+              )}
             </div>
 
             <div className="card-glass rounded-2xl p-4">
