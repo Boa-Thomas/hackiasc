@@ -148,8 +148,15 @@ function CurrentTeamView({ profile, team, members, busy, onLeave, onTransfer, on
           <p className="text-sm text-text-muted mt-1">
             {members.length} {members.length === 1 ? 'integrante' : 'integrantes'} de até 6
           </p>
-          {team?.idea_description && (
+          {team?.idea_description ? (
             <p className="text-sm text-white/70 mt-2 max-w-xl whitespace-pre-wrap">{team.idea_description}</p>
+          ) : (
+            <div className="mt-3 max-w-xl rounded-xl border border-dashed border-electric/30 bg-electric/5 px-4 py-3">
+              <p className="text-sm text-white/50">
+                &#x1F4DD; Coloque aqui a descrição da sua solução — clique em{' '}
+                <span className="text-electric font-semibold">Editar equipe</span> para preencher.
+              </p>
+            </div>
           )}
         </div>
         <div className="flex flex-wrap gap-2">
@@ -202,7 +209,7 @@ function CurrentTeamView({ profile, team, members, busy, onLeave, onTransfer, on
               onChange={e => setEditIdea(e.target.value)}
               maxLength={500}
               rows={4}
-              placeholder="Em uma ou duas frases, qual é a ideia da equipe?"
+              placeholder="Coloque aqui a descrição da sua solução"
               className="w-full bg-dark border border-dark-border rounded-xl px-4 py-2.5 text-white text-sm placeholder-text-muted focus:outline-none focus:border-electric"
             />
             <p className="text-xs text-text-muted mt-1">{editIdea.length}/500</p>
