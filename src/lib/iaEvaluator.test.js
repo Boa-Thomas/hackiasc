@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   DELIVERABLE_UNITS,
   UNIT_BY_ID,
+  PITCH_AXES,
+  pitchSpeechMetrics,
   buildDeliverablePrompt,
   parseDeliverableEvaluation,
   aggregateTeamEvaluation,
@@ -139,5 +141,105 @@ describe('aggregateTeamEvaluation', () => {
   it('ignora linhas legadas sem deliverable', () => {
     const agg = aggregateTeamEvaluation([{ deliverable: null, scores: [{ criterion_key: 'tecnica_ia', score: 99 }] }])
     expect(agg.scoredCriteria).toBe(0)
+  })
+})
+
+describe('PITCH_AXES (eixos da cláusula 5.3)', () => {
+  it('tem os 3 eixos nomeados no edital, nesta ordem', () => {
+    expect(PITCH_AXES.map(a => a.key)).toEqual([
+      'consistencia_tecnica', 'tom_de_voz', 'viabilidade_mercadologica',
+    ])
+  })
+  it('só a fase3 cobre os eixos', () => {
+    expect(UNIT_BY_ID.fase3.hasAxes).toBe(true)
+    expect(UNIT_BY_ID.fase1.hasAxes).toBeFalsy()
+    expect(UNIT_BY_ID.fase2.hasAxes).toBeFalsy()
+  })
+})
+
+describe('pitchSpeechMetrics', () => {
+  it('calcula ritmo, pausa e fillers a partir de segments', () => {
+    const segments = [
+      { start: 0, end: 2, text: 'Nosso produto resolve né' },
+      { start: 3, end: 5, text: 'um problema real tipo enorme' },
+    ]
+    const m = pitchSpeechMetrics(segments)
+    expect(m.words).toBe(9)
+    expect(m.durationSec).toBe(5)
+    expect(m.fillerCount).toBe(2)
+    expect(m.wordsPerMin).toBe(108)
+    expect(m.avgPauseSec).toBe(1)
+  })
+  it('retorna null sem segments', () => {
+    expect(pitchSpeechMetrics(null)).toBeNull()
+    expect(pitchSpeechMetrics([])).toBeNull()
+  })
+  it('não quebra com 1 segmento (sem pausa)', () => {
+    const m = pitchSpeechMetrics([{ start: 0, end: 4, text: 'oi tudo bem pessoal' }])
+    expect(m.words).toBe(4)
+    expect(m.avgPauseSec).toBe(0)
+  })
+})
+
+describe('buildDeliverablePrompt (fase3 com transcrição e eixos)', () => {
+  const TEAM3 = {
+    ...TEAM,
+    pitch_transcript: 'Boa noite, somos a Nimbus e usamos IA para o setor têxtil.',
+    pitch_segments: [{ start: 0, end: 4, text: 'Boa noite somos a Nimbus' }],
+  }
+  it('injeta transcrição, métricas e os 3 eixos no schema', () => {
+    const p = buildDeliverablePrompt({ unit: UNIT_BY_ID.fase3, team: TEAM3, members: MEMBERS })
+    expect(p).toContain('Boa noite, somos a Nimbus')
+    expect(p).toContain('palavras/min')
+    expect(p).toContain('consistencia_tecnica')
+    expect(p).toContain('tom_de_voz')
+    expect(p).toContain('viabilidade_mercadologica')
+    expect(p).toContain('"axes"')
+  })
+  it('sinaliza ausência de transcrição', () => {
+    const p = buildDeliverablePrompt({ unit: UNIT_BY_ID.fase3, team: TEAM, members: MEMBERS })
+    expect(p).toContain('sem transcrição do pitch')
+  })
+})
+
+describe('parseDeliverableEvaluation (fase3 com eixos)', () => {
+  const validFase3 = (over = {}) => JSON.stringify({
+    scores: [
+      { criterion_key: 'tecnica_ia', score: 70, justification: 'a' },
+      { criterion_key: 'escala_negocio', score: 60, justification: 'b' },
+      { criterion_key: 'pitch_equipe', score: 80, justification: 'c' },
+    ],
+    axes: {
+      consistencia_tecnica: { score: 75, justification: 'ct' },
+      tom_de_voz: { score: 65, justification: 'tv' },
+      viabilidade_mercadologica: { score: 55, justification: 'vm' },
+    },
+    eliminated: false, summary: 's', model: 'm',
+    ...over,
+  })
+
+  it('aceita scores + axes e normaliza os eixos', () => {
+    const r = parseDeliverableEvaluation(validFase3(), UNIT_BY_ID.fase3)
+    expect(r.scores).toHaveLength(3)
+    expect(r.axes.map(a => a.key)).toEqual(['consistencia_tecnica', 'tom_de_voz', 'viabilidade_mercadologica'])
+    expect(r.axes[0]).toMatchObject({ key: 'consistencia_tecnica', label: 'Consistência técnica', score: 75 })
+  })
+
+  it('rejeita eixo faltando', () => {
+    const json = validFase3({ axes: { consistencia_tecnica: { score: 75 }, tom_de_voz: { score: 65 } } })
+    expect(() => parseDeliverableEvaluation(json, UNIT_BY_ID.fase3)).toThrow(/eixo/i)
+  })
+
+  it('rejeita score de eixo fora de 0–100', () => {
+    const json = validFase3({ axes: {
+      consistencia_tecnica: { score: 120 }, tom_de_voz: { score: 65 }, viabilidade_mercadologica: { score: 55 },
+    } })
+    expect(() => parseDeliverableEvaluation(json, UNIT_BY_ID.fase3)).toThrow(/0 a 100/)
+  })
+
+  it('fase1/fase2 ignoram axes (não exigem nem retornam)', () => {
+    const json = JSON.stringify({ scores: [{ criterion_key: 'validacao_problema', score: 80 }], axes: { foo: { score: 1 } } })
+    const r = parseDeliverableEvaluation(json, UNIT_BY_ID.fase1)
+    expect(r.axes).toBeUndefined()
   })
 })

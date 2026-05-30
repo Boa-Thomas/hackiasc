@@ -4,7 +4,8 @@
 // Claude e cola o JSON de volta, que é parseado e gravado em `team_evaluations`
 // (1 linha por equipe × entregável, evaluator_type='ai', deliverable setado).
 // `aggregateTeamEvaluation` combina os entregáveis na nota IA da equipe.
-// Nada de API key/Whisper: o input/output da informação é feito pelo operador.
+// A Fase 3 incorpora a transcrição do pitch (gravada pela edge fn transcribe-pitch)
+// e os 3 eixos da cláusula 5.3. Este módulo não faz chamadas de API: o I/O é do operador.
 
 import { HYPOTHESES_FIELDS, SLC_IA_FIELDS, FINAL_FIELDS } from '../participant/deliverableFields'
 
@@ -48,6 +49,19 @@ export const EDITAL_RUBRIC = {
 
 const CRIT_BY_KEY = Object.fromEntries(EDITAL_RUBRIC.criteria.map(c => [c.key, c]))
 
+// Eixos nomeados na cláusula 5.3 do edital, avaliados a partir da transcrição do
+// pitch. São análise/feedback — NÃO entram na soma ponderada (cl. 6 segue sendo o
+// total da menção IA). Consistência técnica e viabilidade mercadológica dialogam com
+// tecnica_ia/escala_negocio; tom de voz é a dimensão de entrega que só o pitch revela.
+export const PITCH_AXES = [
+  { key: 'consistencia_tecnica', label: 'Consistência técnica',
+    describe: 'O discurso é tecnicamente coerente e condizente com a solução construída? A IA descrita bate com o que foi entregue? Sem contradições nem exageros não sustentados.' },
+  { key: 'tom_de_voz', label: 'Tom de voz',
+    describe: 'Clareza, confiança e ritmo da fala; segurança nas respostas; ausência de leitura robótica ou excesso de muletas. Avaliado pela transcrição + métricas de fala; sem áudio, sinalize a limitação na justificativa.' },
+  { key: 'viabilidade_mercadologica', label: 'Viabilidade mercadológica',
+    describe: 'O pitch convence que há mercado, modelo de receita e caminho de tração? Tese de negócio crível e vendável.' },
+]
+
 // Unidades de avaliação por entregável. `criteria` = subconjunto do edital avaliado
 // naquele entregável (um critério pode aparecer em + de uma unidade; a agregação
 // faz a média entre as unidades que o pontuam).
@@ -65,7 +79,7 @@ export const DELIVERABLE_UNITS = [
   {
     id: 'fase3', label: 'Fase 3 · Entregas + Pitch', phase: 'Apresentação',
     source: 'final_deliverables', fields: FINAL_FIELDS, includesDiary: false,
-    showsPitchNotes: true, criteria: ['tecnica_ia', 'escala_negocio', 'pitch_equipe'],
+    showsPitchNotes: true, hasAxes: true, criteria: ['tecnica_ia', 'escala_negocio', 'pitch_equipe'],
   },
 ]
 export const UNIT_BY_ID = Object.fromEntries(DELIVERABLE_UNITS.map(u => [u.id, u]))
@@ -104,15 +118,54 @@ function renderUnitRubric(unit) {
     .join('\n')
 }
 
+// Métricas de fala derivadas dos segments do Whisper — proxy honesto para "tom de
+// voz" (a transcrição perde prosódia). Função pura; retorna null sem segments.
+const PT_FILLERS = new Set(['né', 'tipo', 'então', 'assim', 'hum', 'aí', 'sabe'])
+export function pitchSpeechMetrics(segments) {
+  if (!Array.isArray(segments) || segments.length === 0) return null
+  const tokens = segments.flatMap(s => String(s.text || '').toLowerCase().match(/[\p{L}\p{N}]+/gu) || [])
+  const words = tokens.length
+  const first = segments[0]
+  const last = segments[segments.length - 1]
+  const durationSec = Math.max(0, Math.round((Number(last.end) || 0) - (Number(first.start) || 0)))
+  const wordsPerMin = durationSec > 0 ? Math.round((words / durationSec) * 60) : 0
+  let pauseSum = 0
+  let pauseN = 0
+  for (let i = 1; i < segments.length; i++) {
+    const gap = (Number(segments[i].start) || 0) - (Number(segments[i - 1].end) || 0)
+    if (gap >= 0) { pauseSum += gap; pauseN++ }
+  }
+  const avgPauseSec = pauseN ? Math.round((pauseSum / pauseN) * 10) / 10 : 0
+  const fillerCount = tokens.filter(t => PT_FILLERS.has(t)).length
+  const fillerRate = words ? Math.round((fillerCount / words) * 1000) / 10 : 0
+  return { words, durationSec, wordsPerMin, avgPauseSec, fillerCount, fillerRate }
+}
+
+function renderSpeechMetrics(m) {
+  if (!m) return '_(sem métricas de fala — transcrição sem segmentos)_'
+  return [
+    `- Ritmo: ${m.wordsPerMin} palavras/min (${m.words} palavras em ${m.durationSec}s)`,
+    `- Pausa média entre trechos: ${m.avgPauseSec}s`,
+    `- Muletas linguísticas: ${m.fillerCount} (${m.fillerRate}% das palavras)`,
+  ].join('\n')
+}
+
+function renderAxesRubric() {
+  return PITCH_AXES.map(a => `- \`${a.key}\` — **${a.label}**: ${a.describe}`).join('\n')
+}
+
 function unitOutputExample(unit) {
   const scores = unit.criteria
     .map(k => `    { "criterion_key": "${k}", "score": 0, "justification": "..." }`)
     .join(',\n')
   const elim = unit.criteria.includes('tecnica_ia') ? '\n  "eliminated": false,' : ''
+  const axes = unit.hasAxes
+    ? `\n  "axes": {\n${PITCH_AXES.map(a => `    "${a.key}": { "score": 0, "justification": "..." }`).join(',\n')}\n  },`
+    : ''
   return `{
   "scores": [
 ${scores}
-  ],${elim}
+  ],${elim}${axes}
   "summary": "Parecer do entregável em 2-4 frases, citando evidências.",
   "model": "claude-opus-4-x"
 }`
@@ -122,7 +175,7 @@ ${scores}
  * Monta o pacote (markdown) para avaliar UM entregável da equipe.
  * @param {object} params
  * @param {object} params.unit  entrada de DELIVERABLE_UNITS
- * @param {object} params.team  linha de `teams`
+ * @param {object} params.team  linha de `teams` (na fase3 lê pitch_transcript/pitch_segments)
  * @param {Array}  params.members
  * @param {Array}  params.mentorNotes  notas públicas do mentor [{ phase, body }]
  * @param {string} params.pitchNotes  observações do pitch (só usado se unit.showsPitchNotes)
@@ -140,8 +193,14 @@ export function buildDeliverablePrompt({ unit, team, members = [], mentorNotes =
   if (unit.includesDiary) {
     deliverableBlock += `\n### Diário de Aprendizado (ciclos BML)\n${renderDiary(team.learning_diary)}\n`
   }
+  if (unit.hasAxes) {
+    const transcript = (team.pitch_transcript || '').trim()
+    const metrics = pitchSpeechMetrics(team.pitch_segments)
+    deliverableBlock += `\n### Transcrição do pitch (Whisper)\n${transcript || '_(sem transcrição do pitch — avalie "tom de voz" com cautela e sinalize a ausência na justificativa)_'}\n`
+    deliverableBlock += `\n### Métricas de fala (derivadas da transcrição)\n${renderSpeechMetrics(metrics)}\n`
+  }
   if (unit.showsPitchNotes) {
-    deliverableBlock += `\n### Observações do operador sobre o pitch / demo ao vivo\n${pitchNotes && pitchNotes.trim() ? pitchNotes.trim() : '_(o operador não registrou observações do pitch — avalie o critério "Pitch e Equipe" com cautela, sinalizando a ausência de dados na justificativa)_'}\n`
+    deliverableBlock += `\n### Observações do operador sobre o pitch / demo ao vivo (complemento)\n${pitchNotes && pitchNotes.trim() ? pitchNotes.trim() : '_(sem observações do operador)_'}\n`
   }
 
   const hasElim = unit.criteria.includes('tecnica_ia')
@@ -169,14 +228,18 @@ ${mentorNotes.length ? mentorNotes.map(n => `- [${n.phase || 'geral'}] ${n.body}
 
 ## Critérios deste entregável (rubrica do edital)
 ${renderUnitRubric(unit)}
-
+${unit.hasAxes ? `
+## Eixos da cláusula 5.3 (analisados a partir do pitch)
+${renderAxesRubric()}
+` : ''}
 ## Como pontuar
 - Dê a **cada critério acima** uma nota de **0 a 100** (qualidade dentro daquele critério, neste entregável).
 - Avalie SOMENTE os critérios listados — não pontue critérios de outras fases.
 - Justifique cada nota citando **evidências concretas** do conteúdo acima. Campos vazios indicam falta de
   entrega: trate como lacuna, não presuma que está pronto.${hasElim ? `
 - O critério **Execução Técnica e IA** é ELIMINATÓRIO: defina \`eliminated: true\` apenas se a IA não roda de
-  verdade / não há solução funcional e deployable. Explique no \`summary\`.` : ''}
+  verdade / não há solução funcional e deployable. Explique no \`summary\`.` : ''}${unit.hasAxes ? `
+- Pontue também os **3 eixos da cláusula 5.3** (0–100 cada) a partir da transcrição e das métricas de fala. Para "tom de voz", se não houver transcrição, sinalize a limitação.` : ''}
 
 ## Formato de saída (responda SOMENTE com este JSON)
 \`\`\`json
@@ -208,7 +271,7 @@ function extractJson(text) {
  * Valida/normaliza o JSON colado para UM entregável. Lança Error (PT-BR) se inválido.
  * @param {string} text
  * @param {object} unit  entrada de DELIVERABLE_UNITS
- * @returns {{ scores: Array, total_score: number, eliminated: boolean, summary: string, model: string|null }}
+ * @returns {{ scores: Array, axes: Array|undefined, total_score: number, eliminated: boolean, summary: string, model: string|null }}
  */
 export function parseDeliverableEvaluation(text, unit) {
   if (!unit) throw new Error('Unidade de avaliação inválida.')
@@ -254,8 +317,29 @@ export function parseDeliverableEvaluation(text, unit) {
   const total_score = Math.round(mean * 10) / 10
 
   const coversElim = expected.includes('tecnica_ia')
+
+  // Eixos da cláusula 5.3 (só em unidades com hasAxes — fase3). São feedback; não
+  // entram na soma ponderada (cl. 6 segue sendo o total).
+  let axesScores
+  if (unit.hasAxes) {
+    const rawAxes = raw.axes
+    if (!rawAxes || typeof rawAxes !== 'object' || Array.isArray(rawAxes)) {
+      throw new Error('O JSON deste entregável precisa de um objeto "axes" com os 3 eixos da cláusula 5.3.')
+    }
+    axesScores = PITCH_AXES.map(a => {
+      const v = rawAxes[a.key]
+      if (!v || typeof v !== 'object') throw new Error(`Falta o eixo "${a.label}" em "axes".`)
+      const score = Number(v.score)
+      if (!Number.isFinite(score) || score < 0 || score > 100) {
+        throw new Error(`Nota inválida no eixo "${a.label}": deve ser número de 0 a 100.`)
+      }
+      return { key: a.key, label: a.label, score, justification: typeof v.justification === 'string' ? v.justification.trim() : '' }
+    })
+  }
+
   return {
     scores,
+    axes: axesScores,
     total_score,
     eliminated: coversElim ? raw.eliminated === true : false,
     summary: typeof raw.summary === 'string' ? raw.summary.trim() : '',
