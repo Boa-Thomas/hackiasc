@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { audit } from '../lib/auditLog'
 import TransferTicketModal from './TransferTicketModal'
+import { cleanIdeaDescription, IDEA_MAX_LENGTH } from './teamIdea'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -233,6 +234,57 @@ function RenameTeamModal({ teamName, existingNames, onConfirm, onCancel }) {
             className="flex-1 py-2 rounded-lg text-sm font-medium bg-electric/20 text-electric hover:bg-electric/30 border border-electric/30 transition-colors disabled:opacity-50"
           >
             {busy ? 'Salvando...' : 'Renomear'}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
+  )
+}
+
+// ─── EditIdeaModal ─────────────────────────────────────────────────
+
+function EditIdeaModal({ teamName, currentIdea, onConfirm, onCancel }) {
+  const [idea, setIdea] = useState(currentIdea || '')
+  const [error, setError] = useState(null)
+  const [busy, setBusy] = useState(false)
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    const { value, error: cleanErr } = cleanIdeaDescription(idea)
+    if (cleanErr === 'idea_too_long') return setError('Descrição muito longa (máx 500).')
+    setBusy(true)
+    onConfirm(value)
+  }
+
+  return (
+    <ModalShell title={<>Editar descrição de <span className="text-electric">{teamName}</span></>} onClose={onCancel}>
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <textarea
+          value={idea}
+          onChange={e => { setIdea(e.target.value); setError(null) }}
+          maxLength={IDEA_MAX_LENGTH}
+          rows={4}
+          autoFocus
+          placeholder="Coloque aqui a descrição da sua solução"
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-electric/50 focus:ring-1 focus:ring-electric/30 transition-colors resize-none"
+        />
+        <p className="text-xs text-white/40">{idea.length}/{IDEA_MAX_LENGTH}</p>
+        {error && <p className="text-hot text-xs">{error}</p>}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={busy}
+            className="flex-1 py-2 rounded-lg text-sm font-medium bg-white/5 text-white/60 hover:text-white hover:bg-white/10 border border-white/10 transition-colors disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={busy}
+            className="flex-1 py-2 rounded-lg text-sm font-medium bg-electric/20 text-electric hover:bg-electric/30 border border-electric/30 transition-colors disabled:opacity-50"
+          >
+            {busy ? 'Salvando...' : 'Salvar'}
           </button>
         </div>
       </form>
@@ -786,12 +838,13 @@ function TeamCard({ team, idea, allTeamNames, expanded, onToggle, actions, readO
 
       {expanded && (
         <div className="px-5 pb-5 space-y-3 border-t border-white/5 pt-4">
-          {idea && (
-            <div className="rounded-xl border border-electric/20 bg-electric/5 px-4 py-3">
-              <p className="text-[10px] font-mono uppercase tracking-wider text-electric/70 mb-1">Ideia</p>
-              <p className="text-sm text-white/80 whitespace-pre-wrap">{idea}</p>
-            </div>
-          )}
+          <div className="rounded-xl border border-electric/20 bg-electric/5 px-4 py-3">
+            <p className="text-[10px] font-mono uppercase tracking-wider text-electric/70 mb-1">Ideia</p>
+            {idea
+              ? <p className="text-sm text-white/80 whitespace-pre-wrap">{idea}</p>
+              : <p className="text-sm text-white/30 italic">Sem descrição — clique em "Editar descrição".</p>
+            }
+          </div>
           {!readOnly && (
             <div className="flex flex-wrap gap-2">
               {members.length < 6 && (
@@ -807,6 +860,12 @@ function TeamCard({ team, idea, allTeamNames, expanded, onToggle, actions, readO
                 className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/5 text-white/70 hover:bg-white/10 hover:text-white border border-white/10 transition-colors"
               >
                 Editar nome
+              </button>
+              <button
+                onClick={() => actions.openEditIdea({ teamName: name, idea })}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-electric/10 text-electric/80 hover:bg-electric/20 hover:text-electric border border-electric/20 transition-colors"
+              >
+                Editar descrição
               </button>
               <button
                 onClick={() => actions.openDelete({ teamName: name, memberCount: members.length, pendingCount })}
@@ -1032,6 +1091,7 @@ export default function AdminTeams({ readOnly, confirmedOnly }) {
   const [renameTarget, setRenameTarget] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [addMemberTarget, setAddMemberTarget] = useState(null)
+  const [editIdeaTarget, setEditIdeaTarget] = useState(null)
   const [createOpen, setCreateOpen] = useState(false)
 
   async function fetchData() {
@@ -1250,6 +1310,28 @@ export default function AdminTeams({ readOnly, confirmedOnly }) {
     await fetchData()
   }
 
+  async function updateTeamIdea(teamName, idea) {
+    if (!supabase) return
+    const teamId = teamsMap[teamName]?.[0]?.team_id
+    if (!teamId) { alert('Erro ao salvar: time sem identificador (team_id). Aplique a migração de teams.'); return }
+    const oldIdea = (teamsMeta.find(t => t.name === teamName) || {}).idea_description ?? null
+    const { error: err } = await supabase
+      .from('teams')
+      .update({ idea_description: idea })
+      .eq('id', teamId)
+    if (err) { alert(`Erro ao salvar descrição: ${err.message}`); return }
+    audit({
+      action: 'team.update_idea',
+      actorType: 'admin',
+      targetTable: 'teams',
+      targetId: teamId,
+      oldData: { idea_description: oldIdea },
+      newData: { idea_description: idea },
+    })
+    setEditIdeaTarget(null)
+    await fetchData()
+  }
+
   async function deleteTeam(teamName) {
     if (!supabase) return
     const { error: regErr } = await supabase
@@ -1401,6 +1483,7 @@ export default function AdminTeams({ readOnly, confirmedOnly }) {
     toggleRemote,
     openTransfer: setTransferSource,
     openRename: ({ teamName }) => setRenameTarget({ teamName }),
+    openEditIdea: ({ teamName, idea }) => setEditIdeaTarget({ teamName, idea }),
     openDelete: ({ teamName, memberCount, pendingCount }) =>
       setDeleteTarget({ teamName, memberCount, pendingCount }),
     openAddMember: ({ teamName, currentMemberCount }) =>
@@ -1535,6 +1618,15 @@ export default function AdminTeams({ readOnly, confirmedOnly }) {
           existingNames={sortedTeamNames}
           onConfirm={(newName) => renameTeam(renameTarget.teamName, newName)}
           onCancel={() => setRenameTarget(null)}
+        />
+      )}
+
+      {editIdeaTarget && (
+        <EditIdeaModal
+          teamName={editIdeaTarget.teamName}
+          currentIdea={editIdeaTarget.idea}
+          onConfirm={(idea) => updateTeamIdea(editIdeaTarget.teamName, idea)}
+          onCancel={() => setEditIdeaTarget(null)}
         />
       )}
 
