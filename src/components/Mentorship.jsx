@@ -33,7 +33,7 @@ const FEATURES = [
       </svg>
     ),
     title: 'IA Evaluator',
-    desc: 'Pitchs transcritos e analisados por IA. Feedback dos jurados também revisado por modelo de IA.',
+    desc: 'Os pitchs finais são transcritos e analisados por IA (Whisper + LLM) nos eixos de consistência técnica, tom de voz e viabilidade mercadológica — feedback detalhado às equipes, complementando a banca de jurados.',
   },
 ]
 
