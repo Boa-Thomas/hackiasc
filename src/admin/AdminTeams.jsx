@@ -248,12 +248,16 @@ function EditIdeaModal({ teamName, currentIdea, onConfirm, onCancel }) {
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     const { value, error: cleanErr } = cleanIdeaDescription(idea)
     if (cleanErr === 'idea_too_long') return setError('Descrição muito longa (máx 500).')
     setBusy(true)
-    onConfirm(value)
+    try {
+      await onConfirm(value)
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
