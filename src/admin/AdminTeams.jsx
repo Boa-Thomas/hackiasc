@@ -1004,10 +1004,25 @@ function IndividualSection({ individuals, onAddToTeam, readOnly, sortedTeamNames
 
 // ─── Matching Suggestions ─────────────────────────────────────────────────────
 
+function PresenceBadge({ at }) {
+  return at ? (
+    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded text-cyan bg-cyan/15">
+      presente
+    </span>
+  ) : (
+    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded text-white/30 bg-white/5">
+      não chegou
+    </span>
+  )
+}
+
 function MatchingSuggestions({ individuals, teamsMap, sortedTeamNames, onAddToTeam }) {
   const [busy, setBusy] = useState(null)
+  const [onlyPresent, setOnlyPresent] = useState(true)
 
-  const seekingTeam = individuals.filter(i => i.inscription_modality === 'individual_form_team')
+  const allSeeking = individuals.filter(i => i.inscription_modality === 'individual_form_team')
+  const presentCount = allSeeking.filter(i => i.checked_in_at).length
+  const seekingTeam = onlyPresent ? allSeeking.filter(i => i.checked_in_at) : allSeeking
   const incompleteTeams = sortedTeamNames.filter(n => teamsMap[n].length < 6)
 
   const suggestions = useMemo(() => {
@@ -1029,7 +1044,7 @@ function MatchingSuggestions({ individuals, teamsMap, sortedTeamNames, onAddToTe
   const matched = new Set(suggestions.map(s => s.individual.id))
   const unmatched = seekingTeam.filter(i => !matched.has(i.id))
 
-  if (seekingTeam.length === 0 || incompleteTeams.length === 0) return null
+  if (allSeeking.length === 0 || incompleteTeams.length === 0) return null
 
   async function handleAdd(individual, teamName) {
     setBusy(individual.id)
@@ -1043,9 +1058,17 @@ function MatchingSuggestions({ individuals, teamsMap, sortedTeamNames, onAddToTe
         <h3 className="text-xs font-mono uppercase tracking-widest text-electric">
           Sugestões de matching
         </h3>
-        <span className="text-xs font-mono text-white/40">
-          {seekingTeam.length} buscando time
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-mono text-white/40">
+            {presentCount} presentes · {allSeeking.length} buscando time
+          </span>
+          <button
+            onClick={() => setOnlyPresent(v => !v)}
+            className={'px-2.5 py-1 rounded-lg text-[11px] font-mono border transition-colors ' + (onlyPresent ? 'bg-cyan/15 text-cyan border-cyan/30' : 'bg-white/[0.03] text-white/40 border-white/10 hover:text-white/70')}
+          >
+            Só presentes
+          </button>
+        </div>
       </div>
 
       {suggestions.length > 0 && (
@@ -1065,6 +1088,7 @@ function MatchingSuggestions({ individuals, teamsMap, sortedTeamNames, onAddToTe
                   >
                     {individual.occupation_type}
                   </span>
+                  <PresenceBadge at={individual.checked_in_at} />
                 </div>
                 <span className="text-xs text-white/40 font-mono">
                   → {teamName} ({reason})
@@ -1094,10 +1118,17 @@ function MatchingSuggestions({ individuals, teamsMap, sortedTeamNames, onAddToTe
               >
                 {individual.occupation_type}
               </span>
+              <PresenceBadge at={individual.checked_in_at} />
               <span className="text-xs text-white/30 font-mono ml-auto">{individual.email}</span>
             </div>
           ))}
         </div>
+      )}
+
+      {onlyPresent && seekingTeam.length === 0 && (
+        <p className="text-xs font-mono text-white/30">
+          Ninguém em check-in ainda — desligue "Só presentes" para ver todos.
+        </p>
       )}
     </div>
   )
@@ -1133,7 +1164,7 @@ export default function AdminTeams({ readOnly, confirmedOnly }) {
     const [{ data: regs, error: regErr }, { data: reqs, error: reqErr }, { data: teamRows }, { data: mentorRows, error: mentorErr }, { data: linkRows, error: linkErr }] = await Promise.all([
       supabase
         .from('registrations')
-        .select('id, full_name, email, phone, occupation_type, ai_experience_level, team_name, team_id, is_team_leader, inscription_modality, payment_status, ticket_price, ticket_tier, payment_method, payment_confirmed_at, transferred_to_id, transferred_from_id, transferred_at, created_at, is_remote')
+        .select('id, full_name, email, phone, occupation_type, ai_experience_level, team_name, team_id, is_team_leader, inscription_modality, payment_status, ticket_price, ticket_tier, payment_method, payment_confirmed_at, transferred_to_id, transferred_from_id, transferred_at, created_at, is_remote, checked_in_at')
         .order('full_name', { ascending: true }),
       supabase
         .from('team_join_requests')
