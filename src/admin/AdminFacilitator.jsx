@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import { computeNowNext, neighborToSwap, cascadeShift } from './facilitatorSchedule'
+import { computeNowNext, neighborToSwap, cascadeShift, reorderByDrag, markAsCurrent, parseTime } from './facilitatorSchedule'
 import FacilitatorGuide from '../facilitator/FacilitatorGuide'
+import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, useSortable, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 const ACCENT = {
   cyan: { text: 'text-cyan', dot: 'bg-cyan', border: 'border-cyan/40', soft: 'bg-cyan/10' },
@@ -17,13 +20,36 @@ const WALL_PHASES = [
   { id: 'results', label: 'Resultado' },
 ]
 
+const QUICK_ANNOUNCEMENTS = [
+  'Almoço liberado',
+  'Jantar liberado',
+  'Pitch em 10 minutos',
+  'Retornem para a sala',
+  'Intervalo de 15 minutos',
+]
+
+const pad2 = (n) => String(n).padStart(2, '0')
+
+// Formata um delta em minutos como "+1:30" / "−0:15".
+function fmtDelta(min) {
+  const sign = min < 0 ? '−' : '+'
+  const a = Math.abs(min)
+  return `${sign}${Math.floor(a / 60)}:${pad2(a % 60)}`
+}
+
+// Duração em minutos -> "1h05" / "45min".
+function fmtDur(min) {
+  const a = Math.abs(min)
+  return a >= 60 ? `${Math.floor(a / 60)}h${pad2(a % 60)}` : `${a}min`
+}
+
 // Cockpit da facilitadora: conduz o evento ao vivo. Cronograma editavel (fonte
-// unica, lido por landing + participante via get_public_schedule), check ao vivo,
-// painel Agora/Proximo, avisos para participantes e atalhos de controle.
+// unica), arrastar/checar ao vivo, cronometro, avisos e atalhos de controle.
 export default function AdminFacilitator() {
   const [days, setDays] = useState([])
   const [items, setItems] = useState([])
   const [announcement, setAnnouncement] = useState(null)
+  const [history, setHistory] = useState([])
   const [wallPhase, setWallPhase] = useState(null)
   const [scoresVisible, setScoresVisible] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -35,14 +61,16 @@ export default function AdminFacilitator() {
     const [d, i, a] = await Promise.all([
       supabase.from('schedule_days').select('day_key, label, time_window, note, accent, sort_order').order('sort_order'),
       supabase.from('schedule_items').select('id, day_key, sort_order, time, title, description, done, done_at').order('sort_order'),
-      supabase.from('announcements').select('id, body, active, created_at').eq('active', true).order('created_at', { ascending: false }).limit(1),
+      supabase.from('announcements').select('id, body, active, created_at').order('created_at', { ascending: false }).limit(6),
     ])
     const firstErr = [d, i, a].find((x) => x.error)
     if (firstErr) { setError(firstErr.error.message); setLoading(false); return }
     setError(null)
     setDays(d.data ?? [])
     setItems(i.data ?? [])
-    setAnnouncement((a.data ?? [])[0] ?? null)
+    const list = a.data ?? []
+    setHistory(list)
+    setAnnouncement(list.find((x) => x.active) ?? null)
     setLoading(false)
   }, [])
 
@@ -81,7 +109,7 @@ export default function AdminFacilitator() {
       {error && <div className="bg-hot/10 border border-hot/30 rounded-lg px-4 py-2.5 text-hot text-sm">{error}</div>}
       <NowNext days={days} items={items} onError={setError} onChanged={loadSchedule} />
       <ScheduleEditor days={days} items={items} onError={setError} onChanged={loadSchedule} />
-      <AnnouncementBox current={announcement} onError={setError} onChanged={loadSchedule} />
+      <AnnouncementBox current={announcement} history={history} onError={setError} onChanged={loadSchedule} />
       <ControlShortcuts
         wallPhase={wallPhase}
         scoresVisible={scoresVisible}
@@ -136,6 +164,7 @@ function NowNext({ days, items, onError, onChanged }) {
               <span className="text-lg font-bold text-white leading-tight">{current.title}</span>
             </div>
             {current.description && <p className="text-sm text-white/60 mt-1 leading-relaxed">{current.description}</p>}
+            <Cronometro current={current} next={next} />
           </div>
           <button
             onClick={advance}
@@ -159,14 +188,47 @@ function NowNext({ days, items, onError, onChanged }) {
   )
 }
 
-// Formata um delta em minutos como "+1:30" / "−0:15".
-function fmtDelta(min) {
-  const sign = min < 0 ? '−' : '+'
-  const a = Math.abs(min)
-  return `${sign}${Math.floor(a / 60)}:${String(a % 60).padStart(2, '0')}`
+// Relogio ao vivo + contagem regressiva ate o proximo bloco + atraso acumulado
+// (hora atual vs horario agendado do bloco corrente). Tudo derivado dos horarios
+// HH:MM; o "delta" cruza a meia-noite quando o proximo e menor que o atual.
+function Cronometro({ current, next }) {
+  const [now, setNow] = useState(() => { const d = new Date(); return d.getHours() * 60 + d.getMinutes() })
+  useEffect(() => {
+    const t = setInterval(() => { const d = new Date(); setNow(d.getHours() * 60 + d.getMinutes()) }, 15000)
+    return () => clearInterval(t)
+  }, [])
+
+  const startM = parseTime(current?.time)
+  let endM = parseTime(next?.time)
+  if (endM != null && startM != null && endM < startM) endM += 1440
+
+  const remaining = endM != null ? endM - now : null   // min ate o proximo bloco
+  const delay = startM != null ? now - startM : null   // >0 atrasados, <0 adiantados
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono">
+      <span className="text-white/40">🕑 {pad2(Math.floor(now / 60))}:{pad2(now % 60)}</span>
+      {remaining != null && (
+        remaining >= 0
+          ? <span className="text-cyan/80">faltam {fmtDur(remaining)} p/ o próximo</span>
+          : <span className="text-hot/90">já passou {fmtDur(remaining)} do próximo</span>
+      )}
+      {delay != null && (
+        Math.abs(delay) < 3
+          ? <span className="text-cyan/70">no horário</span>
+          : delay > 0
+            ? <span className="text-gold/90">{fmtDur(delay)} atrasados</span>
+            : <span className="text-cyan/70">{fmtDur(delay)} adiantados</span>
+      )}
+    </div>
+  )
 }
 
 function ScheduleEditor({ days, items, onError, onChanged }) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
   const itemsOf = (dayKey) => items.filter((it) => it.day_key === dayKey).sort((a, b) => a.sort_order - b.sort_order)
 
   async function patchItem(id, patch) {
@@ -175,8 +237,6 @@ function ScheduleEditor({ days, items, onError, onChanged }) {
     await onChanged()
   }
 
-  // Edita o horario de um bloco. Se houver blocos seguintes no mesmo dia com
-  // horario valido, oferece deslocar todos pelo mesmo delta (mantem intervalos).
   async function changeTime(it, oldTime, rawNew) {
     const newTime = rawNew.trim()
     if (newTime === (it.time || '')) return
@@ -206,6 +266,31 @@ function ScheduleEditor({ days, items, onError, onChanged }) {
     await onChanged()
   }
 
+  async function handleDragEnd(dayKey, event) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const updates = reorderByDrag(items, dayKey, active.id, over.id)
+    for (const u of updates) {
+      const { error: err } = await supabase.from('schedule_items').update({ sort_order: u.sort_order }).eq('id', u.id)
+      if (err) { onError('Erro ao reordenar.'); return }
+    }
+    await onChanged()
+  }
+
+  async function makeCurrent(it) {
+    const updates = markAsCurrent(days, items, it.id)
+    if (updates.length === 0) return
+    if (!window.confirm(`Tornar "${it.title}" o bloco atual? (marca os anteriores como feitos)`)) return
+    for (const u of updates) {
+      const { error: err } = await supabase
+        .from('schedule_items')
+        .update({ done: u.done, done_at: u.done ? new Date().toISOString() : null })
+        .eq('id', u.id)
+      if (err) { onError(`Erro ao marcar atual: ${err.message}`); return }
+    }
+    await onChanged()
+  }
+
   async function addItem(dayKey) {
     const max = itemsOf(dayKey).reduce((m, it) => Math.max(m, it.sort_order), 0)
     const { error: err } = await supabase.from('schedule_items').insert({ day_key: dayKey, sort_order: max + 10, title: 'Novo bloco', time: '' })
@@ -229,7 +314,7 @@ function ScheduleEditor({ days, items, onError, onChanged }) {
   return (
     <div className="card-glass rounded-2xl p-5">
       <p className="text-xs font-mono text-violet uppercase tracking-wider mb-1">Cronograma (fonte única)</p>
-      <p className="text-white/40 text-xs mb-4">Edições aqui valem para a landing e o painel do participante. Ao mudar um horário, os blocos seguintes do dia podem ser deslocados junto. Os checks são internos.</p>
+      <p className="text-white/40 text-xs mb-4">Arraste pelo ⠿ para reordenar (as setas ↑/↓ também funcionam). Ao mudar um horário, os blocos seguintes do dia podem ser deslocados junto. Os checks são internos.</p>
 
       <div className="space-y-5">
         {days.map((day) => {
@@ -254,24 +339,29 @@ function ScheduleEditor({ days, items, onError, onChanged }) {
                 />
               </div>
 
-              <div className="divide-y divide-white/5">
-                {dayItems.map((it, idx) => (
-                  <ItemRow
-                    key={it.id}
-                    item={it}
-                    accent={a}
-                    isFirst={idx === 0}
-                    isLast={idx === dayItems.length - 1}
-                    onToggleDone={() => toggleDone(it)}
-                    onMoveUp={() => move(day.day_key, it.id, 'up')}
-                    onMoveDown={() => move(day.day_key, it.id, 'down')}
-                    onPatch={(patch) => patchItem(it.id, patch)}
-                    onTimeChange={(oldT, newT) => changeTime(it, oldT, newT)}
-                    onRemove={() => removeItem(it)}
-                  />
-                ))}
-                {dayItems.length === 0 && <p className="px-4 py-3 text-white/30 text-xs">Sem blocos.</p>}
-              </div>
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleDragEnd(day.day_key, e)}>
+                <SortableContext items={dayItems.map((it) => it.id)} strategy={verticalListSortingStrategy}>
+                  <div className="divide-y divide-white/5">
+                    {dayItems.map((it, idx) => (
+                      <SortableItemRow
+                        key={it.id}
+                        item={it}
+                        accent={a}
+                        isFirst={idx === 0}
+                        isLast={idx === dayItems.length - 1}
+                        onToggleDone={() => toggleDone(it)}
+                        onMoveUp={() => move(day.day_key, it.id, 'up')}
+                        onMoveDown={() => move(day.day_key, it.id, 'down')}
+                        onPatch={(patch) => patchItem(it.id, patch)}
+                        onTimeChange={(oldT, newT) => changeTime(it, oldT, newT)}
+                        onMakeCurrent={() => makeCurrent(it)}
+                        onRemove={() => removeItem(it)}
+                      />
+                    ))}
+                    {dayItems.length === 0 && <p className="px-4 py-3 text-white/30 text-xs">Sem blocos.</p>}
+                  </div>
+                </SortableContext>
+              </DndContext>
 
               <button onClick={() => addItem(day.day_key)} className="w-full px-4 py-2 text-xs font-mono text-white/50 hover:text-white hover:bg-white/5 transition-colors text-left">
                 + adicionar bloco
@@ -285,7 +375,10 @@ function ScheduleEditor({ days, items, onError, onChanged }) {
   )
 }
 
-function ItemRow({ item, accent, isFirst, isLast, onToggleDone, onMoveUp, onMoveDown, onPatch, onTimeChange, onRemove }) {
+function SortableItemRow({ item, accent, isFirst, isLast, onToggleDone, onMoveUp, onMoveDown, onPatch, onTimeChange, onMakeCurrent, onRemove }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
+  const style = { transform: CSS.Transform.toString(transform), transition }
+
   function saveField(field, value) {
     const v = field === 'title' ? value.trim() : (value.trim() || null)
     const cur = item[field] ?? (field === 'description' ? null : '')
@@ -295,7 +388,16 @@ function ItemRow({ item, accent, isFirst, isLast, onToggleDone, onMoveUp, onMove
   }
 
   return (
-    <div className={`flex items-start gap-2 px-3 py-2 ${item.done ? 'bg-white/[0.02]' : ''}`}>
+    <div ref={setNodeRef} style={style} className={`flex items-start gap-1.5 px-3 py-2 ${isDragging ? 'opacity-70 relative z-10 shadow-lg shadow-black/40' : ''} ${item.done ? 'bg-white/[0.03]' : 'bg-dark'}`}>
+      <button
+        {...attributes}
+        {...listeners}
+        title="Arraste para reordenar"
+        className="mt-1 flex-shrink-0 w-5 h-6 rounded text-white/25 hover:text-white/60 cursor-grab active:cursor-grabbing touch-none leading-none"
+      >
+        ⠿
+      </button>
+
       <button
         onClick={onToggleDone}
         title={item.done ? 'Desmarcar' : 'Marcar como feito'}
@@ -329,6 +431,7 @@ function ItemRow({ item, accent, isFirst, isLast, onToggleDone, onMoveUp, onMove
       </div>
 
       <div className="flex-shrink-0 flex items-center gap-0.5">
+        <button onClick={onMakeCurrent} className="w-6 h-6 rounded text-white/30 hover:text-cyan hover:bg-cyan/10 transition-colors" title="Tornar este o bloco atual">◉</button>
         <button onClick={onMoveUp} disabled={isFirst} className="w-6 h-6 rounded text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:hover:bg-transparent transition-colors" title="Subir">↑</button>
         <button onClick={onMoveDown} disabled={isLast} className="w-6 h-6 rounded text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:hover:bg-transparent transition-colors" title="Descer">↓</button>
         <button onClick={onRemove} className="w-6 h-6 rounded text-white/30 hover:text-hot hover:bg-hot/10 transition-colors" title="Excluir">✕</button>
@@ -337,15 +440,15 @@ function ItemRow({ item, accent, isFirst, isLast, onToggleDone, onMoveUp, onMove
   )
 }
 
-function AnnouncementBox({ current, onError, onChanged }) {
+function AnnouncementBox({ current, history, onError, onChanged }) {
   const [body, setBody] = useState('')
   const [busy, setBusy] = useState(false)
 
-  async function publish() {
-    const text = body.trim()
-    if (!text || busy) return
+  async function publish(text) {
+    const t = (text ?? '').trim()
+    if (!t || busy) return
     setBusy(true)
-    const { error: err } = await supabase.rpc('set_announcement', { p_body: text })
+    const { error: err } = await supabase.rpc('set_announcement', { p_body: t })
     setBusy(false)
     if (err) { onError(`Erro ao publicar aviso: ${err.message}`); return }
     setBody('')
@@ -361,6 +464,8 @@ function AnnouncementBox({ current, onError, onChanged }) {
     await onChanged()
   }
 
+  const recent = (history || []).filter((h) => h.id !== current?.id).slice(0, 4)
+
   return (
     <div className="card-glass rounded-2xl p-5">
       <p className="text-xs font-mono text-gold uppercase tracking-wider mb-1">Aviso ao vivo</p>
@@ -373,18 +478,45 @@ function AnnouncementBox({ current, onError, onChanged }) {
         </div>
       )}
 
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        {QUICK_ANNOUNCEMENTS.map((q) => (
+          <button
+            key={q}
+            onClick={() => publish(q)}
+            disabled={busy}
+            className="text-xs px-2.5 py-1 rounded-full border border-gold/20 bg-gold/5 text-gold/80 hover:bg-gold/15 transition-colors disabled:opacity-50"
+          >
+            {q}
+          </button>
+        ))}
+      </div>
+
       <div className="flex flex-col sm:flex-row gap-2">
         <input
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') publish() }}
-          placeholder="Ex.: Almoço liberado · Pitch de Guerrilha em 10 min"
+          onKeyDown={(e) => { if (e.key === 'Enter') publish(body) }}
+          placeholder="Escreva um aviso e pressione Enter…"
           className="flex-1 bg-dark/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-gold/40"
         />
-        <button onClick={publish} disabled={busy || !body.trim()} className="rounded-lg border border-gold/40 bg-gold/15 text-gold font-semibold px-5 py-2 hover:bg-gold/25 transition-colors disabled:opacity-50">
+        <button onClick={() => publish(body)} disabled={busy || !body.trim()} className="rounded-lg border border-gold/40 bg-gold/15 text-gold font-semibold px-5 py-2 hover:bg-gold/25 transition-colors disabled:opacity-50">
           Publicar
         </button>
       </div>
+
+      {recent.length > 0 && (
+        <div className="mt-4">
+          <p className="text-[10px] font-mono text-white/30 uppercase tracking-wider mb-2">Recentes</p>
+          <ul className="space-y-1">
+            {recent.map((h) => (
+              <li key={h.id} className="flex items-center justify-between gap-3 text-sm">
+                <span className="text-white/50 truncate">{h.body}</span>
+                <button onClick={() => publish(h.body)} disabled={busy} className="flex-shrink-0 text-xs font-mono text-cyan/60 hover:text-cyan disabled:opacity-50">re-enviar</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }

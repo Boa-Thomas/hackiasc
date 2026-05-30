@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { flattenSchedule, computeNowNext, neighborToSwap, parseTime, formatTime, cascadeShift } from './facilitatorSchedule'
+import { flattenSchedule, computeNowNext, neighborToSwap, parseTime, formatTime, cascadeShift, reorderByDrag, markAsCurrent } from './facilitatorSchedule'
 
 const DAYS = [
   { day_key: 'sat', label: 'Sab', sort_order: 20 },
@@ -142,5 +142,57 @@ describe('cascadeShift', () => {
 
   it('ultimo bloco do dia nao tem seguintes', () => {
     expect(cascadeShift(DAY, 'fri', 'e', '23:00', '23:30').updates).toEqual([])
+  })
+})
+
+describe('reorderByDrag', () => {
+  const DAY = [
+    { id: 'a', day_key: 'fri', sort_order: 10 },
+    { id: 'b', day_key: 'fri', sort_order: 20 },
+    { id: 'c', day_key: 'fri', sort_order: 30 },
+    { id: 'z', day_key: 'sat', sort_order: 10 },
+  ]
+  it('move o primeiro para o fim e renumera', () => {
+    const u = reorderByDrag(DAY, 'fri', 'a', 'c')
+    // nova ordem b,c,a -> 10,20,30
+    expect(u).toEqual([
+      { id: 'b', sort_order: 10 },
+      { id: 'c', sort_order: 20 },
+      { id: 'a', sort_order: 30 },
+    ])
+  })
+  it('move o ultimo para o topo', () => {
+    const u = reorderByDrag(DAY, 'fri', 'c', 'a')
+    expect(u).toEqual([
+      { id: 'c', sort_order: 10 },
+      { id: 'a', sort_order: 20 },
+      { id: 'b', sort_order: 30 },
+    ])
+  })
+  it('soltar sobre si mesmo nao muda nada', () => {
+    expect(reorderByDrag(DAY, 'fri', 'b', 'b')).toEqual([])
+  })
+})
+
+describe('markAsCurrent', () => {
+  const DAYS = [
+    { day_key: 'fri', sort_order: 10 },
+    { day_key: 'sat', sort_order: 20 },
+  ]
+  const ITEMS = [
+    { id: 'a', day_key: 'fri', sort_order: 10, done: false },
+    { id: 'b', day_key: 'fri', sort_order: 20, done: false },
+    { id: 'c', day_key: 'sat', sort_order: 10, done: false },
+  ]
+  it('torna b o atual: a vira feito, b/c continuam nao-feitos', () => {
+    expect(markAsCurrent(DAYS, ITEMS, 'b')).toEqual([{ id: 'a', done: true }])
+  })
+  it('voltar o ponteiro desmarca os ja feitos a frente', () => {
+    const items = ITEMS.map((it) => (it.id === 'a' || it.id === 'b' ? { ...it, done: true } : it))
+    // tornar 'a' atual: nenhum antes -> a/b/c nao-feitos; b estava feito -> desmarca
+    expect(markAsCurrent(DAYS, items, 'a')).toEqual([{ id: 'a', done: false }, { id: 'b', done: false }])
+  })
+  it('alvo inexistente -> vazio', () => {
+    expect(markAsCurrent(DAYS, ITEMS, 'zzz')).toEqual([])
   })
 })

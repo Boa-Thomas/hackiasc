@@ -94,3 +94,37 @@ export function cascadeShift(items, dayKey, editedId, oldTime, newTime) {
   }
   return { delta, updates }
 }
+
+// Reordena um bloco dentro do dia via drag (active solto sobre over) e reatribui
+// sort_order em passos de 10. Retorna so os itens cujo sort_order mudou.
+export function reorderByDrag(items, dayKey, activeId, overId) {
+  if (activeId === overId) return []
+  const inDay = items.filter((it) => it.day_key === dayKey).sort((a, b) => a.sort_order - b.sort_order)
+  const from = inDay.findIndex((it) => it.id === activeId)
+  const to = inDay.findIndex((it) => it.id === overId)
+  if (from === -1 || to === -1) return []
+  const reordered = [...inDay]
+  const [moved] = reordered.splice(from, 1)
+  reordered.splice(to, 0, moved)
+  const updates = []
+  reordered.forEach((it, idx) => {
+    const so = (idx + 1) * 10
+    if (it.sort_order !== so) updates.push({ id: it.id, sort_order: so })
+  })
+  return updates
+}
+
+// Torna um bloco o "atual": marca todos os anteriores (ordem cronologica global)
+// como feitos e o alvo + seguintes como nao-feitos. Retorna so o que muda
+// (sem done_at — o chamador preenche o timestamp ao aplicar).
+export function markAsCurrent(days, items, targetId) {
+  const flat = flattenSchedule(days, items)
+  const idx = flat.findIndex((it) => it.id === targetId)
+  if (idx === -1) return []
+  const updates = []
+  flat.forEach((it, i) => {
+    const shouldDone = i < idx
+    if (it.done !== shouldDone) updates.push({ id: it.id, done: shouldDone })
+  })
+  return updates
+}
