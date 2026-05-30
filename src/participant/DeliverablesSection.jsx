@@ -6,6 +6,7 @@ import DeliverableForm from './DeliverableForm'
 import LearningDiary from './LearningDiary'
 import SlidesUpload from './SlidesUpload'
 import SectionMeta from './SectionMeta'
+import AiScoresCard from './AiScoresCard'
 
 export default function DeliverablesSection({ auth, goToTeam }) {
   const team = auth.team
@@ -25,6 +26,7 @@ export default function DeliverablesSection({ auth, goToTeam }) {
 
   return (
     <div className="space-y-6">
+      <AiScoresCard token={auth.token} />
       <div className="card-glass rounded-2xl p-6">
         <p className="text-xs font-mono text-electric uppercase tracking-wider">Entregáveis da equipe</p>
         <h2 className="text-xl font-bold text-white mt-1">{team.name}</h2>

@@ -39,19 +39,23 @@ export default function AdminDeliverables({ readOnly = false }) {
   const [deadlineMsg, setDeadlineMsg] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
   const [sub, setSub] = useState('hypotheses')
+  // Switch global: notas da IA visiveis para os times (app_settings.team_scores_visible)
+  const [scoresVisible, setScoresVisible] = useState(false)
+  const [scoresSaving, setScoresSaving] = useState(false)
 
   async function fetchData() {
     if (!supabase) { setError('Supabase não configurado.'); setLoading(false); return }
     setError(null)
-    const [t, r, n, e, dm, sd] = await Promise.all([
+    const [t, r, n, e, dm, sd, as] = await Promise.all([
       supabase.from('teams').select('id, name, status, hypotheses_canvas, slc_ia_canvas, learning_diary, final_deliverables, pitch_transcript, pitch_segments, pitch_transcribed_at, updated_at, updated_by').order('name', { ascending: true }),
       supabase.from('registrations').select('team_id, full_name, is_team_leader, payment_status, occupation_type, economic_axes, project_name'),
       supabase.from('mentor_notes').select('id, team_id, phase, body, is_public, created_at, mentors(name, email)').order('created_at', { ascending: false }),
       supabase.from('team_evaluations').select('id, team_id, evaluator_type, deliverable, rubric_version, total_score, eliminated, summary, scores, axes, model, status, created_at, updated_at').order('created_at', { ascending: false }),
       supabase.from('team_deliverable_meta').select('team_id, field, updated_by_name, updated_at'),
       supabase.rpc('get_slides_deadline'),
+      supabase.rpc('get_team_scores_visible'),
     ])
-    const firstErr = [t, r, n, e, dm, sd].find(x => x.error)
+    const firstErr = [t, r, n, e, dm, sd].find(x => x.error) // 'as' (flag) e tolerante: erro vira 'desligado', nao quebra a pagina
     if (firstErr) { setError(firstErr.error.message); setLoading(false); return }
     // Só equipes com >=1 membro ativo. O trigger sync_registration_team_id deixa
     // equipes-fantasma na tabela teams (nunca removidas ao esvaziar); filtramos
@@ -59,6 +63,7 @@ export default function AdminDeliverables({ readOnly = false }) {
     const activeTeamIds = new Set((r.data ?? []).filter(m => m.team_id && m.payment_status !== 'cancelled').map(m => m.team_id))
     setTeams((t.data ?? []).filter(x => activeTeamIds.has(x.id))); setMembers(r.data ?? []); setNotes(n.data ?? []); setEvals(e.data ?? []); setDeliverableMeta(dm.data ?? [])
     setSlidesDeadline(sd.data ?? null); setDeadlineInput(isoToLocalInput(sd.data))
+    setScoresVisible(as.data === true)
     setLoading(false)
   }
   useEffect(() => { fetchData() }, []) // eslint-disable-line react-hooks/set-state-in-effect
@@ -137,6 +142,17 @@ export default function AdminDeliverables({ readOnly = false }) {
     if (err) { setDeadlineMsg({ kind: 'err', text: `Erro: ${err.message}` }); return }
     setSlidesDeadline(null); setDeadlineInput('')
     setDeadlineMsg({ kind: 'ok', text: 'Prazo removido (sem data de corte).' })
+  }
+
+  // Liga/desliga a visibilidade das notas da IA para os times (RPC admin-only).
+  async function toggleScoresVisible() {
+    if (!supabase || scoresSaving) return
+    const next = !scoresVisible
+    setScoresSaving(true)
+    setScoresVisible(next)
+    const { error: err } = await supabase.rpc('set_team_scores_visible', { p_visible: next })
+    setScoresSaving(false)
+    if (err) { setScoresVisible(!next); alert(`Erro ao salvar: ${err.message}`) }
   }
 
   async function changeStatus(teamId, status) {
@@ -338,6 +354,31 @@ export default function AdminDeliverables({ readOnly = false }) {
           <div className={`rounded-lg px-3 py-2 text-sm border ${deadlineMsg.kind === 'ok' ? 'bg-cyan/10 border-cyan/30 text-cyan' : 'bg-hot/10 border-hot/30 text-hot'}`}>{deadlineMsg.text}</div>
         )}
       </div>
+
+      {!readOnly && (
+        <div className="card-glass rounded-2xl p-5">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <p className="text-xs font-mono text-gold uppercase tracking-wider">Notas da IA visíveis para os times</p>
+              <p className="text-sm text-white/70 mt-1">
+                {scoresVisible
+                  ? 'Ligado — cada equipe vê a nota (0–100) de cada fase no painel.'
+                  : 'Desligado — as notas ficam só aqui e no ranking.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={scoresVisible}
+              onClick={toggleScoresVisible}
+              disabled={scoresSaving}
+              className={`relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-40 ${scoresVisible ? 'bg-cyan/80' : 'bg-white/15'}`}
+            >
+              <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${scoresVisible ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
         <div className="space-y-4">
