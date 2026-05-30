@@ -25,6 +25,7 @@ const ERROR_LABELS = {
   new_leader_not_in_team: 'Membro selecionado não está na equipe.',
   team_name_required: 'Informe um nome de equipe válido (até 120 caracteres).',
   team_name_taken: 'Esse nome de equipe já está em uso.',
+  idea_too_long: 'A descrição da ideia deve ter até 500 caracteres.',
   payment_not_confirmed: 'Pagamento ainda não confirmado — funcionalidades de equipe ficam liberadas após a confirmação.',
 }
 
@@ -38,7 +39,7 @@ function translateError(err) {
 }
 
 export default function TeamSection({ auth }) {
-  const { profile, teamMembers, pendingRequests, myRequests, refreshMe, token } = auth
+  const { profile, teamMembers, pendingRequests, myRequests, refreshMe, token, team } = auth
   const inTeam = !!profile?.team_name
 
   const [busy, setBusy] = useState(false)
@@ -80,8 +81,14 @@ export default function TeamSection({ auth }) {
       {inTeam ? (
         <CurrentTeamView
           profile={profile}
+          team={team}
           members={teamMembers}
           busy={busy}
+          onSave={async ({ name, idea }) => {
+            const ok = await callRpc('participant_update_team', { p_team_name: name, p_idea_description: idea })
+            if (ok) { flash('Equipe atualizada.'); await refreshMe() }
+            return ok
+          }}
           onLeave={async () => {
             const ok = await callRpc('participant_leave_team', {})
             if (ok) { flash('Você saiu da equipe.'); await refreshMe() }
@@ -122,10 +129,13 @@ export default function TeamSection({ auth }) {
 
 // ─── Current team view (in a team) ─────────────────────────────────────────
 
-function CurrentTeamView({ profile, members, busy, onLeave, onTransfer }) {
+function CurrentTeamView({ profile, team, members, busy, onLeave, onTransfer, onSave }) {
   const [transferOpen, setTransferOpen] = useState(false)
   const [selectedNewLeader, setSelectedNewLeader] = useState('')
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editName, setEditName] = useState(profile.team_name || '')
+  const [editIdea, setEditIdea] = useState(team?.idea_description || '')
   const teammates = members.filter(m => m.id !== profile.id)
   const isLeaderAlone = profile.is_team_leader && members.length === 1
 
@@ -138,8 +148,19 @@ function CurrentTeamView({ profile, members, busy, onLeave, onTransfer }) {
           <p className="text-sm text-text-muted mt-1">
             {members.length} {members.length === 1 ? 'integrante' : 'integrantes'} de até 6
           </p>
+          {team?.idea_description && (
+            <p className="text-sm text-white/70 mt-2 max-w-xl whitespace-pre-wrap">{team.idea_description}</p>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => { setEditName(profile.team_name || ''); setEditIdea(team?.idea_description || ''); setEditOpen(o => !o) }}
+            disabled={busy}
+            className="px-4 py-2 rounded-xl text-sm font-semibold border border-electric/30 bg-electric/10 text-electric hover:bg-electric/20 transition-colors disabled:opacity-50"
+          >
+            Editar equipe
+          </button>
           {profile.is_team_leader && !isLeaderAlone && (
             <button
               type="button"
@@ -161,6 +182,50 @@ function CurrentTeamView({ profile, members, busy, onLeave, onTransfer }) {
           </button>
         </div>
       </div>
+
+      {editOpen && (
+        <div className="mb-4 p-4 rounded-xl border border-electric/20 bg-electric/5 space-y-3">
+          <div>
+            <label className="block text-sm font-semibold text-white mb-1">Nome da equipe</label>
+            <input
+              type="text"
+              value={editName}
+              onChange={e => setEditName(e.target.value)}
+              maxLength={120}
+              className="w-full bg-dark border border-dark-border rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-electric"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-white mb-1">Descrição da ideia</label>
+            <textarea
+              value={editIdea}
+              onChange={e => setEditIdea(e.target.value)}
+              maxLength={500}
+              rows={4}
+              placeholder="Em uma ou duas frases, qual é a ideia da equipe?"
+              className="w-full bg-dark border border-dark-border rounded-xl px-4 py-2.5 text-white text-sm placeholder-text-muted focus:outline-none focus:border-electric"
+            />
+            <p className="text-xs text-text-muted mt-1">{editIdea.length}/500</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={busy || !editName.trim()}
+              onClick={async () => { const ok = await onSave({ name: editName, idea: editIdea }); if (ok) setEditOpen(false) }}
+              className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold bg-electric/20 text-electric border border-electric/40 hover:bg-electric/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Salvar
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditOpen(false)}
+              className="px-4 py-2 rounded-lg text-sm font-semibold border border-dark-border text-text-muted hover:text-white"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       {transferOpen && teammates.length > 0 && (
         <div className="mb-4 p-4 rounded-xl border border-gold/20 bg-gold/5 space-y-3">
@@ -469,6 +534,9 @@ function NoTeamView({ token, myRequests, busy, callRpc, refreshMe, flash }) {
                     <p className="text-xs text-text-muted truncate">
                       Líder: {t.leader_name || '—'} · {t.member_count}/6 membros
                     </p>
+                    {t.idea_description && (
+                      <p className="text-xs text-white/50 mt-1 line-clamp-2">{t.idea_description}</p>
+                    )}
                   </div>
                   <button
                     onClick={() => setRequestingTeam(t)}
