@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useJuror } from './useJuror'
 import JurorTeamCard from './JurorTeamCard'
 
@@ -106,12 +106,59 @@ function ConsentGate({ jurorName, onAccept }) {
   )
 }
 
+const STATUS_DOT = {
+  saved: 'bg-cyan',
+  draft: 'bg-gold',
+  pending: 'bg-white/25',
+}
+
 // ---------------------------------------------------------------------------
 // JurorPanel — orquestra ConsentGate + painel de avaliação.
 // ---------------------------------------------------------------------------
 export default function JurorPanel() {
   const juror = useJuror()
   const { loading, isValid, token } = juror
+
+  // Estado de navegação/overview (sempre declarado p/ não violar a ordem dos hooks).
+  const [expandedId, setExpandedId] = useState(null)
+  const [statusByTeam, setStatusByTeam] = useState({})
+  const [hideDone, setHideDone] = useState(false)
+  const initedRef = useRef(false)
+
+  const teams = useMemo(() => juror.teams || [], [juror.teams])
+  const myScores = useMemo(() => juror.myScores || [], [juror.myScores])
+  const scoreByTeam = useMemo(() => new Map(myScores.map(s => [s.team_id, s])), [myScores])
+
+  const handleStatus = useCallback((teamId, status) => {
+    setStatusByTeam(prev => (prev[teamId] === status ? prev : { ...prev, [teamId]: status }))
+  }, [])
+
+  // status efetivo de uma equipe: reporte do card, ou inferência do servidor.
+  const statusOf = useCallback(
+    t => statusByTeam[t.id] ?? (scoreByTeam.has(t.id) ? 'saved' : 'pending'),
+    [statusByTeam, scoreByTeam],
+  )
+
+  // Expande a primeira equipe pendente ao carregar.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (initedRef.current || !teams.length) return
+    initedRef.current = true
+    const firstPending = teams.find(t => !scoreByTeam.has(t.id))
+    setExpandedId((firstPending || teams[0]).id)
+  }, [teams, scoreByTeam])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  function goTo(id) {
+    setExpandedId(id)
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`team-${id}`)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+  function toggle(id) {
+    setExpandedId(cur => (cur === id ? null : id))
+  }
 
   if (loading) {
     return (
@@ -140,7 +187,7 @@ export default function JurorPanel() {
     )
   }
 
-  const { juror: profile, teams, myScores } = juror
+  const { juror: profile } = juror
 
   // Exibe o termo se o jurado ainda não consentiu (consent_at null/ausente).
   if (!profile?.consent_at) {
@@ -152,8 +199,10 @@ export default function JurorPanel() {
     )
   }
 
-  const scoreByTeam = new Map((myScores || []).map(s => [s.team_id, s]))
-  const evaluatedCount = (myScores || []).length
+  const evaluatedCount = teams.filter(t => statusOf(t) === 'saved').length
+  const pct = teams.length ? Math.round((evaluatedCount / teams.length) * 100) : 0
+  const nextPending = teams.find(t => statusOf(t) !== 'saved')
+  const visibleTeams = hideDone ? teams.filter(t => statusOf(t) !== 'saved') : teams
 
   return (
     <div className="min-h-screen bg-dark text-white bg-grid">
@@ -173,14 +222,79 @@ export default function JurorPanel() {
 
       <main className="relative max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         <div className="card-glass rounded-2xl p-6">
-          <p className="text-xs font-mono text-gold uppercase tracking-wider">Bem-vindo(a)</p>
-          <h1 className="text-2xl font-bold mt-1">{profile?.name}</h1>
-          <p className="text-sm text-text-muted mt-2">
-            Avalie cada equipe pela rubrica do edital. Você pode salvar e editar suas notas enquanto a votação estiver aberta.
-          </p>
-          <p className="text-xs text-text-muted mt-3 font-mono">
-            {evaluatedCount} de {teams.length} equipes avaliadas
-          </p>
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <p className="text-xs font-mono text-gold uppercase tracking-wider">Bem-vindo(a)</p>
+              <h1 className="text-2xl font-bold mt-1">{profile?.name}</h1>
+              <p className="text-sm text-text-muted mt-2 max-w-xl">
+                Avalie cada equipe pela rubrica do edital. Você pode salvar e editar suas notas enquanto a votação estiver aberta.
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-3xl font-bold font-mono text-cyan">{evaluatedCount}<span className="text-lg text-text-muted">/{teams.length}</span></p>
+              <p className="text-[11px] text-text-muted font-mono uppercase tracking-wider">avaliadas</p>
+            </div>
+          </div>
+
+          {/* Barra de progresso */}
+          {teams.length > 0 && (
+            <div className="mt-4">
+              <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-cyan to-electric rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          )}
+
+          {/* Índice de equipes com status + ações */}
+          {teams.length > 0 && (
+            <div className="mt-5">
+              <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+                <div className="flex items-center gap-3 text-[11px] font-mono text-text-muted">
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-cyan" /> avaliada</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gold" /> rascunho</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-white/25" /> pendente</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setHideDone(h => !h)}
+                    className="text-[11px] font-mono text-text-muted hover:text-white transition-colors"
+                  >
+                    {hideDone ? 'mostrar todas' : 'ocultar avaliadas'}
+                  </button>
+                  {nextPending && (
+                    <button
+                      type="button"
+                      onClick={() => goTo(nextPending.id)}
+                      className="text-[11px] font-mono text-cyan hover:text-cyan/80 transition-colors"
+                    >
+                      próxima pendente →
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {teams.map(t => {
+                  const st = statusOf(t)
+                  const active = expandedId === t.id
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => goTo(t.id)}
+                      className={[
+                        'flex items-center gap-1.5 text-xs rounded-full pl-2 pr-3 py-1 border transition-colors max-w-[12rem]',
+                        active ? 'border-cyan/50 bg-cyan/10 text-white' : 'border-white/10 bg-white/5 text-white/70 hover:border-white/25 hover:text-white',
+                      ].join(' ')}
+                    >
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${STATUS_DOT[st]}`} />
+                      <span className="truncate">{t.name}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {!teams.length && (
@@ -189,11 +303,21 @@ export default function JurorPanel() {
           </div>
         )}
 
-        {teams.map(team => (
+        {teams.length > 0 && !visibleTeams.length && (
+          <div className="card-glass rounded-2xl p-6 text-center">
+            <p className="text-sm text-cyan font-mono">✓ Todas as equipes avaliadas.</p>
+            <button type="button" onClick={() => setHideDone(false)} className="text-xs font-mono text-text-muted hover:text-white mt-2">mostrar todas</button>
+          </div>
+        )}
+
+        {visibleTeams.map(team => (
           <JurorTeamCard
             key={team.id}
             team={team}
             existing={scoreByTeam.get(team.id) || null}
+            expanded={expandedId === team.id}
+            onToggle={toggle}
+            onStatusChange={handleStatus}
             onSubmit={juror.submitScore}
           />
         ))}
