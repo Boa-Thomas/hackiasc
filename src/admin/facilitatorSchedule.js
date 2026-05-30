@@ -128,3 +128,26 @@ export function markAsCurrent(days, items, targetId) {
   })
   return updates
 }
+
+// Pulso do evento: presentes (check-in) vs confirmados e entregas por fase.
+// Espelha o "preenchido" do AdminDeliverables. Puro/testavel.
+export function computePulse(registrations, teams) {
+  const regs = registrations || []
+  const confirmed = regs.filter((r) => r.payment_status === 'confirmed')
+  const present = confirmed.filter((r) => r.checked_in_at).length
+  const activeTeamIds = new Set(regs.filter((r) => r.team_id && r.payment_status !== 'cancelled').map((r) => r.team_id))
+  const activeTeams = (teams || []).filter((t) => activeTeamIds.has(t.id))
+
+  const filledObj = (o) => !!o && typeof o === 'object' && Object.values(o).some((v) => v != null && String(v).trim() !== '')
+  const diaryFilled = (d) => (Array.isArray(d) ? d.length > 0 : filledObj(d))
+
+  let fase1 = 0
+  let fase2 = 0
+  let fase3 = 0
+  for (const t of activeTeams) {
+    if (filledObj(t.hypotheses_canvas)) fase1 += 1
+    if (filledObj(t.slc_ia_canvas) || diaryFilled(t.learning_diary)) fase2 += 1
+    if (filledObj(t.final_deliverables)) fase3 += 1
+  }
+  return { present, confirmed: confirmed.length, teams: activeTeams.length, fase1, fase2, fase3 }
+}

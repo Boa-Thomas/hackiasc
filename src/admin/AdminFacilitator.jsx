@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import { computeNowNext, neighborToSwap, cascadeShift, reorderByDrag, markAsCurrent, parseTime } from './facilitatorSchedule'
+import { computeNowNext, neighborToSwap, cascadeShift, reorderByDrag, markAsCurrent, parseTime, computePulse } from './facilitatorSchedule'
 import FacilitatorGuide from '../facilitator/FacilitatorGuide'
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
@@ -55,6 +55,7 @@ export default function AdminFacilitator() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [view, setView] = useState('cockpit')
+  const [pulse, setPulse] = useState(null)
 
   const loadSchedule = useCallback(async () => {
     if (!supabase) { setError('Supabase não configurado.'); setLoading(false); return }
@@ -84,12 +85,28 @@ export default function AdminFacilitator() {
     if (!s.error) setScoresVisible(s.data === true)
   }, [])
 
+  const loadPulse = useCallback(async () => {
+    if (!supabase) return
+    const [r, t] = await Promise.all([
+      supabase.from('registrations').select('id, payment_status, checked_in_at, team_id'),
+      supabase.from('teams').select('id, hypotheses_canvas, slc_ia_canvas, learning_diary, final_deliverables'),
+    ])
+    if (r.error || t.error) return
+    setPulse(computePulse(r.data || [], t.data || []))
+  }, [])
+
   useEffect(() => {
     loadSchedule() // eslint-disable-line react-hooks/set-state-in-effect
     loadControls()
     const t = setInterval(loadSchedule, 6000)
     return () => clearInterval(t)
   }, [loadSchedule, loadControls])
+
+  useEffect(() => {
+    loadPulse() // eslint-disable-line react-hooks/set-state-in-effect
+    const t = setInterval(loadPulse, 20000)
+    return () => clearInterval(t)
+  }, [loadPulse])
 
   if (loading) return <p className="text-white/60 font-mono">Carregando...</p>
   if (!supabase) return <p className="text-hot font-mono">Supabase não configurado.</p>
@@ -108,6 +125,8 @@ export default function AdminFacilitator() {
       </div>
       {error && <div className="bg-hot/10 border border-hot/30 rounded-lg px-4 py-2.5 text-hot text-sm">{error}</div>}
       <NowNext days={days} items={items} onError={setError} onChanged={loadSchedule} />
+      <Pulse pulse={pulse} />
+      <SessionTimer />
       <ScheduleEditor days={days} items={items} onError={setError} onChanged={loadSchedule} />
       <AnnouncementBox current={announcement} history={history} onError={setError} onChanged={loadSchedule} />
       <ControlShortcuts
@@ -583,6 +602,135 @@ function ControlShortcuts({ wallPhase, scoresVisible, onWallPhase, onScoresVisib
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+function Pulse({ pulse }) {
+  if (!pulse) return null
+  return (
+    <div className="card-glass rounded-2xl p-5">
+      <p className="text-xs font-mono text-electric uppercase tracking-wider mb-3">Pulso do evento</p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <PulseStat label="Presentes" value={pulse.present} total={pulse.confirmed} accent="cyan" />
+        <PulseStat label="Entregaram Fase 1" value={pulse.fase1} total={pulse.teams} accent="electric" />
+        <PulseStat label="Entregaram Fase 2" value={pulse.fase2} total={pulse.teams} accent="electric" />
+        <PulseStat label="Entregaram Fase 3" value={pulse.fase3} total={pulse.teams} accent="violet" />
+      </div>
+    </div>
+  )
+}
+
+function PulseStat({ label, value, total, accent }) {
+  const a = accentOf(accent)
+  const pct = total > 0 ? Math.round((value / total) * 100) : 0
+  return (
+    <div className={`rounded-xl border ${a.border} ${a.soft} px-3 py-3`}>
+      <p className="text-[10px] font-mono uppercase tracking-wider text-white/50 leading-tight">{label}</p>
+      <p className="mt-1">
+        <span className={`text-2xl font-bold ${a.text}`}>{value}</span>
+        <span className="text-sm text-white/40">/{total}</span>
+      </p>
+      <div className="mt-2 h-1 rounded-full bg-white/10 overflow-hidden">
+        <div className={`h-full ${a.dot}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  )
+}
+
+const TIMER_PRESETS = [
+  { label: 'Pitch 3:00', sec: 180 },
+  { label: 'Demo 1:00', sec: 60 },
+  { label: 'Q&A 5:00', sec: 300 },
+  { label: 'Teste jurados 1:00', sec: 60 },
+  { label: 'Working 45:00', sec: 2700 },
+  { label: 'Intervalo 15:00', sec: 900 },
+]
+
+// Beep curto no fim do timer (sem asset; via Web Audio, dentro de gesto do usuario).
+function beep() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext
+    if (!Ctx) return
+    const ctx = new Ctx()
+    const o = ctx.createOscillator()
+    const g = ctx.createGain()
+    o.connect(g)
+    g.connect(ctx.destination)
+    o.type = 'sine'
+    o.frequency.value = 880
+    g.gain.setValueAtTime(0.25, ctx.currentTime)
+    o.start()
+    o.stop(ctx.currentTime + 0.6)
+    o.onended = () => ctx.close()
+  } catch { /* ignore */ }
+}
+
+// Cronometro manual (start/pausa/reset) com presets e modo ampliado para projetor.
+function SessionTimer() {
+  const [remaining, setRemaining] = useState(180)
+  const [running, setRunning] = useState(false)
+  const [last, setLast] = useState(180)
+  const [big, setBig] = useState(false)
+  const [mins, setMins] = useState('')
+
+  useEffect(() => {
+    if (!running) return
+    const t = setInterval(() => {
+      setRemaining((r) => {
+        if (r <= 1) { setRunning(false); beep(); return 0 }
+        return r - 1
+      })
+    }, 1000)
+    return () => clearInterval(t)
+  }, [running])
+
+  function setPreset(sec) { setRemaining(sec); setLast(sec); setRunning(false) }
+  function reset() { setRemaining(last); setRunning(false) }
+  function applyCustom() { const m = parseInt(mins, 10); if (m > 0) { setPreset(m * 60); setMins('') } }
+
+  const mmss = `${pad2(Math.floor(remaining / 60))}:${pad2(remaining % 60)}`
+  const danger = remaining === 0
+  const warn = remaining > 0 && remaining <= 10
+  const color = danger ? 'text-hot' : warn ? 'text-gold' : 'text-white'
+
+  const controls = (
+    <div className="flex flex-wrap items-center gap-2">
+      <button onClick={() => setRunning((v) => !v)} className="px-4 py-1.5 rounded-lg border border-cyan/40 bg-cyan/15 text-cyan text-sm font-semibold hover:bg-cyan/25 transition-colors">{running ? 'Pausar' : 'Iniciar'}</button>
+      <button onClick={reset} className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white/60 text-sm hover:text-white transition-colors">Resetar</button>
+      <button onClick={() => setRemaining((r) => r + 60)} className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white/60 text-sm hover:text-white transition-colors">+1min</button>
+    </div>
+  )
+
+  return (
+    <div className="card-glass rounded-2xl p-5">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-mono text-gold uppercase tracking-wider">Timer de pitch / sessão</p>
+        <button onClick={() => setBig(true)} className="text-xs font-mono text-white/40 hover:text-white transition-colors">⤢ ampliar</button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-4">
+        <span className={`font-mono text-4xl font-bold tabular-nums ${color} ${danger ? 'animate-pulse' : ''}`}>{mmss}</span>
+        {controls}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5 mt-3">
+        {TIMER_PRESETS.map((p) => (
+          <button key={p.label} onClick={() => setPreset(p.sec)} className="text-xs px-2.5 py-1 rounded-full border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 transition-colors">{p.label}</button>
+        ))}
+        <span className="inline-flex items-center gap-1">
+          <input value={mins} onChange={(e) => setMins(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') applyCustom() }} placeholder="min" inputMode="numeric" className="w-14 bg-dark/60 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-white/30" />
+          <button onClick={applyCustom} className="text-xs px-2 py-1 rounded border border-white/10 text-white/60 hover:text-white transition-colors">definir</button>
+        </span>
+      </div>
+
+      {big && (
+        <div className="fixed inset-0 z-[60] bg-dark/95 flex flex-col items-center justify-center gap-8 p-6">
+          <span className={`font-mono font-bold tabular-nums ${color} ${danger ? 'animate-pulse' : ''}`} style={{ fontSize: 'min(38vw, 32vh)' }}>{mmss}</span>
+          <div className="scale-150">{controls}</div>
+          <button onClick={() => setBig(false)} className="absolute top-6 right-6 text-white/50 hover:text-white text-sm font-mono">fechar ✕</button>
+        </div>
+      )}
     </div>
   )
 }

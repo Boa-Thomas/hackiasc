@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { flattenSchedule, computeNowNext, neighborToSwap, parseTime, formatTime, cascadeShift, reorderByDrag, markAsCurrent } from './facilitatorSchedule'
+import { flattenSchedule, computeNowNext, neighborToSwap, parseTime, formatTime, cascadeShift, reorderByDrag, markAsCurrent, computePulse } from './facilitatorSchedule'
 
 const DAYS = [
   { day_key: 'sat', label: 'Sab', sort_order: 20 },
@@ -194,5 +194,36 @@ describe('markAsCurrent', () => {
   })
   it('alvo inexistente -> vazio', () => {
     expect(markAsCurrent(DAYS, ITEMS, 'zzz')).toEqual([])
+  })
+})
+
+describe('computePulse', () => {
+  const REGS = [
+    { id: '1', payment_status: 'confirmed', checked_in_at: '2026-05-30T12:00:00Z', team_id: 'A' },
+    { id: '2', payment_status: 'confirmed', checked_in_at: null, team_id: 'A' },
+    { id: '3', payment_status: 'confirmed', checked_in_at: '2026-05-30T12:05:00Z', team_id: 'B' },
+    { id: '4', payment_status: 'pending', checked_in_at: null, team_id: 'B' },
+    { id: '5', payment_status: 'cancelled', checked_in_at: null, team_id: 'C' },
+  ]
+  const TEAMS = [
+    { id: 'A', hypotheses_canvas: { problema: 'x' }, slc_ia_canvas: {}, learning_diary: [], final_deliverables: {} },
+    { id: 'B', hypotheses_canvas: {}, slc_ia_canvas: {}, learning_diary: [{ nota: 'y' }], final_deliverables: {} },
+    { id: 'C', hypotheses_canvas: { problema: 'z' }, slc_ia_canvas: {}, learning_diary: [], final_deliverables: { slides: 'path' } },
+  ]
+  it('conta presentes (confirmados com check-in) e total confirmados', () => {
+    const p = computePulse(REGS, TEAMS)
+    expect(p.present).toBe(2)
+    expect(p.confirmed).toBe(3)
+  })
+  it('conta times ativos (membro nao-cancelado) e entregas por fase', () => {
+    const p = computePulse(REGS, TEAMS)
+    // ativos: A (confirmados) e B (pending conta como nao-cancelado). C so tem cancelado -> fora.
+    expect(p.teams).toBe(2)
+    expect(p.fase1).toBe(1) // A preencheu hipoteses; B nao
+    expect(p.fase2).toBe(1) // B tem diary; A vazio
+    expect(p.fase3).toBe(0) // C entregou final mas esta fora (cancelado)
+  })
+  it('tolera entradas nulas', () => {
+    expect(computePulse(null, null)).toEqual({ present: 0, confirmed: 0, teams: 0, fase1: 0, fase2: 0, fase3: 0 })
   })
 })
