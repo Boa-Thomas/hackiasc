@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { PHASE_LABELS } from './useWallSession'
+import { densityFor, gridColsClass, sortPainsForPhase } from './wallLayout'
 
 // Telao read-only para projecao. Sem identidade (p_registration_id NULL). Polling 2s.
 const POLL_MS = 2000
@@ -34,9 +35,11 @@ export default function WallScreen() {
     return () => clearInterval(t)
   }, [load])
 
+  const showVotes = phase === 'results'
+  const ordered = sortPainsForPhase(pains, phase)
   const maxVotes = pains.reduce((m, p) => Math.max(m, p.vote_count || 0), 0)
   const totalVotes = pains.reduce((s, p) => s + (p.vote_count || 0), 0)
-  const showVotes = phase === 'voting_open'
+  const density = densityFor(ordered.length)
 
   return (
     <div className="min-h-screen bg-dark bg-grid relative overflow-hidden flex flex-col">
@@ -74,13 +77,18 @@ export default function WallScreen() {
                 ? 'text-gold border-gold/50 bg-gold/10'
                 : phase === 'wall_open'
                   ? 'text-hot border-hot/50 bg-hot/10'
-                  : 'text-white/50 border-white/20'
+                  : phase === 'results'
+                    ? 'text-cyan border-cyan/50 bg-cyan/10'
+                    : 'text-white/50 border-white/20'
             }`}
           >
             {PHASE_LABELS[phase] || '...'}
           </span>
           {showVotes && (
-            <p className="text-white/50 font-mono text-lg mt-2">Votação aberta — 3 votos por pessoa</p>
+            <p className="text-white/50 font-mono text-lg mt-2">Resultado final da votação</p>
+          )}
+          {phase === 'voting_open' && (
+            <p className="text-gold/80 font-mono text-lg mt-2">Vote no celular · 3 votos por pessoa</p>
           )}
         </div>
       </header>
@@ -97,7 +105,7 @@ export default function WallScreen() {
           </div>
         )}
 
-        {!error && phase !== 'closed' && loaded && !pains.length && (
+        {!error && phase !== 'closed' && loaded && !ordered.length && (
           <div className="h-full flex items-center justify-center text-center">
             <p className="text-4xl text-white/40 font-display">
               As primeiras dores aparecem aqui.<br />
@@ -106,50 +114,30 @@ export default function WallScreen() {
           </div>
         )}
 
-        {!error && phase !== 'closed' && pains.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 auto-rows-max">
-            {pains.map((p, i) => {
+        {!error && phase !== 'closed' && ordered.length > 0 && (
+          <div className={`grid ${gridColsClass(density.cols)} gap-4 auto-rows-max`}>
+            {ordered.map((p) => {
               const isTop = showVotes && p.vote_count === maxVotes && maxVotes > 0
               return (
                 <div
                   key={p.id}
-                  className={`card-glass rounded-2xl p-6 relative ${isTop ? 'border-gold/50 glow-cyan' : ''}`}
+                  className={`card-glass rounded-2xl p-5 relative ${isTop ? 'border-gold/60 glow-cyan' : ''}`}
                 >
                   {showVotes && (
-                    <div className="absolute -top-3 -right-3 flex items-center justify-center min-w-12 h-12 px-3 rounded-full bg-gold/20 border border-gold/50">
+                    <div className="absolute -top-3 -right-3 flex items-center justify-center min-w-11 h-11 px-3 rounded-full bg-gold/20 border border-gold/50">
                       <span className="font-mono text-2xl font-bold text-gold">{p.vote_count}</span>
                     </div>
                   )}
-                  <p className="text-2xl xl:text-3xl font-display font-semibold text-white leading-tight">
+                  <p className={`${density.titleClass} font-display font-semibold text-white leading-tight`}>
                     {p.title}
                   </p>
-                  {p.description && (
-                    <p className="text-white/50 text-lg mt-3 line-clamp-3">{p.description}</p>
-                  )}
-                  <div className="flex items-center gap-3 mt-4 text-sm font-mono text-white/40">
+                  <div className="flex items-center gap-2 mt-3 text-sm font-mono text-white/40">
                     {p.axis && (
-                      <span className="px-3 py-1 rounded-full bg-violet/15 text-violet">{p.axis}</span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-violet/15 text-violet">{p.axis}</span>
                     )}
-                    {p.author_name && <span>{p.author_name}</span>}
-                    {!showVotes && <span className="text-cyan/50">#{i + 1}</span>}
+                    {p.author_name && <span className="truncate min-w-0">{p.author_name}</span>}
+                    {showVotes && isTop && <span className="text-gold">🏆</span>}
                   </div>
-                  {showVotes && p.voters && p.voters.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-4">
-                      {p.voters.slice(0, 6).map((v, vi) => (
-                        <span
-                          key={vi}
-                          className="px-3 py-1 rounded-full bg-white/5 text-white/60 text-base font-mono"
-                        >
-                          {v.display}
-                        </span>
-                      ))}
-                      {p.voters.length > 6 && (
-                        <span className="px-3 py-1 rounded-full bg-white/5 text-white/40 text-base font-mono">
-                          +{p.voters.length - 6} mais
-                        </span>
-                      )}
-                    </div>
-                  )}
                 </div>
               )
             })}
