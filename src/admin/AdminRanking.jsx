@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { EDITAL_RUBRIC, aggregateTeamEvaluation } from '../lib/iaEvaluator'
+import { EDITAL_RUBRIC, aggregateTeamEvaluation, DELIVERABLE_UNITS } from '../lib/iaEvaluator'
 
 // Ranking final do evento.
 // OFICIAL = média das notas dos jurados humanos (evaluator_type='human').
@@ -81,6 +81,14 @@ export default function AdminRanking() {
     for (const c of EDITAL_RUBRIC.criteria) {
       critAverages[c.key] = round1(avg(human.map(ev => critScore(ev, c.key)).filter(Number.isFinite)))
     }
+    // Notas da IA por entregável. São números completos por fase (a nota total do
+    // edital só fecha com os 4 critérios / 3 fases). Exibidas como menção parcial,
+    // sem contar para o ranking oficial — atende quem quer acompanhar durante o evento.
+    const aiPhase = {}
+    for (const ev of aiRows) {
+      if (Number.isFinite(Number(ev.total_score))) aiPhase[ev.deliverable] = round1(Number(ev.total_score))
+    }
+    const aiPhaseVals = Object.values(aiPhase)
     return {
       team: t,
       jurorsScored: human.length,
@@ -90,6 +98,9 @@ export default function AdminRanking() {
       aiScore: aiAgg.total_score,
       aiPartial: aiAgg.partial && aiAgg.scoredCriteria > 0,
       aiUnits: aiAgg.evaluatedUnits.length,
+      aiPhase,
+      aiPhaseCount: aiPhaseVals.length,
+      aiPhaseAvg: aiPhaseVals.length ? round1(avg(aiPhaseVals)) : null,
     }
   })
 
@@ -107,8 +118,14 @@ export default function AdminRanking() {
     return 0
   })
 
-  // Menção IA Evaluator: maior nota da IA
+  // Menção IA Evaluator — nota final agregada (0–100): só fecha quando os 4 critérios
+  // do edital têm nota, o que exige as 3 fases avaliadas. Durante o evento fica vazia.
   const aiTop = [...rows].filter(r => r.aiScore != null).sort((a, b) => b.aiScore - a.aiScore)[0]
+  // Quadro parcial: toda equipe com pelo menos 1 entregável avaliado pela IA.
+  // Ordena por nº de fases avaliadas (mais completo primeiro) e depois pela média.
+  const aiTeams = [...rows].filter(r => r.aiPhaseCount > 0).sort((a, b) =>
+    (b.aiPhaseCount - a.aiPhaseCount) || ((b.aiPhaseAvg ?? -1) - (a.aiPhaseAvg ?? -1)) || a.team.name.localeCompare(b.team.name)
+  )
   const scoredCount = rows.filter(r => r.officialScore != null).length
   const medalFor = (i) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}º`)
 
@@ -200,7 +217,8 @@ export default function AdminRanking() {
         A desclassificação final cabe ao facilitador/organização (edital), não é automática.
       </p>
 
-      {/* Menção IA Evaluator — separada, revelar sob demanda */}
+      {/* Menção IA Evaluator — separada, revelar sob demanda. Mostra as notas por
+          entregável (parciais durante o evento); a nota final só fecha com as 3 fases. */}
       <div className="card-glass rounded-2xl p-6 space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
@@ -212,25 +230,49 @@ export default function AdminRanking() {
           </button>
         </div>
         {showAi && (
-          aiTop ? (
+          aiTeams.length ? (
             <>
-              <p className="text-sm text-white">
-                🏅 Melhor avaliada pela IA: <strong>{aiTop.team.name}</strong> — <span className="font-mono text-violet">{aiTop.aiScore}/100</span>
-                <span className="text-text-muted text-xs"> ({aiTop.aiUnits}/3 entregáveis)</span>
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {[...rows].filter(r => r.aiScore != null).sort((a, b) => b.aiScore - a.aiScore).map(r => (
-                  <div key={r.team.id} className="flex justify-between bg-white/5 rounded-lg px-3 py-1.5 text-sm">
-                    <span className="text-white/80">{r.team.name}</span>
-                    <span className="font-mono text-violet">{r.aiScore}</span>
-                  </div>
-                ))}
-              </div>
-              {rows.some(r => r.aiPartial) && (
+              {aiTop ? (
+                <p className="text-sm text-white">
+                  🏅 Melhor avaliada pela IA (nota final): <strong>{aiTop.team.name}</strong> — <span className="font-mono text-violet">{aiTop.aiScore}/100</span>
+                  <span className="text-text-muted text-xs"> ({aiTop.aiUnits}/3 entregáveis)</span>
+                </p>
+              ) : (
                 <p className="text-xs text-text-muted">
-                  Parciais (entregáveis incompletos, fora do ranking IA): {rows.filter(r => r.aiPartial).map(r => r.team.name).join(', ')}
+                  Parcial — a nota final do edital (0–100) só fecha quando a Fase 3 de cada equipe for avaliada.
+                  Abaixo, as notas que a IA já atribuiu por entregável.
                 </p>
               )}
+              <div className="overflow-x-auto rounded-lg border border-violet/15">
+                <table className="w-full text-sm">
+                  <thead className="bg-violet/10 text-violet/80 text-xs uppercase">
+                    <tr>
+                      <th className="text-left px-3 py-2">Equipe</th>
+                      {DELIVERABLE_UNITS.map(u => (
+                        <th key={u.id} className="text-right px-3 py-2 whitespace-nowrap" title={u.label}>{u.label.split(' · ')[0]}</th>
+                      ))}
+                      <th className="text-right px-3 py-2">Média*</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {aiTeams.map(r => (
+                      <tr key={r.team.id} className="border-t border-violet/10">
+                        <td className="px-3 py-2 text-white/85">{r.team.name}</td>
+                        {DELIVERABLE_UNITS.map(u => (
+                          <td key={u.id} className="px-3 py-2 text-right font-mono text-violet/90">
+                            {r.aiPhase[u.id] != null ? r.aiPhase[u.id] : <span className="text-white/20">—</span>}
+                          </td>
+                        ))}
+                        <td className="px-3 py-2 text-right font-mono font-bold text-violet">{r.aiPhaseAvg != null ? r.aiPhaseAvg : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-text-muted">
+                * média das fases já avaliadas pela IA — <strong>não é</strong> a nota final do edital (que pondera os 4 critérios
+                e só fecha com as 3 fases). Menção complementar: <strong>não conta</strong> para o ranking oficial.
+              </p>
             </>
           ) : <p className="text-sm text-text-muted">Nenhuma avaliação da IA registrada ainda.</p>
         )}
