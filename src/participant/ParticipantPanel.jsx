@@ -5,6 +5,7 @@ import EditProfile from './EditProfile'
 import DeliverablesSection from './DeliverablesSection'
 import ResourcesSection from './ResourcesSection'
 import CertificateSection from './CertificateSection'
+import CriteriaHighlight from './CriteriaHighlight'
 import { EVENT_CONFIG } from '../lib/config'
 import { QRCodeSVG } from 'qrcode.react'
 
@@ -115,6 +116,8 @@ export default function ParticipantPanel({ auth }) {
             )}
           </div>
         </div>
+
+        {isPaid && <CriteriaHighlight />}
 
         {!isPaid && <PaymentRequiredBanner status={profile?.payment_status} email={profile?.email} />}
 
