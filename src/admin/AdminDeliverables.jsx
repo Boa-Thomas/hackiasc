@@ -639,7 +639,12 @@ function PitchAudioPanel({ team, onTranscribed }) {
     const { data, error: err } = await supabase.functions.invoke('transcribe-pitch', { body: { team_id: team.id } })
     setTranscribing(false)
     if (err || data?.error) {
-      const code = data?.error || err?.message || 'erro'
+      // supabase-js lança em non-2xx: o corpo { error } vem em err.context (Response), não em data/err.message.
+      let body = data
+      if (err?.context && typeof err.context.json === 'function') {
+        try { body = await err.context.json() } catch { /* mantém o body */ }
+      }
+      const code = body?.error || err?.message || 'erro'
       const human = code === 'no_audio' ? 'Nenhum áudio enviado para esta equipe.'
         : code === 'whisper_offline' ? 'O servidor Whisper está offline. Ligue a caixa e tente de novo.'
         : `Falha na transcrição: ${code}`
