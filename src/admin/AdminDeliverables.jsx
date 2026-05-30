@@ -6,6 +6,7 @@ import { PHASES, HYPOTHESES_FIELDS, SLC_IA_FIELDS, FINAL_FIELDS } from '../parti
 import SectionMeta from '../participant/SectionMeta'
 import { relativeTime } from '../lib/relativeTime'
 import { buildDeliverablePrompt, parseDeliverableEvaluation, aggregateTeamEvaluation, EDITAL_RUBRIC, DELIVERABLE_UNITS } from '../lib/iaEvaluator'
+import AiEvaluationView from '../lib/AiEvaluationView'
 
 const STATUS = [
   { id: 'draft', label: 'Rascunho', cls: 'bg-white/5 text-white/50 border-white/10' },
@@ -531,43 +532,8 @@ function DeliverableEvaluator({ unit, team, members, notes, existing, onSaved, r
         </div>
       </div>
 
-      {/* Avaliação gravada */}
-      {existing && Array.isArray(existing.scores) && existing.scores.length > 0 && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-text-muted">Nota do entregável</span>
-            <span className="font-mono text-cyan text-sm">{existing.total_score != null ? existing.total_score : '—'}{existing.eliminated ? ' · ⚠ eliminado' : ''}</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {existing.scores.map(s => (
-              <div key={s.criterion_key} className="bg-white/5 rounded-lg p-2">
-                <div className="flex justify-between text-xs">
-                  <span className="text-white/70">{s.label} <span className="text-white/40">({s.weight}%)</span></span>
-                  <span className="font-mono text-cyan">{s.score}</span>
-                </div>
-                {s.justification && <p className="text-[11px] text-text-muted mt-1 whitespace-pre-wrap">{s.justification}</p>}
-              </div>
-            ))}
-          </div>
-          {Array.isArray(existing.axes) && existing.axes.length > 0 && (
-            <div className="space-y-1 pt-1">
-              <p className="text-[10px] font-mono text-gold uppercase tracking-wider">Eixos da cláusula 5.3</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {existing.axes.map(a => (
-                  <div key={a.key} className="bg-white/5 rounded-lg p-2">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-white/70">{a.label}</span>
-                      <span className="font-mono text-gold">{a.score}</span>
-                    </div>
-                    {a.justification && <p className="text-[11px] text-text-muted mt-1 whitespace-pre-wrap">{a.justification}</p>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {existing.summary && <p className="text-sm text-white/80 whitespace-pre-wrap">{existing.summary}</p>}
-        </div>
-      )}
+      {/* Avaliação gravada (render compartilhado com o painel do mentor) */}
+      <AiEvaluationView evaluation={existing} />
 
       {/* Controles (copiar → colar → gravar) */}
       {!readOnly && (

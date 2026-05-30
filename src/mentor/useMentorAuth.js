@@ -142,6 +142,7 @@ export function useMentorAuth() {
     mentor: me?.mentor ?? null,
     teams: me?.teams ?? [],
     notes: me?.notes ?? [],
+    evaluations: me?.evaluations ?? [],
     loading,
     error,
     isAuthenticated: !!token && !!me,
