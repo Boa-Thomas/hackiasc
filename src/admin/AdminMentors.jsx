@@ -22,15 +22,26 @@ export default function AdminMentors({ readOnly = false }) {
   async function fetchData() {
     if (!supabase) { setError('Supabase não configurado.'); setLoading(false); return }
     setError(null)
-    const [{ data: ms, error: mErr }, { data: ts, error: tErr }, { data: ls, error: lErr }] = await Promise.all([
+    const [{ data: ms, error: mErr }, { data: ts, error: tErr }, { data: ls, error: lErr }, { data: activeRegs, error: arErr }] = await Promise.all([
       supabase.from('mentors').select('id, email, name, access_token').order('created_at', { ascending: true }),
       supabase.from('teams').select('id, name').order('name', { ascending: true }),
       supabase.from('mentor_teams').select('mentor_id, team_id'),
+      supabase.from('registrations').select('team_id').not('team_id', 'is', null).neq('payment_status', 'cancelled'),
     ])
     if (mErr) setError(mErr.message)
     else if (tErr) setError(tErr.message)
     else if (lErr) setError(lErr.message)
-    else { setMentors(ms ?? []); setTeams(ts ?? []); setLinks(ls ?? []) }
+    else if (arErr) setError(arErr.message)
+    else {
+      // O trigger sync_registration_team_id cria uma linha em teams quando um
+      // team_name aparece, mas NUNCA a remove quando a equipe esvazia (excluída,
+      // renomeada ou último membro saiu) — sobram equipes-fantasma na tabela.
+      // Só ofertamos para atribuição as equipes com ao menos 1 membro ativo.
+      const activeTeamIds = new Set((activeRegs ?? []).map(r => r.team_id))
+      setMentors(ms ?? [])
+      setTeams((ts ?? []).filter(t => activeTeamIds.has(t.id)))
+      setLinks(ls ?? [])
+    }
     setLoading(false)
   }
 

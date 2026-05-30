@@ -53,7 +53,11 @@ export default function AdminDeliverables({ readOnly = false }) {
     ])
     const firstErr = [t, r, n, e, dm, sd].find(x => x.error)
     if (firstErr) { setError(firstErr.error.message); setLoading(false); return }
-    setTeams(t.data ?? []); setMembers(r.data ?? []); setNotes(n.data ?? []); setEvals(e.data ?? []); setDeliverableMeta(dm.data ?? [])
+    // Só equipes com >=1 membro ativo. O trigger sync_registration_team_id deixa
+    // equipes-fantasma na tabela teams (nunca removidas ao esvaziar); filtramos
+    // pela verdade (registrations) p/ não exibir equipes vazias/excluídas.
+    const activeTeamIds = new Set((r.data ?? []).filter(m => m.team_id && m.payment_status !== 'cancelled').map(m => m.team_id))
+    setTeams((t.data ?? []).filter(x => activeTeamIds.has(x.id))); setMembers(r.data ?? []); setNotes(n.data ?? []); setEvals(e.data ?? []); setDeliverableMeta(dm.data ?? [])
     setSlidesDeadline(sd.data ?? null); setDeadlineInput(isoToLocalInput(sd.data))
     setLoading(false)
   }

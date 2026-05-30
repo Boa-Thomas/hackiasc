@@ -49,14 +49,19 @@ export default function AdminRanking() {
   async function fetchData() {
     if (!supabase) { setError('Supabase não configurado.'); setLoading(false); return }
     setError(null)
-    const [t, e, j] = await Promise.all([
+    const [t, e, j, ar] = await Promise.all([
       supabase.from('teams').select('id, name, status').order('name'),
       supabase.from('team_evaluations').select('team_id, evaluator_type, deliverable, total_score, scores, eliminated, created_at'),
       supabase.from('jurors').select('id', { count: 'exact', head: true }).eq('active', true),
+      supabase.from('registrations').select('team_id').not('team_id', 'is', null).neq('payment_status', 'cancelled'),
     ])
-    const firstErr = [t, e, j].find(x => x.error)
+    const firstErr = [t, e, j, ar].find(x => x.error)
     if (firstErr) { setError(firstErr.error.message); setLoading(false); return }
-    setTeams(t.data ?? []); setEvals(e.data ?? []); setJurorCount(j.count ?? 0)
+    // Só equipes com >=1 membro ativo. O trigger sync_registration_team_id cria
+    // linhas em teams que nunca são removidas quando a equipe esvazia (equipes-
+    // fantasma, ex.: excluídas no admin) e não devem entrar no ranking.
+    const activeTeamIds = new Set((ar.data ?? []).map(r => r.team_id))
+    setTeams((t.data ?? []).filter(x => activeTeamIds.has(x.id))); setEvals(e.data ?? []); setJurorCount(j.count ?? 0)
     setLoading(false)
   }
   useEffect(() => { fetchData() }, []) // eslint-disable-line react-hooks/set-state-in-effect

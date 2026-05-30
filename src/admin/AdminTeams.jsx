@@ -731,7 +731,7 @@ function PendingRequestsForTeam({ requests, onApprove, onReject, readOnly }) {
 
 // ─── TeamCard ─────────────────────────────────────────────────────────────────
 
-function TeamCard({ team, allTeamNames, expanded, onToggle, actions, readOnly, requests }) {
+function TeamCard({ team, idea, allTeamNames, expanded, onToggle, actions, readOnly, requests }) {
   const { name, members } = team
   const status = getTeamStatus(members)
   const confirmedCount = members.filter(m => m.payment_status === 'confirmed').length
@@ -786,6 +786,12 @@ function TeamCard({ team, allTeamNames, expanded, onToggle, actions, readOnly, r
 
       {expanded && (
         <div className="px-5 pb-5 space-y-3 border-t border-white/5 pt-4">
+          {idea && (
+            <div className="rounded-xl border border-electric/20 bg-electric/5 px-4 py-3">
+              <p className="text-[10px] font-mono uppercase tracking-wider text-electric/70 mb-1">Ideia</p>
+              <p className="text-sm text-white/80 whitespace-pre-wrap">{idea}</p>
+            </div>
+          )}
           {!readOnly && (
             <div className="flex flex-wrap gap-2">
               {members.length < 6 && (
@@ -1013,9 +1019,10 @@ function MatchingSuggestions({ individuals, teamsMap, sortedTeamNames, onAddToTe
 
 // ─── AdminTeams ───────────────────────────────────────────────────────────────
 
-export default function AdminTeams({ readOnly }) {
+export default function AdminTeams({ readOnly, confirmedOnly }) {
   const [registrations, setRegistrations] = useState([])
   const [requests, setRequests] = useState([])
+  const [teamsMeta, setTeamsMeta] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
@@ -1034,7 +1041,7 @@ export default function AdminTeams({ readOnly }) {
       return
     }
     setError(null)
-    const [{ data: regs, error: regErr }, { data: reqs, error: reqErr }] = await Promise.all([
+    const [{ data: regs, error: regErr }, { data: reqs, error: reqErr }, { data: teamRows }] = await Promise.all([
       supabase
         .from('registrations')
         .select('id, full_name, email, phone, occupation_type, ai_experience_level, team_name, team_id, is_team_leader, inscription_modality, payment_status, ticket_price, ticket_tier, payment_method, payment_confirmed_at, transferred_to_id, transferred_from_id, transferred_at, created_at, is_remote')
@@ -1044,6 +1051,9 @@ export default function AdminTeams({ readOnly }) {
         .select('id, team_name, status, message, created_at, requester:registrations!requester_id(id, full_name, email, occupation_type, ai_experience_level)')
         .eq('status', 'pending')
         .order('created_at', { ascending: true }),
+      supabase
+        .from('teams')
+        .select('name, idea_description'),
     ])
 
     if (regErr) {
@@ -1053,6 +1063,7 @@ export default function AdminTeams({ readOnly }) {
     } else {
       setRegistrations(regs ?? [])
       setRequests(reqs ?? [])
+      setTeamsMeta(teamRows ?? [])
     }
     setLoading(false)
   }
@@ -1065,16 +1076,31 @@ export default function AdminTeams({ readOnly }) {
   const { teamsMap, individuals } = useMemo(() => {
     const map = {}
     const solo = []
-    for (const reg of registrations) {
+    const norm = (s) => (s || '').trim().toLowerCase()
+    // Nomes que já têm vínculo ATIVO (não-cancelado) com alguma equipe. Usado p/
+    // não listar como sem-time alguém que se inscreveu mais de uma vez (e-mails
+    // diferentes) e já está numa equipe por outra linha — inclusive líderes, que
+    // apareciam na lista de match via a inscrição duplicada/cancelada.
+    const namesOnTeam = new Set(
+      registrations
+        .filter(r => r.team_name && r.payment_status !== 'cancelled')
+        .map(r => norm(r.full_name))
+    )
+    const source = confirmedOnly ? registrations.filter(r => r.payment_status === 'confirmed') : registrations
+    for (const reg of source) {
       if (reg.team_name) {
         if (!map[reg.team_name]) map[reg.team_name] = []
         map[reg.team_name].push(reg)
       } else {
+        // Bucket sem-time: ignora inscrições canceladas e duplicatas de quem já
+        // está em uma equipe, que poluíam as listas de individuais e de match.
+        if (reg.payment_status === 'cancelled') continue
+        if (namesOnTeam.has(norm(reg.full_name))) continue
         solo.push(reg)
       }
     }
     return { teamsMap: map, individuals: solo }
-  }, [registrations])
+  }, [registrations, confirmedOnly])
 
   const sortedTeamNames = useMemo(
     () => Object.keys(teamsMap).sort((a, b) => a.localeCompare(b)),
@@ -1098,7 +1124,7 @@ export default function AdminTeams({ readOnly }) {
 
   const stats = useMemo(() => {
     const total       = sortedTeamNames.length
-    const complete    = sortedTeamNames.filter(n => teamsMap[n].length >= 3).length
+    const complete    = sortedTeamNames.filter(n => teamsMap[n].length >= 6).length
     const incomplete  = total - complete
     const solo        = individuals.length
     const pending     = requests.length
@@ -1412,8 +1438,8 @@ export default function AdminTeams({ readOnly }) {
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
           { label: 'Total de times',     value: stats.total,      color: 'text-electric' },
-          { label: 'Times completos',    value: stats.complete,   color: 'text-cyan',    note: '≥ 3 membros' },
-          { label: 'Times incompletos',  value: stats.incomplete, color: 'text-gold',    note: '< 3 membros' },
+          { label: 'Times completos',    value: stats.complete,   color: 'text-cyan',    note: '6 membros' },
+          { label: 'Times incompletos',  value: stats.incomplete, color: 'text-gold',    note: '< 6 membros' },
           { label: 'Individuais',        value: stats.solo,       color: 'text-white/60' },
           { label: 'Pedidos pendentes',  value: stats.pending,    color: 'text-cyan' },
         ].map(stat => (
@@ -1462,6 +1488,7 @@ export default function AdminTeams({ readOnly }) {
             <TeamCard
               key={name}
               team={{ name, members: teamsMap[name] }}
+              idea={(teamsMeta.find(t => t.name === name) || {}).idea_description}
               allTeamNames={sortedTeamNames}
               expanded={expandedTeam === name}
               onToggle={() => toggleTeam(name)}
