@@ -57,3 +57,34 @@ export const FINAL_FIELDS = [
   { key: 'proximos_passos', label: 'Próximos passos', type: 'textarea', rows: 3, full: true,
     placeholder: 'Modelo de receita, o que testariam a seguir, quanto precisariam para 90 dias.' },
 ]
+
+// Glossário de termos da metodologia, por fase. Consumido por TermsGlossary no
+// topo de cada fase dos entregáveis. Redação alinhada ao guia do mentor.
+export const GLOSSARY = {
+  hypotheses: [
+    ['Saltos de Fé', 'As 3 hipóteses fundacionais do negócio: valor, crescimento e técnica de IA. Se uma for falsa, o resto desmorona.'],
+    ['Hipótese de Valor', 'Existe um cliente disposto a pagar para resolver essa dor? É a hipótese mais importante.'],
+    ['Hipótese de Crescimento', 'Como novos clientes chegam. O "motor" pode ser viral (um usuário traz outro), pago (anúncios), pegajoso (retenção/recompra) ou comunidade.'],
+    ['Hipótese Técnica de IA', 'O modelo consegue entregar a tarefa com qualidade, custo e tempo aceitáveis?'],
+    ['Fallback', 'Modelo ou serviço reserva acionado automaticamente quando o principal falha.'],
+    ['Inferência', 'Cada chamada ao modelo de IA. Tem custo em R$ — por isso é medida.'],
+  ],
+  slc: [
+    ['SLC-IA', 'Simples, Adorável e Completo, com IA real rodando (chamada à API, output dinâmico, custo medido — não mockado). A alternativa do HackIA ao MVP.'],
+    ['Concierge IA', 'A equipe opera a IA manualmente para 1–3 clientes. Zero código; máxima validação de valor.'],
+    ['Mágico de Oz IA', 'A interface parece automática, mas um humano opera atrás dos panos. Declare que é beta.'],
+    ['IA-real mínima', 'Backend chama uma API de IA real; frontend mínimo; tudo automatizado ponta a ponta. Maximiza a nota técnica.'],
+    ['Pré-venda + Landing', 'Tipo bônus. Landing com checkout — mede se o cliente paga antes de o produto existir. Combine com outro tipo.'],
+    ['RAG', 'A IA busca em uma base externa antes de responder, reduzindo alucinação.'],
+    ['P95', 'Latência no percentil 95: 95% das respostas vêm nesse tempo ou menos. Mede o pior caso real, não a média.'],
+  ],
+  diary: [
+    ['BML (Build-Measure-Learn)', 'Ciclo central do Lean Startup: construir um experimento mínimo, medir em campo e aprender se a hipótese se confirmou. O HackIA exige ≥2 voltas em 54h.'],
+    ['Pivotar', 'Mudar um aspecto fundamental (cliente, problema, modelo, canal ou tecnologia) com base em dados que refutam a hipótese. Pivotar com dados vale os mesmos pontos que perseverar.'],
+    ['Perseverar', 'Aprofundar a hipótese atual com base em dados que a confirmam. Decisão informada, não teimosia.'],
+  ],
+  final: [
+    ['Deploy (SLC-IA deployed)', 'Versão pública do produto acessível por uma URL — não localhost. O júri precisa conseguir abrir.'],
+    ['Demo ao vivo', 'Bloco do pitch em que a IA roda em tempo real no palco, com chamada real à API. Pode ter fallback de vídeo se falhar.'],
+  ],
+}

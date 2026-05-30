@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { relativeTime } from '../lib/relativeTime'
-import { PHASES, HYPOTHESES_FIELDS, SLC_IA_FIELDS, FINAL_FIELDS } from './deliverableFields'
+import { PHASES, HYPOTHESES_FIELDS, SLC_IA_FIELDS, FINAL_FIELDS, GLOSSARY } from './deliverableFields'
 import DeliverableForm from './DeliverableForm'
+import TermsGlossary from './TermsGlossary'
 import LearningDiary from './LearningDiary'
 import SlidesUpload from './SlidesUpload'
 import SectionMeta from './SectionMeta'
@@ -55,6 +56,7 @@ export default function DeliverablesSection({ auth, goToTeam }) {
 
       {sub === 'hypotheses' && (
         <div className="space-y-2">
+          <TermsGlossary terms={GLOSSARY.hypotheses} />
           <SectionMeta meta={meta} field="hypotheses_canvas" />
           <DeliverableForm
             eyebrow="Fase 1 · Ignição" title="Canvas de Hipóteses"
@@ -66,6 +68,7 @@ export default function DeliverablesSection({ auth, goToTeam }) {
       )}
       {sub === 'slc' && (
         <div className="space-y-2">
+          <TermsGlossary terms={GLOSSARY.slc} />
           <SectionMeta meta={meta} field="slc_ia_canvas" />
           <DeliverableForm
             eyebrow="Fase 2 · Construção" title="Canvas SLC-IA"
@@ -77,6 +80,7 @@ export default function DeliverablesSection({ auth, goToTeam }) {
       )}
       {sub === 'diary' && (
         <div className="space-y-2">
+          <TermsGlossary terms={GLOSSARY.diary} />
           <SectionMeta meta={meta} field="learning_diary" />
           <LearningDiary
             value={team.learning_diary} updatedAt={team.updated_at}
@@ -86,6 +90,7 @@ export default function DeliverablesSection({ auth, goToTeam }) {
       )}
       {sub === 'final' && (
         <div className="space-y-2">
+          <TermsGlossary terms={GLOSSARY.final} />
           <SectionMeta meta={meta} field="final_deliverables" />
           <DeliverableForm
           eyebrow="Fase 3 · Apresentação" title="Entregas finais"
