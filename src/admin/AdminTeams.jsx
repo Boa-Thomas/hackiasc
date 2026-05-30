@@ -846,7 +846,7 @@ function TeamCard({ team, idea, allTeamNames, expanded, onToggle, actions, readO
             <p className="text-[10px] font-mono uppercase tracking-wider text-electric/70 mb-1">Ideia</p>
             {idea
               ? <p className="text-sm text-white/80 whitespace-pre-wrap">{idea}</p>
-              : <p className="text-sm text-white/30 italic">Sem descrição — clique em "Editar descrição".</p>
+              : <p className="text-sm text-white/30 italic">{readOnly ? 'Sem descrição.' : 'Sem descrição — clique em "Editar descrição".'}</p>
             }
           </div>
           {!readOnly && (

@@ -153,7 +153,7 @@ function CurrentTeamView({ profile, team, members, busy, onLeave, onTransfer, on
           ) : (
             <div className="mt-3 max-w-xl rounded-xl border border-dashed border-electric/30 bg-electric/5 px-4 py-3">
               <p className="text-sm text-white/50">
-                &#x1F4DD; Coloque aqui a descrição da sua solução — clique em{' '}
+                {'\u{1F4DD}'} Coloque aqui a descrição da sua solução — clique em{' '}
                 <span className="text-electric font-semibold">Editar equipe</span> para preencher.
               </p>
             </div>
