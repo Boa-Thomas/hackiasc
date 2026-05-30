@@ -44,10 +44,10 @@ export default function AdminDeliverables({ readOnly = false }) {
     if (!supabase) { setError('Supabase não configurado.'); setLoading(false); return }
     setError(null)
     const [t, r, n, e, dm, sd] = await Promise.all([
-      supabase.from('teams').select('id, name, status, hypotheses_canvas, slc_ia_canvas, learning_diary, final_deliverables, updated_at, updated_by').order('name', { ascending: true }),
+      supabase.from('teams').select('id, name, status, hypotheses_canvas, slc_ia_canvas, learning_diary, final_deliverables, pitch_transcript, pitch_segments, pitch_transcribed_at, updated_at, updated_by').order('name', { ascending: true }),
       supabase.from('registrations').select('team_id, full_name, is_team_leader, payment_status, occupation_type, economic_axes, project_name'),
       supabase.from('mentor_notes').select('id, team_id, phase, body, is_public, created_at, mentors(name, email)').order('created_at', { ascending: false }),
-      supabase.from('team_evaluations').select('id, team_id, evaluator_type, deliverable, rubric_version, total_score, eliminated, summary, scores, model, status, created_at, updated_at').order('created_at', { ascending: false }),
+      supabase.from('team_evaluations').select('id, team_id, evaluator_type, deliverable, rubric_version, total_score, eliminated, summary, scores, axes, model, status, created_at, updated_at').order('created_at', { ascending: false }),
       supabase.from('team_deliverable_meta').select('team_id, field, updated_by_name, updated_at'),
       supabase.rpc('get_slides_deadline'),
     ])
@@ -464,6 +464,7 @@ function DeliverableEvaluator({ unit, team, members, notes, existing, onSaved, r
     const payload = {
       team_id: team.id, evaluator_type: 'ai', deliverable: unit.id,
       rubric_version: EDITAL_RUBRIC.version, scores: parsed.scores,
+      axes: parsed.axes ?? null,
       total_score: parsed.total_score, eliminated: parsed.eliminated,
       summary: parsed.summary, model: parsed.model, status: 'done',
       updated_at: new Date().toISOString(),
@@ -507,6 +508,22 @@ function DeliverableEvaluator({ unit, team, members, notes, existing, onSaved, r
               </div>
             ))}
           </div>
+          {Array.isArray(existing.axes) && existing.axes.length > 0 && (
+            <div className="space-y-1 pt-1">
+              <p className="text-[10px] font-mono text-gold uppercase tracking-wider">Eixos da cláusula 5.3</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {existing.axes.map(a => (
+                  <div key={a.key} className="bg-white/5 rounded-lg p-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-white/70">{a.label}</span>
+                      <span className="font-mono text-gold">{a.score}</span>
+                    </div>
+                    {a.justification && <p className="text-[11px] text-text-muted mt-1 whitespace-pre-wrap">{a.justification}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {existing.summary && <p className="text-sm text-white/80 whitespace-pre-wrap">{existing.summary}</p>}
         </div>
       )}
@@ -514,6 +531,7 @@ function DeliverableEvaluator({ unit, team, members, notes, existing, onSaved, r
       {/* Controles (copiar → colar → gravar) */}
       {!readOnly && (
         <div className="space-y-2 pt-1">
+          {unit.hasAxes && <PitchAudioPanel team={team} onTranscribed={onSaved} />}
           {unit.showsPitchNotes && (
             <textarea value={pitchNotes} onChange={e => setPitchNotes(e.target.value)} rows={compact ? 2 : 3}
               placeholder="Observações do pitch / demo ao vivo (entram no pacote): a IA rodou? evidências de tração? respostas aos jurados?"
@@ -581,5 +599,83 @@ function PendingQueue({ items, members, notes, onSaved }) {
         })}
       </div>
     </aside>
+  )
+}
+
+// Upload do áudio do pitch + transcrição via Whisper (edge fn transcribe-pitch).
+// Só aparece na Fase 3. Áudio em deliverables/<team_id>/pitch.<ext> (bucket `files`).
+// O admin é authenticated → policy deliverables_storage_admin_insert permite o upload.
+function PitchAudioPanel({ team, onTranscribed }) {
+  const [file, setFile] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
+  const [msg, setMsg] = useState(null)
+  const [showTranscript, setShowTranscript] = useState(false)
+
+  const hasTranscript = !!team.pitch_transcribed_at
+
+  async function uploadAudio() {
+    setMsg(null)
+    if (!file) return
+    if (!supabase) { setMsg({ kind: 'err', text: 'Supabase não configurado.' }); return }
+    if (file.size > 50 * 1024 * 1024) { setMsg({ kind: 'err', text: 'Áudio acima de 50MB.' }); return }
+    setUploading(true)
+    const ext = (file.name.split('.').pop() || 'webm').toLowerCase().replace(/[^a-z0-9]/g, '') || 'webm'
+    const prefix = `deliverables/${team.id}`
+    const { data: list } = await supabase.storage.from('files').list(prefix)
+    const old = (list || []).filter(o => /^pitch\./i.test(o.name)).map(o => `${prefix}/${o.name}`)
+    if (old.length) await supabase.storage.from('files').remove(old)
+    const { error: upErr } = await supabase.storage.from('files').upload(`${prefix}/pitch.${ext}`, file, { contentType: file.type || 'audio/webm', upsert: true })
+    setUploading(false)
+    if (upErr) { setMsg({ kind: 'err', text: `Erro no upload: ${upErr.message}` }); return }
+    setFile(null)
+    setMsg({ kind: 'ok', text: 'Áudio enviado. Agora clique em Transcrever.' })
+  }
+
+  async function transcribe() {
+    setMsg(null)
+    if (!supabase) { setMsg({ kind: 'err', text: 'Supabase não configurado.' }); return }
+    setTranscribing(true)
+    const { data, error: err } = await supabase.functions.invoke('transcribe-pitch', { body: { team_id: team.id } })
+    setTranscribing(false)
+    if (err || data?.error) {
+      const code = data?.error || err?.message || 'erro'
+      const human = code === 'no_audio' ? 'Nenhum áudio enviado para esta equipe.'
+        : code === 'whisper_offline' ? 'O servidor Whisper está offline. Ligue a caixa e tente de novo.'
+        : `Falha na transcrição: ${code}`
+      setMsg({ kind: 'err', text: human }); return
+    }
+    setMsg({ kind: 'ok', text: `Transcrição pronta (${data.chars} caracteres).` })
+    onTranscribed?.()
+  }
+
+  return (
+    <div className="border border-dark-border rounded-xl p-3 space-y-2 bg-white/5">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <span className="text-xs font-mono text-gold uppercase tracking-wider">Áudio do pitch → transcrição (5.3)</span>
+        {hasTranscript && <span className="text-[10px] font-mono text-cyan">transcrição ✓ · há {relativeTime(team.pitch_transcribed_at)}</span>}
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <input type="file" accept="audio/*" onChange={e => setFile(e.target.files?.[0] || null)}
+          className="text-xs text-white/70 file:mr-2 file:px-2 file:py-1 file:rounded file:border-0 file:bg-electric/20 file:text-electric" />
+        <button onClick={uploadAudio} disabled={!file || uploading}
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-electric/20 text-electric border border-electric/40 hover:bg-electric/30 disabled:opacity-40">
+          {uploading ? 'Enviando...' : 'Enviar áudio'}
+        </button>
+        <button onClick={transcribe} disabled={transcribing}
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gold/20 text-gold border border-gold/40 hover:bg-gold/30 disabled:opacity-40">
+          {transcribing ? 'Transcrevendo...' : hasTranscript ? 'Re-transcrever' : 'Transcrever'}
+        </button>
+      </div>
+      {hasTranscript && (
+        <div>
+          <button onClick={() => setShowTranscript(v => !v)} className="text-xs text-electric hover:underline">
+            {showTranscript ? 'ocultar transcrição' : 'ver transcrição'}
+          </button>
+          {showTranscript && <p className="text-xs text-white/70 mt-1 whitespace-pre-wrap max-h-48 overflow-y-auto bg-dark/50 rounded p-2">{team.pitch_transcript}</p>}
+        </div>
+      )}
+      {msg && <div className={`rounded-lg px-3 py-1.5 text-xs border ${msg.kind === 'ok' ? 'bg-cyan/10 border-cyan/30 text-cyan' : 'bg-hot/10 border-hot/30 text-hot'}`}>{msg.text}</div>}
+    </div>
   )
 }
