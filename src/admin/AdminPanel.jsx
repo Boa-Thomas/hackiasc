@@ -13,6 +13,7 @@ import AdminWall from './AdminWall'
 import AdminRanking from './AdminRanking'
 import AdminResources from './AdminResources'
 import AdminFacilitator from './AdminFacilitator'
+import AdminEvaluation from './AdminEvaluation'
 
 const ALL_TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
@@ -21,6 +22,7 @@ const ALL_TABS = [
   { id: 'teams', label: 'Times', icon: '👥' },
   { id: 'deliverables', label: 'Entregas', icon: '📦' },
   { id: 'ranking', label: 'Ranking', icon: '🏆' },
+  { id: 'evaluation', label: 'Avaliação', icon: '⭐' },
   { id: 'mentors', label: 'Mentores', icon: '🎓', adminOnly: true },
   { id: 'jurors', label: 'Jurados', icon: '⚖️', adminOnly: true },
   { id: 'wall', label: 'Muro de Dores', icon: '🧱', adminOnly: true },
@@ -135,6 +137,7 @@ export default function AdminPanel({ onLogout, role = 'viewer' }) {
         {activeTab === 'teams' && <AdminTeams readOnly={readOnly} confirmedOnly={confirmedOnly} />}
         {activeTab === 'deliverables' && <AdminDeliverables readOnly={readOnly} />}
         {activeTab === 'ranking' && <AdminRanking />}
+        {activeTab === 'evaluation' && <AdminEvaluation readOnly={readOnly} />}
         {activeTab === 'financeiro' && <AdminFinanceiro readOnly={readOnly} />}
         {activeTab === 'bulk' && <AdminBulkOrders readOnly={readOnly} />}
         {!readOnly && activeTab === 'mentors' && <AdminMentors />}
