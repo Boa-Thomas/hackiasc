@@ -6,6 +6,9 @@ const { url, anonKey, PHASES, STAGE_ALIASES, TEAM_NAME_ALIASES } =
 
 const PHASE_BY_KEY = Object.fromEntries(PHASES.map((p) => [p.key, p]));
 
+// Mapa de apelidos default (do config), ja normalizado. Fallback offline.
+const DEFAULT_ALIAS_MAP = { ...TEAM_NAME_ALIASES };
+
 // Cliente Supabase EXTERNO, lazy e somente-leitura. null se não configurado.
 let _client;
 export function getExternalClient() {
@@ -25,6 +28,17 @@ export function normalizeTeamName(name) {
     .replace(/[^a-z0-9]/g, "");
 }
 
+// Pares crus [{ external, hackia }] -> { normExternal: normHackia } (ignora lado vazio).
+export function buildAliasMap(rawPairs) {
+  const map = {};
+  for (const pair of rawPairs || []) {
+    const ext = normalizeTeamName(pair && pair.external);
+    const hk = normalizeTeamName(pair && pair.hackia);
+    if (ext && hk) map[ext] = hk;
+  }
+  return map;
+}
+
 // stage (string do banco externo) -> objeto de fase ou null.
 export function stageToPhase(stage) {
   if (!stage) return null;
@@ -34,16 +48,16 @@ export function stageToPhase(stage) {
 }
 
 // Chave canônica de casamento de um nome (aplica o mapa de apelidos).
-export function matchKey(name) {
+export function matchKey(name, aliasMap = DEFAULT_ALIAS_MAP) {
   const norm = normalizeTeamName(name);
-  return TEAM_NAME_ALIASES[norm] || norm;
+  return aliasMap[norm] || norm;
 }
 
 // Linhas externas [{ name, stage }] -> [{ name, key, phase }].
-export function mapExternalRows(rows) {
+export function mapExternalRows(rows, aliasMap = DEFAULT_ALIAS_MAP) {
   return (rows || []).map((r) => ({
     name: r.name,
-    key: matchKey(r.name),
+    key: matchKey(r.name, aliasMap),
     phase: stageToPhase(r.stage),
   }));
 }
@@ -58,7 +72,7 @@ export function buildPhaseLookup(externalList) {
 }
 
 // Nomes externos que não têm par entre os nomes HackIA.
-export function findUnmatchedExternal(hackiaNames, externalList) {
-  const hackiaKeys = new Set(hackiaNames.map(matchKey));
+export function findUnmatchedExternal(hackiaNames, externalList, aliasMap = DEFAULT_ALIAS_MAP) {
+  const hackiaKeys = new Set(hackiaNames.map((n) => matchKey(n, aliasMap)));
   return externalList.filter((e) => !hackiaKeys.has(e.key)).map((e) => e.name);
 }

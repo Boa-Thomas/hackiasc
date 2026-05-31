@@ -6,6 +6,7 @@ import {
   mapExternalRows,
   buildPhaseLookup,
   findUnmatchedExternal,
+  buildAliasMap,
 } from "./teamPhases";
 
 describe("normalizeTeamName", () => {
@@ -100,3 +101,46 @@ describe('buildPhaseLookup precedencia', () => {
     expect(lookup.get(matchKey('Foo')).key).toBe('slc')
   })
 })
+
+describe("buildAliasMap", () => {
+  it("normaliza os dois lados e ignora pares incompletos", () => {
+    const m = buildAliasMap([
+      { external: "Revisa.Ai", hackia: "Revisai" },
+      { external: "  ", hackia: "X" },
+      { external: "Y", hackia: "" },
+    ]);
+    expect(m).toEqual({ revisaai: "revisai" });
+  });
+  it("ultimo par vence em colisao de chave normalizada", () => {
+    const m = buildAliasMap([
+      { external: "On.Ai", hackia: "AAA" },
+      { external: "on ai", hackia: "BBB" },
+    ]);
+    expect(m.onai).toBe("bbb");
+  });
+});
+
+describe("matchKey com aliasMap", () => {
+  it("usa o aliasMap passado", () => {
+    const m = buildAliasMap([{ external: "Revisa.Ai", hackia: "Revisai" }]);
+    expect(matchKey("Revisa.Ai", m)).toBe("revisai");
+  });
+  it("sem aliasMap usa o default do config (compat)", () => {
+    expect(matchKey("byAItas")).toBe("baitas");
+  });
+});
+
+describe("override dinamico de apelido", () => {
+  const rows = [{ name: "Revisa.Ai", stage: "slc" }];
+  it("com override, Revisa.Ai casa com Revisai e some das orfas", () => {
+    const m = buildAliasMap([{ external: "Revisa.Ai", hackia: "Revisai" }]);
+    const ext = mapExternalRows(rows, m);
+    const lookup = buildPhaseLookup(ext);
+    expect(lookup.get(matchKey("Revisai", m)).key).toBe("slc");
+    expect(findUnmatchedExternal(["Revisai"], ext, m)).toEqual([]);
+  });
+  it("sem override, Revisa.Ai continua orfa", () => {
+    const ext = mapExternalRows(rows);
+    expect(findUnmatchedExternal(["Revisai"], ext)).toEqual(["Revisa.Ai"]);
+  });
+});
