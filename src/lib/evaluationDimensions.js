@@ -9,6 +9,7 @@ export const EVAL_STEP = 0.5
 export const EVALUATION_DIMENSIONS = [
   { key: 'venue', label: 'Local / estrutura física' },
   { key: 'methodology', label: 'Metodologia / dinâmica' },
+  { key: 'facilitation', label: 'Facilitação' },
   { key: 'food', label: 'Comida / coffee' },
   { key: 'platform', label: 'Plataforma (app/site)' },
   { key: 'organization', label: 'Organização e comunicação' },
