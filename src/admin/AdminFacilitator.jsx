@@ -655,6 +655,7 @@ function TeamPhases() {
   const { getPhase, getUnmatched, externalList, aliases, aliasesLoaded, saveAliases, loading, error, lastUpdated } = useTeamPhases()
   const [names, setNames] = useState([])
   const [editing, setEditing] = useState(false)
+  const [seed, setSeed] = useState(null)
 
   useEffect(() => {
     if (!supabase) return
@@ -693,15 +694,27 @@ function TeamPhases() {
       )}
 
       {orphans.length > 0 && (
-        <p className="mt-3 text-[10px] font-mono text-white/30">
-          No tracking externo sem par aqui: {orphans.join(', ')}
-        </p>
+        <div className="mt-3 text-[10px] font-mono text-white/30 flex flex-wrap items-center gap-1.5">
+          <span>No tracking externo sem par aqui:</span>
+          {orphans.map((o) => (
+            <button
+              key={o}
+              type="button"
+              onClick={() => { setSeed(o); setEditing(true) }}
+              disabled={!aliasesLoaded}
+              title={aliasesLoaded ? `Vincular "${o}" a um time` : 'Carregando apelidos...'}
+              className="px-1.5 py-0.5 rounded border border-white/10 text-white/50 hover:text-cyan hover:border-cyan/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {o} +
+            </button>
+          ))}
+        </div>
       )}
 
       <div className="mt-3 flex justify-end">
         <button
           type="button"
-          onClick={() => setEditing(v => !v)}
+          onClick={() => { setSeed(null); setEditing(v => !v) }}
           disabled={!aliasesLoaded}
           title={aliasesLoaded ? undefined : 'Carregando apelidos...'}
           className="text-[10px] font-mono text-white/40 hover:text-cyan transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
@@ -711,9 +724,11 @@ function TeamPhases() {
       </div>
       {editing && aliasesLoaded && (
         <TeamPhaseAliasesEditor
+          key={seed || 'base'}
           aliases={aliases}
           externalNames={externalList.map((e) => e.name)}
           hackiaNames={names}
+          seedExternal={seed}
           onSave={saveAliases}
         />
       )}

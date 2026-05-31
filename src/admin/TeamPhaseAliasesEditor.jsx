@@ -15,10 +15,17 @@ export default function TeamPhaseAliasesEditor({
   externalNames,
   hackiaNames,
   onSave,
+  seedExternal,
 }) {
   // Rascunho local inicializado uma unica vez a partir de `aliases`: o admin
   // continua editando mesmo se o poll de 20s atualizar o prop por baixo.
-  const [rows, setRows] = useState(() => toRows(aliases));
+  const [rows, setRows] = useState(() => {
+    const base = toRows(aliases);
+    if (seedExternal && !base.some((r) => r.external === seedExternal)) {
+      base.push({ id: `seed-${seedExternal}`, external: seedExternal, hackia: "" });
+    }
+    return base;
+  });
   const [seq, setSeq] = useState(() => (aliases ? aliases.length : 0));
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
