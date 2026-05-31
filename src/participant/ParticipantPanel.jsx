@@ -12,6 +12,7 @@ import ReceivedComplimentsSection from '../sugar/ReceivedComplimentsSection'
 import { EVENT_CONFIG } from '../lib/config'
 import { QRCodeSVG } from 'qrcode.react'
 import NotificationBell from '../components/NotificationBell'
+import { withScheduleStatus } from './participantSchedule'
 
 const ALL_TABS = [
   { id: 'team', label: 'Equipe', icon: 'team' },
@@ -357,20 +358,25 @@ function DetailedSchedule() {
   useEffect(() => {
     if (!supabase) return
     let active = true
-    supabase.rpc('get_public_schedule').then(({ data, error }) => {
+    const load = () => supabase.rpc('get_public_schedule').then(({ data, error }) => {
       if (!active || error || !Array.isArray(data) || data.length === 0) return
       setDays(toParticipantSchedule(data))
     })
-    return () => { active = false }
+    load()
+    const t = setInterval(load, 30000)
+    return () => { active = false; clearInterval(t) }
   }, [])
+  // O "agora" segue o ponteiro da facilitadora (item.done de get_public_schedule).
+  const { days: view, currentDayIndex } = withScheduleStatus(days)
   return (
     <div className="card-glass rounded-2xl p-6">
       <p className="text-xs font-mono text-violet uppercase tracking-wider mb-4">Cronograma Detalhado</p>
       <div className="space-y-3">
-        {days.map((day, idx) => {
+        {view.map((day, idx) => {
           const a = ACCENT[day.accent] || ACCENT.cyan
+          const isOpen = currentDayIndex === -1 ? idx === 0 : idx === currentDayIndex
           return (
-            <details key={day.day} open={idx === 0} className={`rounded-xl border ${a.border} bg-dark/60 overflow-hidden group`}>
+            <details key={day.day} open={isOpen} className={`rounded-xl border ${a.border} bg-dark/60 overflow-hidden group`}>
               <summary className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer list-none select-none hover:bg-white/5 transition-colors">
                 <div className="flex items-center gap-3">
                   <span className={`w-2 h-2 rounded-full ${a.dot} flex-shrink-0`} />
@@ -388,11 +394,8 @@ function DetailedSchedule() {
                   <p className="text-[11px] text-text-muted italic mb-3 leading-relaxed">{day.note}</p>
                 )}
                 <ul className="space-y-2">
-                  {day.items.map((item) => (
-                    <li key={item.time} className="flex gap-3 items-start">
-                      <span className={`flex-shrink-0 font-mono text-xs font-semibold ${a.text} w-12 pt-0.5`}>{item.time}</span>
-                      <span className="text-sm text-white/90 leading-snug">{item.activity}</span>
-                    </li>
+                  {day.items.map((item, ii) => (
+                    <ScheduleItem key={ii} item={item} accent={a} />
                   ))}
                 </ul>
               </div>
@@ -401,6 +404,42 @@ function DetailedSchedule() {
         })}
       </div>
     </div>
+  )
+}
+
+// Linha do cronograma com estilo por status: feito (esmaecido + check),
+// atual ("Agora" + destaque) ou futuro (padrao).
+function ScheduleItem({ item, accent }) {
+  if (item.status === 'current') {
+    return (
+      <li className={`flex gap-3 items-start rounded-lg -mx-2 px-2 py-2 border ${accent.border} bg-white/[0.06]`}>
+        <span className={`flex-shrink-0 font-mono text-xs font-bold ${accent.text} w-12 pt-0.5`}>{item.time}</span>
+        <span className="text-sm text-white font-semibold leading-snug flex-1">{item.activity}</span>
+        <span className={`flex-shrink-0 inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider ${accent.text}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${accent.dot} animate-pulse-glow`} />
+          Agora
+        </span>
+      </li>
+    )
+  }
+  if (item.status === 'done') {
+    return (
+      <li className="flex gap-3 items-start opacity-45">
+        <span className="flex-shrink-0 font-mono text-xs w-12 pt-0.5 text-text-muted">{item.time}</span>
+        <span className="text-sm text-white/70 leading-snug flex items-start gap-1.5">
+          <svg className="w-3.5 h-3.5 text-cyan flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          <span>{item.activity}</span>
+        </span>
+      </li>
+    )
+  }
+  return (
+    <li className="flex gap-3 items-start">
+      <span className={`flex-shrink-0 font-mono text-xs font-semibold ${accent.text} w-12 pt-0.5`}>{item.time}</span>
+      <span className="text-sm text-white/90 leading-snug">{item.activity}</span>
+    </li>
   )
 }
 
@@ -483,6 +522,7 @@ function toParticipantSchedule(rows) {
     items: (d.items || []).map((it) => ({
       time: it.time || '',
       activity: it.description ? `${it.title} — ${it.description}` : it.title,
+      done: !!it.done,
     })),
   }))
 }

@@ -68,8 +68,14 @@ CREATE POLICY "announcements_admin_all"
   USING (is_admin()) WITH CHECK (is_admin());
 
 -- ------------------------------------------------------------
--- 3. Leitura publica do cronograma (anon) — SEM done/done_at.
+-- 3. Leitura publica do cronograma (anon).
 --    Caminho unico para Timeline (landing) e ParticipantPanel.
+--    NOTA: a versao ABAIXO omite `done` (decisao original). Foi DEPOIS
+--    revista por migrations/add_schedule_done_to_public.sql, que expoe o
+--    booleano `done` por item (done_at segue interno) para o destaque
+--    "voce esta aqui" no painel do participante. Aquele arquivo e a fonte
+--    de verdade atual desta funcao — NAO re-rode este bloco sem reaplicar
+--    a migracao seguinte, ou o `done` some do RPC publico.
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION get_public_schedule()
 RETURNS JSON
