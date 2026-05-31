@@ -12,6 +12,7 @@ import EventEvaluationForm from '../lib/EventEvaluationForm'
 import SendSugarCube from '../sugar/SendSugarCube'
 import ReceivedComplimentsSection from '../sugar/ReceivedComplimentsSection'
 import NotificationBell from '../components/NotificationBell'
+import MentorPrePitch from './MentorPrePitch'
 
 export default function MentorPanel({ auth }) {
   const { mentor, teams } = auth
@@ -136,9 +137,21 @@ export default function MentorPanel({ auth }) {
                     <span className="text-sm font-semibold">{p.label}</span>
                   </button>
                 ))}
+                <button
+                  onClick={() => setSub('prepitch')}
+                  className={`flex flex-col items-start px-4 py-2 rounded-xl border transition-all whitespace-nowrap ${
+                    sub === 'prepitch'
+                      ? 'border-gold/40 bg-gold/10 text-gold'
+                      : 'border-dark-border bg-dark text-text-muted hover:text-white hover:border-text-muted'
+                  }`}
+                >
+                  <span className="text-[10px] font-mono uppercase opacity-70">avaliação</span>
+                  <span className="text-sm font-semibold">Pré-Pitch</span>
+                </button>
               </div>
             </div>
 
+            {sub === 'prepitch' && <MentorPrePitch token={auth.token} />}
             {sub === 'hypotheses' && <div className="space-y-2"><SectionMeta meta={meta} field="hypotheses_canvas" /><DeliverableForm readOnly eyebrow="Fase 1 · Ignição" title="Canvas de Hipóteses" fields={HYPOTHESES_FIELDS} value={team.hypotheses_canvas} /></div>}
             {sub === 'slc' && <div className="space-y-2"><SectionMeta meta={meta} field="slc_ia_canvas" /><DeliverableForm readOnly eyebrow="Fase 2 · Construção" title="Canvas SLC-IA" fields={SLC_IA_FIELDS} value={team.slc_ia_canvas} /></div>}
             {sub === 'diary' && <div className="space-y-2"><SectionMeta meta={meta} field="learning_diary" /><LearningDiary readOnly value={team.learning_diary} /></div>}

@@ -13,6 +13,7 @@ import { EVENT_CONFIG } from '../lib/config'
 import { QRCodeSVG } from 'qrcode.react'
 import NotificationBell from '../components/NotificationBell'
 import { withScheduleStatus } from './participantSchedule'
+import ParticipantPrePitch from './ParticipantPrePitch'
 
 const ALL_TABS = [
   { id: 'team', label: 'Equipe', icon: 'team' },
@@ -21,6 +22,7 @@ const ALL_TABS = [
   { id: 'resources', label: 'Recursos', icon: 'resources' },
   { id: 'evaluation', label: 'Avaliação', icon: 'evaluation' },
   { id: 'sugar', label: 'Elogios', icon: 'sugar' },
+  { id: 'prepitch', label: 'Pré-Pitch', icon: 'evaluation' },
   { id: 'profile', label: 'Meus Dados', icon: 'profile' },
 ]
 
@@ -166,6 +168,7 @@ export default function ParticipantPanel({ auth }) {
             <SendSugarCube mode="participant" token={auth.token} />
           </div>
         )}
+        {tab === 'prepitch' && isPaid && <ParticipantPrePitch token={auth.token} />}
         {tab === 'profile' && <EditProfile auth={auth} />}
       </main>
     </div>
