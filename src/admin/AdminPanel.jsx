@@ -15,6 +15,7 @@ import AdminRanking from './AdminRanking'
 import AdminResources from './AdminResources'
 import AdminFacilitator from './AdminFacilitator'
 import AdminEvaluation from './AdminEvaluation'
+import NotificationBell from '../components/NotificationBell'
 
 const ALL_TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
@@ -78,6 +79,7 @@ export default function AdminPanel({ onLogout, role = 'viewer' }) {
           </h1>
 
           <div className="flex items-center gap-3 flex-shrink-0">
+            <NotificationBell auth={{ kind: 'admin' }} />
             {!checkinOnly && !staffOnly && (
               <button
                 onClick={toggleConfirmedOnly}

@@ -10,6 +10,7 @@ import AiEvaluationView from '../lib/AiEvaluationView'
 import EventEvaluationForm from '../lib/EventEvaluationForm'
 import SendSugarCube from '../sugar/SendSugarCube'
 import ReceivedComplimentsSection from '../sugar/ReceivedComplimentsSection'
+import NotificationBell from '../components/NotificationBell'
 
 export default function MentorPanel({ auth }) {
   const { mentor, teams } = auth
@@ -41,6 +42,7 @@ export default function MentorPanel({ auth }) {
             <span className="hidden sm:inline-block text-text-muted text-xs font-mono uppercase tracking-wider">/ Painel do Mentor</span>
           </div>
           <div className="flex items-center gap-3">
+            <NotificationBell auth={{ kind: 'mentor', token: auth.token }} />
             <div className="hidden sm:block text-right">
               <p className="text-sm text-white truncate max-w-[200px]">{mentor?.name || mentor?.email}</p>
               <p className="text-xs text-text-muted truncate max-w-[200px]">{mentor?.email}</p>

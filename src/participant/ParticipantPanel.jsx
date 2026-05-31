@@ -11,6 +11,7 @@ import SendSugarCube from '../sugar/SendSugarCube'
 import ReceivedComplimentsSection from '../sugar/ReceivedComplimentsSection'
 import { EVENT_CONFIG } from '../lib/config'
 import { QRCodeSVG } from 'qrcode.react'
+import NotificationBell from '../components/NotificationBell'
 
 const ALL_TABS = [
   { id: 'team', label: 'Equipe', icon: 'team' },
@@ -90,6 +91,7 @@ export default function ParticipantPanel({ auth }) {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            <NotificationBell auth={{ kind: 'participant', token: auth.token }} />
             <div className="hidden sm:block text-right">
               <p className="text-sm text-white truncate max-w-[200px]">{profile?.full_name}</p>
               <p className="text-xs text-text-muted truncate max-w-[200px]">{profile?.email}</p>
