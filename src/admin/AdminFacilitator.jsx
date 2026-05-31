@@ -324,6 +324,12 @@ function ScheduleEditor({ days, items, onError, onChanged }) {
     await onChanged()
   }
 
+  async function announceStart(it) {
+    if (!window.confirm(`Anunciar início de "${it.title}" para todos os participantes?`)) return
+    const { error: err } = await supabase.rpc('notify_schedule_start', { p_item_id: it.id })
+    if (err) { onError(`Erro ao anunciar início: ${err.message}`); return }
+  }
+
   async function patchDay(dayKey, patch) {
     const { error: err } = await supabase.from('schedule_days').update(patch).eq('day_key', dayKey)
     if (err) { onError(`Erro ao salvar dia: ${err.message}`); return }
@@ -374,6 +380,7 @@ function ScheduleEditor({ days, items, onError, onChanged }) {
                         onPatch={(patch) => patchItem(it.id, patch)}
                         onTimeChange={(oldT, newT) => changeTime(it, oldT, newT)}
                         onMakeCurrent={() => makeCurrent(it)}
+                        onAnnounceStart={() => announceStart(it)}
                         onRemove={() => removeItem(it)}
                       />
                     ))}
@@ -394,7 +401,7 @@ function ScheduleEditor({ days, items, onError, onChanged }) {
   )
 }
 
-function SortableItemRow({ item, accent, isFirst, isLast, onToggleDone, onMoveUp, onMoveDown, onPatch, onTimeChange, onMakeCurrent, onRemove }) {
+function SortableItemRow({ item, accent, isFirst, isLast, onToggleDone, onMoveUp, onMoveDown, onPatch, onTimeChange, onMakeCurrent, onAnnounceStart, onRemove }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const style = { transform: CSS.Transform.toString(transform), transition }
 
@@ -451,6 +458,7 @@ function SortableItemRow({ item, accent, isFirst, isLast, onToggleDone, onMoveUp
 
       <div className="flex-shrink-0 flex items-center gap-0.5">
         <button onClick={onMakeCurrent} className="w-6 h-6 rounded text-white/30 hover:text-cyan hover:bg-cyan/10 transition-colors" title="Tornar este o bloco atual">◉</button>
+        <button onClick={onAnnounceStart} className="w-6 h-6 rounded text-white/30 hover:text-electric hover:bg-electric/10 transition-colors" title="Anunciar início aos participantes">▶️</button>
         <button onClick={onMoveUp} disabled={isFirst} className="w-6 h-6 rounded text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:hover:bg-transparent transition-colors" title="Subir">↑</button>
         <button onClick={onMoveDown} disabled={isLast} className="w-6 h-6 rounded text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:hover:bg-transparent transition-colors" title="Descer">↓</button>
         <button onClick={onRemove} className="w-6 h-6 rounded text-white/30 hover:text-hot hover:bg-hot/10 transition-colors" title="Excluir">✕</button>

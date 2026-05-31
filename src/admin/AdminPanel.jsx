@@ -15,11 +15,13 @@ import AdminRanking from './AdminRanking'
 import AdminResources from './AdminResources'
 import AdminFacilitator from './AdminFacilitator'
 import AdminEvaluation from './AdminEvaluation'
+import AdminNotifications from './AdminNotifications'
 import NotificationBell from '../components/NotificationBell'
 
 const ALL_TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'facilitator', label: 'Facilitador', icon: '🎤', adminOnly: true },
+  { id: 'notifications', label: 'Notificações', icon: '🔔', adminOnly: true },
   { id: 'registrations', label: 'Inscrições', icon: '📋' },
   { id: 'teams', label: 'Times', icon: '👥' },
   { id: 'deliverables', label: 'Entregas', icon: '📦' },
@@ -150,6 +152,7 @@ export default function AdminPanel({ onLogout, role = 'viewer' }) {
         {!readOnly && activeTab === 'sugarcubes' && <AdminSugarCubes />}
         {!readOnly && activeTab === 'resources' && <AdminResources />}
         {!readOnly && activeTab === 'facilitator' && <AdminFacilitator />}
+        {!readOnly && activeTab === 'notifications' && <AdminNotifications />}
         {!readOnly && activeTab === 'checkin' && <AdminCheckin />}
         {!readOnly && activeTab === 'logs' && <AdminAuditLog />}
       </main>
