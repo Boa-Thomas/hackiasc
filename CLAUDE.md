@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Landing page for **HackIA SC — AI Venture Hackathon Blumenau 2026** (22-24 May). Single-page React app with registration form that saves to Supabase. Deployed to GitHub Pages at hackiasc.com.
+Landing page for **HackIA SC — AI Venture Hackathon Blumenau 2026** (29-31 May). Single-page React app with registration form that saves to Supabase. Deployed to GitHub Pages at hackiasc.com.
 
 ## Commands
 
