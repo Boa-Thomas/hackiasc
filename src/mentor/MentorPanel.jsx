@@ -8,6 +8,8 @@ import { relativeTime } from '../lib/relativeTime'
 import { aggregateTeamEvaluation, DELIVERABLE_UNITS } from '../lib/iaEvaluator'
 import AiEvaluationView from '../lib/AiEvaluationView'
 import EventEvaluationForm from '../lib/EventEvaluationForm'
+import SendSugarCube from '../sugar/SendSugarCube'
+import ReceivedComplimentsSection from '../sugar/ReceivedComplimentsSection'
 
 export default function MentorPanel({ auth }) {
   const { mentor, teams } = auth
@@ -196,6 +198,10 @@ export default function MentorPanel({ auth }) {
         )}
 
         <EventEvaluationForm respondentType="mentor" token={auth.token} />
+        <div className="space-y-8 pt-2">
+          <ReceivedComplimentsSection mode="mentor" token={auth.token} />
+          <SendSugarCube mode="mentor" token={auth.token} />
+        </div>
       </main>
     </div>
   )

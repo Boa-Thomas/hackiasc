@@ -7,6 +7,8 @@ import ResourcesSection from './ResourcesSection'
 import CertificateSection from './CertificateSection'
 import CriteriaHighlight from './CriteriaHighlight'
 import EventEvaluationForm from '../lib/EventEvaluationForm'
+import SendSugarCube from '../sugar/SendSugarCube'
+import ReceivedComplimentsSection from '../sugar/ReceivedComplimentsSection'
 import { EVENT_CONFIG } from '../lib/config'
 import { QRCodeSVG } from 'qrcode.react'
 
@@ -16,6 +18,7 @@ const ALL_TABS = [
   { id: 'deliverables', label: 'Entregáveis', icon: 'deliverables' },
   { id: 'resources', label: 'Recursos', icon: 'resources' },
   { id: 'evaluation', label: 'Avaliação', icon: 'evaluation' },
+  { id: 'sugar', label: 'Elogios', icon: 'sugar' },
   { id: 'profile', label: 'Meus Dados', icon: 'profile' },
 ]
 
@@ -153,6 +156,12 @@ export default function ParticipantPanel({ auth }) {
         {tab === 'resources' && isPaid && <ResourcesSection auth={auth} />}
         {tab === 'evaluation' && isPaid && (
           <EventEvaluationForm respondentType="participant" token={auth.token} />
+        )}
+        {tab === 'sugar' && isPaid && (
+          <div className="space-y-8">
+            <ReceivedComplimentsSection mode="participant" token={auth.token} />
+            <SendSugarCube mode="participant" token={auth.token} />
+          </div>
         )}
         {tab === 'profile' && <EditProfile auth={auth} />}
       </main>
