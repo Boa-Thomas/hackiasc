@@ -6,8 +6,8 @@ import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, us
 import { SortableContext, verticalListSortingStrategy, useSortable, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTeamPhases } from '../hooks/useTeamPhases'
-import { findUnmatchedExternal } from '../lib/teamPhases'
 import PhaseBadge from './PhaseBadge'
+import TeamPhaseAliasesEditor from './TeamPhaseAliasesEditor'
 
 const ACCENT = {
   cyan: { text: 'text-cyan', dot: 'bg-cyan', border: 'border-cyan/40', soft: 'bg-cyan/10' },
@@ -652,8 +652,9 @@ function PulseStat({ label, value, total, accent }) {
 
 // Fase atual de cada equipe, lida (read-only) do painel externo. Atualiza ~20s.
 function TeamPhases() {
-  const { getPhase, externalList, loading, error, lastUpdated } = useTeamPhases()
+  const { getPhase, getUnmatched, externalList, aliases, saveAliases, loading, error, lastUpdated } = useTeamPhases()
   const [names, setNames] = useState([])
+  const [editing, setEditing] = useState(false)
 
   useEffect(() => {
     if (!supabase) return
@@ -662,7 +663,7 @@ function TeamPhases() {
     })
   }, [])
 
-  const orphans = useMemo(() => findUnmatchedExternal(names, externalList), [names, externalList])
+  const orphans = useMemo(() => getUnmatched(names), [getUnmatched, names])
   const updatedLabel = lastUpdated
     ? lastUpdated.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     : null
@@ -695,6 +696,24 @@ function TeamPhases() {
         <p className="mt-3 text-[10px] font-mono text-white/30">
           No tracking externo sem par aqui: {orphans.join(', ')}
         </p>
+      )}
+
+      <div className="mt-3 flex justify-end">
+        <button
+          type="button"
+          onClick={() => setEditing(v => !v)}
+          className="text-[10px] font-mono text-white/40 hover:text-cyan transition-colors"
+        >
+          {editing ? 'fechar' : '✎ ajustar apelidos'}
+        </button>
+      </div>
+      {editing && (
+        <TeamPhaseAliasesEditor
+          aliases={aliases}
+          externalNames={externalList.map((e) => e.name)}
+          hackiaNames={names}
+          onSave={saveAliases}
+        />
       )}
     </div>
   )
