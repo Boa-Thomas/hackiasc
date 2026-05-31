@@ -39,6 +39,10 @@ export function useJuror() {
   const initialized = useRef(false)
   // Último valor do sinal de recarga visto. Null até a primeira carga.
   const reloadAtRef = useRef(null)
+  // Verdadeiro enquanto uma mutação (salvar nota / aceitar termo) está em voo.
+  // Evita que o refresh() pós-mutação dispare window.location.reload() no meio da
+  // operação; o próximo poll (<=30s) aplica o sinal de recarga com segurança.
+  const mutatingRef = useRef(false)
 
   const refresh = useCallback(async () => {
     if (!token || !supabase) return null
@@ -51,12 +55,13 @@ export function useJuror() {
     // Sinal de recarga remoto: o admin pode "forçar recarga" (juror_force_reload
     // bumpa juror_reload_at). Na primeira carga só registramos o valor; numa
     // checagem posterior, se mudou, recarregamos o painel para aplicar o estado
-    // novo (ex.: ocultar a ideia) mesmo em abas já abertas. Os rascunhos do
-    // scorecard ficam no localStorage e são restaurados após a recarga.
+    // novo (ex.: ocultar a ideia) mesmo em abas já abertas. Não recarregamos no
+    // meio de uma mutação (mutatingRef): o próximo poll cuida disso. Os rascunhos
+    // do scorecard ficam no localStorage e são restaurados após a recarga.
     const rl = data.reload_at ?? null
     if (reloadAtRef.current == null) {
       reloadAtRef.current = rl
-    } else if (rl != null && rl !== reloadAtRef.current) {
+    } else if (rl != null && rl !== reloadAtRef.current && !mutatingRef.current) {
       reloadAtRef.current = rl
       try { window.location.reload() } catch { /* ignore */ }
       return data
@@ -88,27 +93,37 @@ export function useJuror() {
   // Grava/atualiza um scorecard. scores: [{criterion_key, score, justification}].
   const submitScore = useCallback(async ({ teamId, scores, summary, eliminated }) => {
     if (!token || !supabase) return { ok: false, error: 'unavailable' }
-    const { data, error: rpcError } = await supabase.rpc('juror_submit_score', {
-      p_token: token,
-      p_team_id: teamId,
-      p_scores: scores,
-      p_summary: summary ?? '',
-      p_eliminated: !!eliminated,
-    })
-    if (rpcError) return { ok: false, error: rpcError.message }
-    await refresh()
-    return { ok: true, data }
+    mutatingRef.current = true
+    try {
+      const { data, error: rpcError } = await supabase.rpc('juror_submit_score', {
+        p_token: token,
+        p_team_id: teamId,
+        p_scores: scores,
+        p_summary: summary ?? '',
+        p_eliminated: !!eliminated,
+      })
+      if (rpcError) return { ok: false, error: rpcError.message }
+      await refresh()
+      return { ok: true, data }
+    } finally {
+      mutatingRef.current = false
+    }
   }, [token, refresh])
 
   // Registra o aceite do termo de consentimento (cláusula 5.3 do edital).
   const acceptConsent = useCallback(async () => {
     if (!token || !supabase) return { ok: false, error: 'unavailable' }
-    const { data, error: rpcError } = await supabase.rpc('juror_accept_consent', {
-      p_token: token,
-    })
-    if (rpcError) return { ok: false, error: rpcError.message }
-    await refresh()
-    return { ok: true, data }
+    mutatingRef.current = true
+    try {
+      const { data, error: rpcError } = await supabase.rpc('juror_accept_consent', {
+        p_token: token,
+      })
+      if (rpcError) return { ok: false, error: rpcError.message }
+      await refresh()
+      return { ok: true, data }
+    } finally {
+      mutatingRef.current = false
+    }
   }, [token, refresh])
 
   return {
