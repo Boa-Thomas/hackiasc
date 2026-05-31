@@ -54,5 +54,9 @@ BEGIN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION public.get_team_phase_aliases() TO anon, authenticated;
+-- Defense-in-depth + padrao da casa: so 'authenticated' executa (o set ainda
+-- valida is_admin() por dentro). get e admin-only no consumo (painel logado).
+REVOKE EXECUTE ON FUNCTION public.get_team_phase_aliases() FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.set_team_phase_aliases(jsonb) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_team_phase_aliases() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.set_team_phase_aliases(jsonb) TO authenticated;
