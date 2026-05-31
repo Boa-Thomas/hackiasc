@@ -196,7 +196,7 @@ function TeamContext({ team }) {
   )
 }
 
-export default function JurorTeamCard({ team, existing, expanded, onToggle, onSubmit, onStatusChange, token }) {
+export default function JurorTeamCard({ team, existing, expanded, onToggle, onSubmit, onStatusChange, token, showContext }) {
   // Estado-base + rascunho local (autosave). baseRef guarda o estado salvo no
   // servidor; o rascunho do localStorage, se divergir, é restaurado na montagem.
   // Estado-base + rascunho local computados uma única vez (useState lazy, sem
@@ -356,8 +356,8 @@ export default function JurorTeamCard({ team, existing, expanded, onToggle, onSu
       {/* Corpo — contexto + formulário de avaliação */}
       {expanded && (
         <div className="px-5 sm:px-6 pb-6 pt-1 space-y-5 border-t border-dark-border">
-          <SolutionBanner fd={team.final_deliverables || {}} />
-          <TeamContext team={team} />
+          {showContext && <SolutionBanner fd={team.final_deliverables || {}} />}
+          {showContext && <TeamContext team={team} />}
 
           {/* Aviso de rascunho local restaurado */}
           {restored && dirty && (

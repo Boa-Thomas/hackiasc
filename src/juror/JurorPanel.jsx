@@ -117,7 +117,7 @@ const STATUS_DOT = {
 // ---------------------------------------------------------------------------
 export default function JurorPanel() {
   const juror = useJuror()
-  const { loading, isValid, token } = juror
+  const { loading, isValid, token, ideaVisible } = juror
 
   // Estado de navegação/overview (sempre declarado p/ não violar a ordem dos hooks).
   const [expandedId, setExpandedId] = useState(null)
@@ -328,6 +328,7 @@ export default function JurorPanel() {
             team={team}
             existing={scoreByTeam.get(team.id) || null}
             token={token}
+            showContext={ideaVisible}
             expanded={expandedId === team.id}
             onToggle={toggle}
             onStatusChange={handleStatus}

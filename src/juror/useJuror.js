@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
 const TOKEN_KEY = 'hackiasc_juror_token'
+const POLL_MS = 30000
 
 // Lê o token do jurado da URL (#jurado?t=<uuid>), espelha em localStorage e
 // limpa o token da barra de endereços (history.replaceState) para não vazar via
@@ -36,6 +37,8 @@ export function useJuror() {
   const [loading, setLoading] = useState(!!token)
   const [error, setError] = useState(null)
   const initialized = useRef(false)
+  // Último valor do sinal de recarga visto. Null até a primeira carga.
+  const reloadAtRef = useRef(null)
 
   const refresh = useCallback(async () => {
     if (!token || !supabase) return null
@@ -44,6 +47,19 @@ export function useJuror() {
       setContext(null)
       setError('invalid_token')
       return null
+    }
+    // Sinal de recarga remoto: o admin pode "forçar recarga" (juror_force_reload
+    // bumpa juror_reload_at). Na primeira carga só registramos o valor; numa
+    // checagem posterior, se mudou, recarregamos o painel para aplicar o estado
+    // novo (ex.: ocultar a ideia) mesmo em abas já abertas. Os rascunhos do
+    // scorecard ficam no localStorage e são restaurados após a recarga.
+    const rl = data.reload_at ?? null
+    if (reloadAtRef.current == null) {
+      reloadAtRef.current = rl
+    } else if (rl != null && rl !== reloadAtRef.current) {
+      reloadAtRef.current = rl
+      try { window.location.reload() } catch { /* ignore */ }
+      return data
     }
     setContext(data)
     setError(null)
@@ -59,6 +75,15 @@ export function useJuror() {
     refresh().finally(() => setLoading(false))
   }, [token, refresh])
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Polling leve: re-busca o contexto periodicamente. Isso (1) aplica o switch
+  // de visibilidade da ideia em painéis já abertos sem recarga dura e (2) detecta
+  // o sinal de "forçar recarga" disparado pelo admin (ver refresh()).
+  useEffect(() => {
+    if (!token || !supabase) return undefined
+    const id = setInterval(() => { refresh() }, POLL_MS)
+    return () => clearInterval(id)
+  }, [token, refresh])
 
   // Grava/atualiza um scorecard. scores: [{criterion_key, score, justification}].
   const submitScore = useCallback(async ({ teamId, scores, summary, eliminated }) => {
@@ -91,6 +116,7 @@ export function useJuror() {
     context,
     juror: context?.juror ?? null,
     teams: context?.teams ?? [],
+    ideaVisible: context?.idea_visible ?? false,
     myScores: context?.my_scores ?? [],
     loading,
     error,

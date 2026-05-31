@@ -14,6 +14,11 @@ export default function AdminJurors() {
   const [creating, setCreating] = useState(false)
   const [copiedId, setCopiedId] = useState(null)
   const [copiedAll, setCopiedAll] = useState(false)
+  // Visibilidade da ideia/entregas para os jurados + força-recarga dos painéis.
+  const [ideaVisible, setIdeaVisible] = useState(false)
+  const [togglingIdea, setTogglingIdea] = useState(false)
+  const [reloading, setReloading] = useState(false)
+  const [reloadDone, setReloadDone] = useState(false)
 
   async function fetchData() {
     if (!supabase) { setError('Supabase não configurado.'); setLoading(false); return }
@@ -21,6 +26,8 @@ export default function AdminJurors() {
     const { data, error: err } = await supabase.rpc('admin_list_jurors')
     if (err) setError(err.message)
     else setJurors(data ?? [])
+    const { data: vis } = await supabase.rpc('get_juror_idea_visible')
+    setIdeaVisible(vis === true)
     setLoading(false)
   }
 
@@ -38,6 +45,26 @@ export default function AdminJurors() {
     if (err) { setError(`Erro: ${err.message}`); return }
     setName(''); setEmail('')
     await fetchData()
+  }
+
+  async function toggleIdeaVisible() {
+    if (!supabase || togglingIdea) return
+    setTogglingIdea(true); setError(null)
+    const next = !ideaVisible
+    const { error: err } = await supabase.rpc('set_juror_idea_visible', { p_visible: next })
+    setTogglingIdea(false)
+    if (err) { setError(`Erro: ${err.message}`); return }
+    setIdeaVisible(next)
+  }
+
+  async function forceReload() {
+    if (!supabase || reloading) return
+    setReloading(true); setError(null)
+    const { error: err } = await supabase.rpc('juror_force_reload')
+    setReloading(false)
+    if (err) { setError(`Erro: ${err.message}`); return }
+    setReloadDone(true)
+    setTimeout(() => setReloadDone(false), 3000)
   }
 
   async function toggleActive(j) {
@@ -85,6 +112,47 @@ export default function AdminJurors() {
     <div className="space-y-6">
       {error && <div className="bg-hot/10 border border-hot/30 rounded-lg px-4 py-2.5 text-hot text-sm">{error}</div>}
 
+      {/* Visibilidade da ideia para os jurados + força-recarga */}
+      <div className={`rounded-xl border px-4 py-4 ${ideaVisible ? 'bg-gold/5 border-gold/30' : 'bg-white/5 border-white/10'}`}>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-white">
+              Contexto da ideia no painel do jurado
+            </p>
+            <p className="text-xs text-white/60 mt-1 max-w-xl leading-relaxed">
+              {ideaVisible
+                ? 'LIGADO: o jurado vê a ideia, os membros, os eixos, as entregas finais (link do SLC) e a transcrição do pitch de cada equipe.'
+                : 'DESLIGADO: o jurado vê APENAS o nome da equipe (julga o pitch ao vivo, sem o material pré-carregado). Ideia, membros, eixos, entregas e transcrição ficam ocultos.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={toggleIdeaVisible}
+            disabled={togglingIdea}
+            role="switch"
+            aria-checked={ideaVisible}
+            className={`relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${ideaVisible ? 'bg-gold/70' : 'bg-white/15'}`}
+          >
+            <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${ideaVisible ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
+        </div>
+
+        <div className="mt-3 flex items-center gap-3 flex-wrap">
+          <button
+            type="button"
+            onClick={forceReload}
+            disabled={reloading}
+            className="text-xs px-3 py-1.5 rounded-lg bg-electric/10 text-electric border border-electric/30 hover:bg-electric/20 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {reloading ? 'Enviando...' : 'Forçar recarga dos painéis'}
+          </button>
+          {reloadDone && <span className="text-xs text-cyan font-mono">✓ sinal enviado — painéis abertos recarregam em até ~30s</span>}
+          <span className="text-[11px] text-white/40 font-mono">
+            use após ligar/desligar para aplicar nas abas já abertas
+          </span>
+        </div>
+      </div>
+
       <div className="bg-cyan/5 border border-cyan/20 rounded-xl px-4 py-3">
         <p className="text-xs text-white/60">
           Cada jurado recebe um <strong>link secreto</strong> único (token na URL). O jurado acessa sem login,
@@ -114,7 +182,7 @@ export default function AdminJurors() {
           disabled={!jurors.some(j => j.active)}
           className="text-xs px-3 py-1.5 rounded-lg bg-cyan/10 text-cyan border border-cyan/30 hover:bg-cyan/20 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {copiedAll ? 'â links copiados' : 'copiar todos os links'}
+          {copiedAll ? 'â links copiados' : 'copiar todos os links'}
         </button>
       </div>
 
