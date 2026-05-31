@@ -318,3 +318,12 @@ BEGIN
 END; $$;
 REVOKE EXECUTE ON FUNCTION admin_teams_for_broadcast() FROM PUBLIC;
 GRANT  EXECUTE ON FUNCTION admin_teams_for_broadcast() TO authenticated;
+
+-- Defense-in-depth (review): o Supabase concede EXECUTE a anon por padrão em
+-- funções novas do schema public. As funções admin já são is_admin()/auth.uid()
+-- -gated por dentro, mas removemos o anon para alinhar com as demais.
+REVOKE EXECUTE ON FUNCTION broadcast_notification(text,text,text,uuid[],text) FROM anon;
+REVOKE EXECUTE ON FUNCTION admin_notifications_history(int) FROM anon;
+REVOKE EXECUTE ON FUNCTION admin_teams_for_broadcast() FROM anon;
+REVOKE EXECUTE ON FUNCTION notifications_list_admin(int) FROM anon;
+REVOKE EXECUTE ON FUNCTION notifications_mark_read_admin(uuid[]) FROM anon;

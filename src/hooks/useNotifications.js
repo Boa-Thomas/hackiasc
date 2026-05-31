@@ -4,24 +4,28 @@ import { supabase } from '../lib/supabase'
 const POLL_MS = 30000
 
 // auth: { kind: 'participant'|'mentor'|'admin', token?: string }
+// Depende dos campos primitivos (kind/token), não do objeto `auth` — senão um
+// novo literal a cada render recriaria fetchList/effect e mataria o polling.
 export function useNotifications(auth) {
+  const kind = auth?.kind
+  const token = auth?.token
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const timer = useRef(null)
 
   const fetchList = useCallback(async () => {
-    if (!supabase || !auth) return
+    if (!supabase || !kind) return
     let res
-    if (auth.kind === 'participant') {
-      res = await supabase.rpc('notifications_list_participant', { p_token: auth.token })
-    } else if (auth.kind === 'mentor') {
-      res = await supabase.rpc('notifications_list_mentor', { p_token: auth.token })
-    } else if (auth.kind === 'admin') {
+    if (kind === 'participant') {
+      res = await supabase.rpc('notifications_list_participant', { p_token: token })
+    } else if (kind === 'mentor') {
+      res = await supabase.rpc('notifications_list_mentor', { p_token: token })
+    } else if (kind === 'admin') {
       res = await supabase.rpc('notifications_list_admin', {})
     }
     if (res && !res.error && Array.isArray(res.data)) setItems(res.data)
     setLoading(false)
-  }, [auth])
+  }, [kind, token])
 
   useEffect(() => {
     fetchList()
@@ -37,12 +41,12 @@ export function useNotifications(auth) {
   const unread = items.filter((n) => !n.read).length
 
   const markRead = useCallback(async (ids) => {
-    if (!supabase || !auth || !ids.length) return
+    if (!supabase || !kind || !ids.length) return
     setItems((prev) => prev.map((n) => (ids.includes(n.id) ? { ...n, read: true } : n)))
-    if (auth.kind === 'participant') await supabase.rpc('notifications_mark_read_participant', { p_token: auth.token, p_ids: ids })
-    else if (auth.kind === 'mentor') await supabase.rpc('notifications_mark_read_mentor', { p_token: auth.token, p_ids: ids })
-    else if (auth.kind === 'admin') await supabase.rpc('notifications_mark_read_admin', { p_ids: ids })
-  }, [auth])
+    if (kind === 'participant') await supabase.rpc('notifications_mark_read_participant', { p_token: token, p_ids: ids })
+    else if (kind === 'mentor') await supabase.rpc('notifications_mark_read_mentor', { p_token: token, p_ids: ids })
+    else if (kind === 'admin') await supabase.rpc('notifications_mark_read_admin', { p_ids: ids })
+  }, [kind, token])
 
   return { items, unread, loading, markRead, refresh: fetchList }
 }

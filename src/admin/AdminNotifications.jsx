@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 
 const EVENT_LABELS = {
   sugar_released: 'Mural liberado → participantes',
-  team_scores_visible: 'Notas da IA visíveis → times',
+  team_scores_visible: 'Notas da IA visíveis → participantes',
   wall_phase: 'Fase do muro → participantes',
   payment_confirmed: 'Pagamento confirmado → o participante',
   evaluation_open: 'Avaliação aberta → participantes + mentores',
@@ -50,7 +50,7 @@ export default function AdminNotifications() {
       p_body: body.trim(),
       p_audience_kind: kind,
       p_team_ids: kind === 'teams_members' ? selectedTeams : null,
-      p_url: '#participante',
+      p_url: kind === 'all_mentors' ? '#mentor' : '#participante',
     })
     setSending(false)
     if (error) { setMsg('Erro ao enviar: ' + error.message); return }

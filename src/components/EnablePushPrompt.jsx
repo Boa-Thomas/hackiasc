@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { isIOS, isStandalone, shouldShowPrompt, getSnoozeUntil, snooze, enablePush } from '../lib/push'
 
 // auth: { kind: 'participant'|'mentor'|'admin', token?: string }
 export default function EnablePushPrompt({ auth }) {
+  const kind = auth?.kind
+  const token = auth?.token
   const [visible, setVisible] = useState(false)
   const [busy, setBusy] = useState(false)
   const [denied, setDenied] = useState(false)
+  const resubscribed = useRef(false)
   const iosNeedsInstall = isIOS() && !isStandalone()
 
   useEffect(() => {
@@ -14,18 +17,21 @@ export default function EnablePushPrompt({ auth }) {
     const perm = Notification.permission
     if (perm === 'denied') return
     if (perm === 'granted') {
-      enablePush(auth).catch(() => {})
+      if (!resubscribed.current) {
+        resubscribed.current = true
+        enablePush({ kind, token }).catch(() => {})
+      }
       return
     }
     if (shouldShowPrompt(perm, getSnoozeUntil())) setVisible(true)
-  }, [auth])
+  }, [kind, token])
 
   if (!visible) return null
 
   async function handleEnable() {
     setBusy(true)
     try {
-      const res = await enablePush(auth)
+      const res = await enablePush({ kind, token })
       if (res.permission === 'denied') setDenied(true)
       if (res.ok) setVisible(false)
     } catch {
