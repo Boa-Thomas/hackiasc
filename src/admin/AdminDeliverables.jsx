@@ -312,6 +312,8 @@ export default function AdminDeliverables({ readOnly = false }) {
     <div className="space-y-6">
       {error && <div className="bg-hot/10 border border-hot/30 rounded-lg px-4 py-2.5 text-hot text-sm">{error}</div>}
 
+      <AllSlidesDownload teams={teams} />
+
       <div className="card-glass rounded-2xl p-5 space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
@@ -458,6 +460,158 @@ function AdminSlidesDownload({ deliverables }) {
         {busy ? '...' : 'Baixar slides'}
       </button>
       {error && <span className="text-xs text-hot">{error}</span>}
+    </div>
+  )
+}
+
+// Card central: baixar num lugar só o PDF de apresentação de cada equipe.
+// Lista todas as equipes (marcando as pendentes), mostra a ORDEM DE ENTREGA
+// (horário real do upload, lido do Storage) e oferece "Baixar todas", que
+// dispara um download por equipe em sequência (sem zip, sem dependência nova).
+// Reusa o bucket `files` (slides em deliverables/<team_id>/slides.pdf via slides_path).
+function AllSlidesDownload({ teams }) {
+  const [busyId, setBusyId] = useState(null)
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [error, setError] = useState(null)
+  // Mapa team_id -> ISO do upload do PDF (created_at/updated_at do objeto no Storage).
+  const [uploadedAt, setUploadedAt] = useState({})
+  const [timesLoading, setTimesLoading] = useState(false)
+
+  const hasSlides = (t) => { const d = t.final_deliverables || {}; return !!(d.slides_path || d.slides_url) }
+  const withSlides = teams.filter(hasSlides)
+
+  // Busca o horário real de upload de cada PDF no Storage (o admin é authenticated
+  // e a policy permite listar deliverables/). É a fonte fiel da "ordem de entrega":
+  // independe de edições posteriores de outros campos da entrega final.
+  useEffect(() => {
+    if (!supabase) return
+    const pathTeams = teams.filter(t => t.final_deliverables?.slides_path)
+    if (!pathTeams.length) { setUploadedAt({}); return } // eslint-disable-line react-hooks/set-state-in-effect
+    let active = true
+    setTimesLoading(true)
+    Promise.all(pathTeams.map(async (t) => {
+      const p = t.final_deliverables.slides_path
+      const slash = p.lastIndexOf('/')
+      if (slash < 0) return [t.id, null]
+      const folder = p.slice(0, slash)
+      const base = p.slice(slash + 1)
+      const { data: list } = await supabase.storage.from('files').list(folder)
+      const obj = (list || []).find(o => o.name === base)
+      return [t.id, obj?.updated_at || obj?.created_at || null]
+    })).then(pairs => {
+      if (!active) return
+      setUploadedAt(Object.fromEntries(pairs))
+      setTimesLoading(false)
+    }).catch(() => { if (active) setTimesLoading(false) })
+    return () => { active = false }
+  }, [teams])
+
+  // Gera o link e dispara o download de UMA equipe. slides_path -> signed URL com
+  // download forçado (nome certo); slides_url (legado) -> abre o link em nova aba.
+  async function downloadOne(team) {
+    const d = team.final_deliverables || {}
+    if (d.slides_path) {
+      const name = d.slides_name || `${team.name}.pdf`
+      const { data: signed, error: err } = await supabase.storage.from('files').createSignedUrl(d.slides_path, 60, { download: name })
+      if (err || !signed?.signedUrl) throw new Error('Falha ao gerar o link.')
+      const a = document.createElement('a')
+      a.href = signed.signedUrl
+      a.download = name
+      a.rel = 'noopener'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      return
+    }
+    if (d.slides_url) window.open(d.slides_url, '_blank', 'noopener,noreferrer')
+  }
+
+  async function handleOne(team) {
+    setError(null)
+    if (!supabase) { setError('Supabase não configurado.'); return }
+    setBusyId(team.id)
+    try { await downloadOne(team) } catch (e) { setError(e.message) }
+    setBusyId(null)
+  }
+
+  // Baixa todas na ordem de entrega, com um respiro entre elas (o navegador pede
+  // permissão p/ múltiplos downloads na 1ª vez). Pendentes são ignoradas.
+  async function handleAll() {
+    setError(null)
+    if (!supabase) { setError('Supabase não configurado.'); return }
+    setBulkBusy(true)
+    for (const { team } of rows) {
+      if (!hasSlides(team)) continue
+      try { await downloadOne(team) } catch { /* segue p/ as próximas */ }
+      await new Promise(r => setTimeout(r, 600))
+    }
+    setBulkBusy(false)
+  }
+
+  // Ordena por horário de entrega: quem tem horário conhecido primeiro (asc),
+  // depois enviados sem horário (legado/URL ou ainda carregando), pendentes por
+  // último (alfabético). O número (#1, #2…) é a ordem de entrega.
+  const enriched = teams.map(t => ({ team: t, at: uploadedAt[t.id] || null, has: hasSlides(t) }))
+  const timed = enriched.filter(e => e.has && e.at).sort((a, b) => new Date(a.at) - new Date(b.at))
+  const untimed = enriched.filter(e => e.has && !e.at).sort((a, b) => a.team.name.localeCompare(b.team.name, 'pt-BR'))
+  const pending = enriched.filter(e => !e.has).sort((a, b) => a.team.name.localeCompare(b.team.name, 'pt-BR'))
+  const orderOf = new Map(timed.map((e, i) => [e.team.id, i + 1]))
+  const rows = [...timed, ...untimed, ...pending]
+
+  const fmt = (iso) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+
+  return (
+    <div className="card-glass rounded-2xl p-5 space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <p className="text-xs font-mono text-electric uppercase tracking-wider">Apresentações (PDF)</p>
+          <p className="text-sm text-white/70 mt-1">
+            {withSlides.length} de {teams.length} equipes enviaram · em ordem de entrega
+            {timesLoading && <span className="text-text-muted"> · carregando horários…</span>}
+          </p>
+        </div>
+        <button onClick={handleAll} disabled={bulkBusy || !withSlides.length}
+          className="px-4 py-2 rounded-lg text-sm font-semibold bg-electric/20 text-electric border border-electric/40 hover:bg-electric/30 disabled:opacity-40 disabled:cursor-not-allowed">
+          {bulkBusy ? 'Baixando...' : `Baixar todas (${withSlides.length})`}
+        </button>
+      </div>
+      {error && <div className="bg-hot/10 border border-hot/30 rounded-lg px-3 py-2 text-hot text-sm">{error}</div>}
+      <div className="divide-y divide-white/5 border border-white/10 rounded-xl overflow-hidden">
+        {rows.map(({ team: t, at }) => {
+          const d = t.final_deliverables || {}
+          const has = !!(d.slides_path || d.slides_url)
+          const ord = orderOf.get(t.id)
+          return (
+            <div key={t.id} className="flex items-center justify-between gap-3 px-4 py-2.5 bg-white/5">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className={`flex-shrink-0 w-8 text-center font-mono text-sm ${ord ? 'text-cyan font-bold' : 'text-white/30'}`}>{ord ? `#${ord}` : '—'}</span>
+                <div className="min-w-0">
+                  <p className="text-sm text-white font-medium truncate">{t.name}</p>
+                  <p className="text-xs text-text-muted truncate">
+                    {has ? (at ? `enviado ${fmt(at)}` : (d.slides_name || d.slides_url || 'slides.pdf')) : 'Sem envio'}
+                  </p>
+                </div>
+              </div>
+              {has ? (
+                d.slides_path ? (
+                  <button onClick={() => handleOne(t)} disabled={busyId === t.id}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-electric/20 text-electric border border-electric/40 hover:bg-electric/30 disabled:opacity-50 whitespace-nowrap">
+                    {busyId === t.id ? '...' : 'Baixar'}
+                  </button>
+                ) : (
+                  <a href={d.slides_url} target="_blank" rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-electric/20 text-electric border border-electric/40 hover:bg-electric/30 whitespace-nowrap">
+                    Abrir
+                  </a>
+                )
+              ) : (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase bg-white/5 text-white/40 border border-white/10 whitespace-nowrap">Pendente</span>
+              )}
+            </div>
+          )
+        })}
+        {!teams.length && <div className="px-4 py-6 text-center text-white/40">Nenhuma equipe ainda.</div>}
+      </div>
     </div>
   )
 }
