@@ -9,6 +9,7 @@ import AdminBulkOrders from './AdminBulkOrders'
 import AdminMentors from './AdminMentors'
 import AdminDeliverables from './AdminDeliverables'
 import AdminJurors from './AdminJurors'
+import AdminPrePitchRooms from './AdminPrePitchRooms'
 import AdminWall from './AdminWall'
 import AdminSugarCubes from './AdminSugarCubes'
 import AdminRanking from './AdminRanking'
@@ -28,6 +29,7 @@ const ALL_TABS = [
   { id: 'ranking', label: 'Ranking', icon: '🏆' },
   { id: 'evaluation', label: 'Avaliação', icon: '⭐' },
   { id: 'mentors', label: 'Mentores', icon: '🎓', adminOnly: true },
+  { id: 'prepitch-rooms', label: 'Pré-Pitch', icon: '🎤', adminOnly: true },
   { id: 'jurors', label: 'Jurados', icon: '⚖️', adminOnly: true },
   { id: 'wall', label: 'Muro de Dores', icon: '🧱', adminOnly: true },
   { id: 'sugarcubes', label: 'Elogios', icon: '🧁', adminOnly: true },
@@ -147,6 +149,7 @@ export default function AdminPanel({ onLogout, role = 'viewer' }) {
         {activeTab === 'financeiro' && <AdminFinanceiro readOnly={readOnly} />}
         {activeTab === 'bulk' && <AdminBulkOrders readOnly={readOnly} />}
         {!readOnly && activeTab === 'mentors' && <AdminMentors />}
+        {!readOnly && activeTab === 'prepitch-rooms' && <AdminPrePitchRooms />}
         {!readOnly && activeTab === 'jurors' && <AdminJurors />}
         {!readOnly && activeTab === 'wall' && <AdminWall />}
         {!readOnly && activeTab === 'sugarcubes' && <AdminSugarCubes />}
