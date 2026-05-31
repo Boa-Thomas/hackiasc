@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS app_settings (
   value TEXT NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
 INSERT INTO app_settings (key, value) VALUES ('sugar_released', 'false')
 ON CONFLICT (key) DO NOTHING;
 
@@ -97,19 +98,21 @@ BEGIN
     RAISE EXCEPTION 'self_compliment';
   END IF;
 
-  -- 3. Anti-spam: teto por remetente
-  IF (SELECT COUNT(*) FROM sugar_cubes
-        WHERE sender_type = p_sender_type
-          AND sender_ref IS NOT DISTINCT FROM p_sender_ref) >= c_max_per_sender THEN
-    RAISE EXCEPTION 'rate_limited';
-  END IF;
-
-  -- 4. Anti-spam: throttle anti-duplo-clique
-  IF EXISTS (SELECT 1 FROM sugar_cubes
-        WHERE sender_type = p_sender_type
-          AND sender_ref IS NOT DISTINCT FROM p_sender_ref
-          AND created_at > now() - c_throttle) THEN
-    RAISE EXCEPTION 'rate_limited';
+  -- 3+4. Anti-spam (so para remetentes humanos; organizacao e admin-gated)
+  IF p_sender_type <> 'organization' THEN
+    -- teto por remetente
+    IF (SELECT COUNT(*) FROM sugar_cubes
+          WHERE sender_type = p_sender_type
+            AND sender_ref IS NOT DISTINCT FROM p_sender_ref) >= c_max_per_sender THEN
+      RAISE EXCEPTION 'rate_limited';
+    END IF;
+    -- throttle anti-duplo-clique
+    IF EXISTS (SELECT 1 FROM sugar_cubes
+          WHERE sender_type = p_sender_type
+            AND sender_ref IS NOT DISTINCT FROM p_sender_ref
+            AND created_at > now() - c_throttle) THEN
+      RAISE EXCEPTION 'rate_limited';
+    END IF;
   END IF;
 
   -- 5. Valida/normaliza mensagem
@@ -140,6 +143,7 @@ BEGIN
   RETURN sugar_insert('participant', v_reg, v_name,
                       p_recipient_type, p_recipient_ref, p_message);
 END; $$;
+REVOKE ALL ON FUNCTION sugar_send_participant(UUID, TEXT, UUID, TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION sugar_send_participant(UUID, TEXT, UUID, TEXT) TO anon;
 
 CREATE OR REPLACE FUNCTION sugar_send_mentor(
@@ -152,6 +156,7 @@ BEGIN
   RETURN sugar_insert('mentor', v_mentor, v_name,
                       p_recipient_type, p_recipient_ref, p_message);
 END; $$;
+REVOKE ALL ON FUNCTION sugar_send_mentor(UUID, TEXT, UUID, TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION sugar_send_mentor(UUID, TEXT, UUID, TEXT) TO anon;
 
 CREATE OR REPLACE FUNCTION sugar_send_org(
@@ -177,11 +182,11 @@ DECLARE v_ok BOOLEAN := false; v_participants JSON; v_mentors JSON;
 BEGIN
   IF p_participant_token IS NOT NULL THEN
     BEGIN PERFORM participant_session_owner_confirmed(p_participant_token); v_ok := true;
-    EXCEPTION WHEN OTHERS THEN NULL; END;
+    EXCEPTION WHEN raise_exception THEN NULL; END;
   END IF;
   IF NOT v_ok AND p_mentor_token IS NOT NULL THEN
     BEGIN PERFORM mentor_session_owner(p_mentor_token); v_ok := true;
-    EXCEPTION WHEN OTHERS THEN NULL; END;
+    EXCEPTION WHEN raise_exception THEN NULL; END;
   END IF;
   IF NOT v_ok THEN RAISE EXCEPTION 'unauthorized'; END IF;
 
@@ -227,7 +232,7 @@ BEGIN
   SELECT COALESCE((SELECT value = 'true' FROM app_settings WHERE key = 'sugar_released'), false)
     INTO v_released;
   IF NOT v_released THEN RETURN '[]'::JSON; END IF;
-  SELECT json_agg(json_build_object('message', message, 'created_at', created_at) ORDER BY created_at)
+  SELECT json_agg(json_build_object('message', message, 'created_at', created_at) ORDER BY created_at DESC)
     INTO v_list FROM sugar_cubes
     WHERE recipient_type = 'participant' AND recipient_ref = v_reg AND status = 'approved';
   RETURN COALESCE(v_list, '[]'::JSON);
@@ -242,7 +247,7 @@ BEGIN
   SELECT COALESCE((SELECT value = 'true' FROM app_settings WHERE key = 'sugar_released'), false)
     INTO v_released;
   IF NOT v_released THEN RETURN '[]'::JSON; END IF;
-  SELECT json_agg(json_build_object('message', message, 'created_at', created_at) ORDER BY created_at)
+  SELECT json_agg(json_build_object('message', message, 'created_at', created_at) ORDER BY created_at DESC)
     INTO v_list FROM sugar_cubes
     WHERE recipient_type = 'mentor' AND recipient_ref = v_mentor AND status = 'approved';
   RETURN COALESCE(v_list, '[]'::JSON);
