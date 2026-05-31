@@ -68,7 +68,11 @@ export default function MentorPrePitch({ token }) {
     }
     setSaveError(null)
     setSavedOk(false)
-  }, [selectedTeamId, round, data])
+    // NAO incluir `data` nas deps: apos salvar, setData re-dispararia este
+    // effect e apagaria o "Salvo OK". O form so precisa recarregar quando muda
+    // equipe/rodada — o effect ja le o `data` mais recente quando roda.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTeamId, round])
 
   function handleScoreChange(key, field, value) {
     setSavedOk(false)
