@@ -65,7 +65,7 @@ export default function SendSugarCube({ mode, token }) {
   if (!roster) return <p className="text-white/60 font-mono text-sm">Carregando...</p>
 
   const groups = [
-    { key: 'Organização', items: mode === 'org' ? [] : options.filter(o => o.type === 'organization') },
+    { key: 'Organização', items: options.filter(o => o.type === 'organization') },
     { key: 'Participantes', items: options.filter(o => o.type === 'participant') },
     { key: 'Mentores', items: options.filter(o => o.type === 'mentor') },
   ]
