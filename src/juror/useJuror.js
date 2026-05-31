@@ -3,9 +3,12 @@ import { supabase } from '../lib/supabase'
 
 const TOKEN_KEY = 'hackiasc_juror_token'
 
-// Lê o token do jurado da URL (#jurado?t=<uuid>), espelha em sessionStorage e
+// Lê o token do jurado da URL (#jurado?t=<uuid>), espelha em localStorage e
 // limpa o token da barra de endereços (history.replaceState) para não vazar via
-// histórico/print. Recargas subsequentes usam o sessionStorage.
+// histórico/print. Recargas subsequentes usam o localStorage.
+// localStorage (e não sessionStorage) é deliberado: a sessão persiste mesmo após
+// fechar o navegador, então o jurado segue logado durante o evento sem reabrir o
+// link. O token não expira no servidor (juror_token_owner valida só active=true).
 function seedTokenFromUrl() {
   let urlToken = null
   try {
@@ -18,13 +21,13 @@ function seedTokenFromUrl() {
   } catch { /* ignore malformed hash */ }
 
   if (urlToken) {
-    try { sessionStorage.setItem(TOKEN_KEY, urlToken) } catch { /* private mode */ }
+    try { localStorage.setItem(TOKEN_KEY, urlToken) } catch { /* private mode */ }
     // Remove o token da URL preservando a rota base (#jurado).
     try { window.history.replaceState(null, '', '#jurado') } catch { /* ignore */ }
     return urlToken
   }
 
-  try { return sessionStorage.getItem(TOKEN_KEY) } catch { return null }
+  try { return localStorage.getItem(TOKEN_KEY) } catch { return null }
 }
 
 export function useJuror() {
