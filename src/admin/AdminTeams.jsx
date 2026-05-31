@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase'
 import { audit } from '../lib/auditLog'
 import TransferTicketModal from './TransferTicketModal'
 import { cleanIdeaDescription, IDEA_MAX_LENGTH } from './teamIdea'
+import { useTeamPhases } from '../hooks/useTeamPhases'
+import PhaseBadge from './PhaseBadge'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -825,7 +827,7 @@ function LunchToggle({ lunchAt, onChange }) {
 
 // ─── TeamCard ─────────────────────────────────────────────────────────────────
 
-function TeamCard({ team, idea, lunchAt, mentors, allTeamNames, expanded, onToggle, actions, readOnly, requests }) {
+function TeamCard({ team, idea, lunchAt, mentors, phase, allTeamNames, expanded, onToggle, actions, readOnly, requests }) {
   const { name, members } = team
   const status = getTeamStatus(members)
   const confirmedCount = members.filter(m => m.payment_status === 'confirmed').length
@@ -856,6 +858,7 @@ function TeamCard({ team, idea, lunchAt, mentors, allTeamNames, expanded, onTogg
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-3">
             <span className="font-display font-semibold text-white truncate">{name}</span>
+            <PhaseBadge phase={phase} />
             <span className="text-white/40 text-sm font-mono">
               {members.length}/6 membros
             </span>
@@ -1188,6 +1191,7 @@ export default function AdminTeams({ readOnly, confirmedOnly }) {
   const [transferSource, setTransferSource] = useState(null)
   const [mentors, setMentors] = useState([])
   const [mentorLinks, setMentorLinks] = useState([])
+  const { getPhase } = useTeamPhases()
 
   const [renameTarget, setRenameTarget] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -1735,6 +1739,7 @@ export default function AdminTeams({ readOnly, confirmedOnly }) {
               idea={(teamsMeta.find(t => t.name === name) || {}).idea_description}
               lunchAt={(teamsMeta.find(t => t.name === name) || {}).lunch_at}
               mentors={mentorsByTeamId.get(teamsMap[name]?.[0]?.team_id) || []}
+              phase={getPhase(name)}
               allTeamNames={sortedTeamNames}
               expanded={expandedTeam === name}
               onToggle={() => toggleTeam(name)}
