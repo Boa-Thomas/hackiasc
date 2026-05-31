@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 function toRows(aliases) {
   return (aliases || []).map((a, i) => ({
@@ -16,19 +16,28 @@ export default function TeamPhaseAliasesEditor({
   hackiaNames,
   onSave,
   seedExternal,
+  onSeedConsumed,
 }) {
   // Rascunho local inicializado uma unica vez a partir de `aliases`: o admin
   // continua editando mesmo se o poll de 20s atualizar o prop por baixo.
-  const [rows, setRows] = useState(() => {
-    const base = toRows(aliases);
-    if (seedExternal && !base.some((r) => r.external === seedExternal)) {
-      base.push({ id: `seed-${seedExternal}`, external: seedExternal, hackia: "" });
-    }
-    return base;
-  });
+  const [rows, setRows] = useState(() => toRows(aliases));
   const [seq, setSeq] = useState(() => (aliases ? aliases.length : 0));
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
+
+  // Pre-preenche uma linha quando o pai pede vincular uma orfa (clique no chip).
+  // Via efeito (sem remontar) para nao descartar edicoes em andamento; dedup
+  // pelo nome externo. O pai zera o seed em seguida via onSeedConsumed.
+  useEffect(() => {
+    if (!seedExternal) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRows((rs) =>
+      rs.some((r) => r.external === seedExternal)
+        ? rs
+        : [...rs, { id: `seed-${seedExternal}`, external: seedExternal, hackia: "" }],
+    );
+    if (onSeedConsumed) onSeedConsumed();
+  }, [seedExternal, onSeedConsumed]);
 
   function update(id, field, value) {
     setRows((rs) =>

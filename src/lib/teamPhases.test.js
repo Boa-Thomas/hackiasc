@@ -148,7 +148,7 @@ describe("override dinamico de apelido", () => {
     const ext = mapExternalRows(rows, m);
     const lookup = buildPhaseLookup(ext);
     expect(lookup.get(matchKey("Revisai", m)).key).toBe("slc");
-    expect(findUnmatchedExternal(["Revisai"], ext, m)).toEqual([]);
+    expect(findUnmatchedExternal(["Revisai"], ext)).toEqual([]);
   });
   it("sem override, Revisa.Ai continua orfa", () => {
     const ext = mapExternalRows(rows);

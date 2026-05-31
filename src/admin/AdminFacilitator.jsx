@@ -656,6 +656,7 @@ function TeamPhases() {
   const [names, setNames] = useState([])
   const [editing, setEditing] = useState(false)
   const [seed, setSeed] = useState(null)
+  const clearSeed = useCallback(() => setSeed(null), [])
 
   useEffect(() => {
     if (!supabase) return
@@ -724,11 +725,11 @@ function TeamPhases() {
       </div>
       {editing && aliasesLoaded && (
         <TeamPhaseAliasesEditor
-          key={seed || 'base'}
           aliases={aliases}
           externalNames={externalList.map((e) => e.name)}
           hackiaNames={names}
           seedExternal={seed}
+          onSeedConsumed={clearSeed}
           onSave={saveAliases}
         />
       )}
