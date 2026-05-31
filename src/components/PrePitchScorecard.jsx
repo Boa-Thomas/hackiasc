@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { EDITAL_RUBRIC } from '../lib/iaEvaluator'
 
 // Faixa de desempenho por nota — espelha JurorTeamCard.
@@ -10,21 +11,44 @@ function faixaOf(raw) {
   return { key: 'high', accent: '#06d6a0', text: 'text-cyan', label: 'Forte' }
 }
 
-// Σ(score × weight / 100) arredondado a 1 casa; ignora score vazio/NaN.
+// Σ(score × weight / 100) arredondado a 1 casa. Retorna total SO quando TODOS os
+// critérios têm nota; avaliação parcial (alguma nota em branco) → null. Somar só
+// os preenchidos daria um total baixo e enganoso (ex.: 1 critério de 80 viraria
+// "24/100" vermelho pra equipe). Espelha a regra server-side do mentor_prepitch_submit.
 // eslint-disable-next-line react-refresh/only-export-components
 export function prePitchTotal(scores, criteria = EDITAL_RUBRIC.criteria) {
   let sum = 0
-  let hasAny = false
   for (const c of criteria) {
     const raw = scores?.[c.key]?.score
-    if (raw === '' || raw == null) continue
+    if (raw === '' || raw == null) return null
     const v = Number(raw)
-    if (!Number.isFinite(v)) continue
+    if (!Number.isFinite(v)) return null
     sum += (v * c.weight) / 100
-    hasAny = true
   }
-  if (!hasAny) return null
   return Math.round(sum * 10) / 10
+}
+
+// Slider com proteção anti-toque (motivo do #232): um <input range> nativo "salta"
+// para a posição do toque, registrando nota acidental. Aqui a mudança só é aceita
+// após um ARRASTE deliberado (pointermove) ou tecla de seta — um toque/clique seco
+// na trilha é ignorado. A entrada direta da nota continua sendo o campo numérico.
+function ScoreSlider({ value, accent, onChange, label }) {
+  const movedRef = useRef(false)
+  const valid = value !== '' && value != null && Number.isFinite(Number(value))
+  const n = valid ? Number(value) : 0
+  return (
+    <input
+      type="range" min={0} max={100} step={1}
+      value={n}
+      onPointerDown={() => { movedRef.current = false }}
+      onPointerMove={() => { movedRef.current = true }}
+      onKeyDown={e => { if (e.key.startsWith('Arrow') || ['Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) movedRef.current = true }}
+      onChange={e => { if (movedRef.current) onChange(e.target.value) }}
+      style={{ accentColor: accent }}
+      aria-label={label}
+      className={`w-full mt-3 h-1.5 cursor-pointer ${valid ? '' : 'opacity-50'}`}
+    />
+  )
 }
 
 export default function PrePitchScorecard({
@@ -107,31 +131,24 @@ export default function PrePitchScorecard({
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`text-[11px] font-mono ${fa.text} w-20 text-right`}>{fa.label}</span>
+                  <label className="text-[11px] font-mono text-white/50 uppercase tracking-wider">Nota</label>
                   <input
                     type="number" min={0} max={100} step={1}
                     value={raw}
                     onChange={e => onScoreChange?.(c.key, 'score', e.target.value)}
                     placeholder="0–100"
+                    aria-label={`Nota de ${c.label} (0 a 100, opcional)`}
                     className="w-20 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm text-right font-mono focus:outline-none focus:border-cyan/50"
                   />
                 </div>
               </div>
 
-              {/* Slider sincronizado, com cor por faixa. Fica DESABILITADO
-                  enquanto o critério não tem nota: um range nativo "salta" para
-                  a posição do clique, então um toque acidental na trilha de um
-                  critério sem nota registraria uma nota alta (até 100) sem o
-                  mentor perceber. Digite a nota no campo acima para liberar o
-                  ajuste fino aqui. */}
-              <input
-                type="range" min={0} max={100} step={1}
-                value={valid ? n : 0}
-                disabled={!valid}
-                onChange={e => onScoreChange?.(c.key, 'score', e.target.value)}
-                style={{ accentColor: fa.accent }}
-                aria-label={`Ajustar nota de ${c.label}`}
-                title={valid ? undefined : 'Digite a nota no campo acima para habilitar o slider'}
-                className={`w-full mt-3 h-1.5 ${valid ? 'cursor-pointer' : 'cursor-not-allowed opacity-40'}`}
+              {/* Slider de ajuste fino (arraste). Entrada direta = campo "Nota" acima. */}
+              <ScoreSlider
+                value={raw}
+                accent={fa.accent}
+                onChange={v => onScoreChange?.(c.key, 'score', v)}
+                label={`Ajustar nota de ${c.label} (arraste)`}
               />
 
               {/* Contribuição ponderada ao vivo */}

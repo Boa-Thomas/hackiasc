@@ -83,25 +83,40 @@ export default function MentorPrePitch({ token }) {
     setSaveError(null)
     setSavedOk(false)
 
-    // Validação client-side
+    // Validação client-side: notas são OPCIONAIS (avaliação parcial / só comentário).
+    // Uma nota PREENCHIDA precisa ficar entre 0 e 100; campos vazios passam.
     const criteria = EDITAL_RUBRIC.criteria
     for (const c of criteria) {
       const raw = scores[c.key]?.score
+      if (raw === '' || raw == null) continue
       const n = Number(raw)
-      if (raw === '' || raw == null || !Number.isFinite(n) || n < 0 || n > 100) {
-        setSaveError(`Preencha a nota de "${c.label}" com um valor entre 0 e 100.`)
+      if (!Number.isFinite(n) || n < 0 || n > 100) {
+        setSaveError(`A nota de "${c.label}" deve ficar entre 0 e 100.`)
         return
       }
+    }
+
+    // Evita salvar em branco: exige ao menos uma nota, um comentário ou o parecer.
+    const hasScore = criteria.some(c => { const r = scores[c.key]?.score; return r !== '' && r != null })
+    const hasComment = criteria.some(c => (scores[c.key]?.comment ?? '').trim() !== '')
+    if (!hasScore && !hasComment && !summary.trim()) {
+      setSaveError('Escreva ao menos uma nota, um comentário ou o parecer para salvar.')
+      return
     }
 
     if (!supabase) { setSaveError('Sistema indisponível.'); return }
     setSaving(true)
 
-    const p_scores = criteria.map(c => ({
-      key: c.key,
-      score: Number(scores[c.key].score),
-      comment: scores[c.key].comment ?? '',
-    }))
+    // Nota vazia vai como null (parcial); o total é calculado server-side só quando completo.
+    const p_scores = criteria.map(c => {
+      const raw = scores[c.key]?.score
+      const filled = raw !== '' && raw != null
+      return {
+        key: c.key,
+        score: filled ? Number(raw) : null,
+        comment: scores[c.key]?.comment ?? '',
+      }
+    })
 
     const { error: err } = await supabase.rpc('mentor_prepitch_submit', {
       p_token: token,
@@ -177,7 +192,8 @@ export default function MentorPrePitch({ token }) {
       <div className="card-glass rounded-2xl p-6">
         <p className="text-xs font-mono text-gold uppercase tracking-wider mb-1">Avaliação de Pré-Pitch</p>
         <p className="text-sm text-text-muted">
-          Avalie qualquer equipe em até 2 rodadas. Selecione a equipe e a rodada abaixo.
+          Avalie qualquer equipe em até 2 rodadas. As notas são opcionais — você pode
+          salvar só com comentários e completar as notas depois.
         </p>
       </div>
 
