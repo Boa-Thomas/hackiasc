@@ -117,13 +117,21 @@ export default function PrePitchScorecard({
                 </div>
               </div>
 
-              {/* Slider sincronizado, com cor por faixa */}
+              {/* Slider sincronizado, com cor por faixa. Fica DESABILITADO
+                  enquanto o critério não tem nota: um range nativo "salta" para
+                  a posição do clique, então um toque acidental na trilha de um
+                  critério sem nota registraria uma nota alta (até 100) sem o
+                  mentor perceber. Digite a nota no campo acima para liberar o
+                  ajuste fino aqui. */}
               <input
                 type="range" min={0} max={100} step={1}
                 value={valid ? n : 0}
+                disabled={!valid}
                 onChange={e => onScoreChange?.(c.key, 'score', e.target.value)}
                 style={{ accentColor: fa.accent }}
-                className="w-full mt-3 h-1.5 cursor-pointer"
+                aria-label={`Ajustar nota de ${c.label}`}
+                title={valid ? undefined : 'Digite a nota no campo acima para habilitar o slider'}
+                className={`w-full mt-3 h-1.5 ${valid ? 'cursor-pointer' : 'cursor-not-allowed opacity-40'}`}
               />
 
               {/* Contribuição ponderada ao vivo */}
