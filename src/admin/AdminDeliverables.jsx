@@ -7,6 +7,7 @@ import SectionMeta from '../participant/SectionMeta'
 import { relativeTime } from '../lib/relativeTime'
 import { buildDeliverablePrompt, parseDeliverableEvaluation, aggregateTeamEvaluation, EDITAL_RUBRIC, DELIVERABLE_UNITS } from '../lib/iaEvaluator'
 import AiEvaluationView from '../lib/AiEvaluationView'
+import AiAggregateView from '../lib/AiAggregateView'
 
 const STATUS = [
   { id: 'draft', label: 'Rascunho', cls: 'bg-white/5 text-white/50 border-white/10' },
@@ -273,17 +274,7 @@ export default function AdminDeliverables({ readOnly = false }) {
               </div>
 
               {/* Nota IA agregada da equipe */}
-              <div className="flex items-center justify-between flex-wrap gap-2 bg-white/5 rounded-xl px-4 py-3">
-                <span className="text-sm text-white/70">Nota IA agregada</span>
-                <span className="font-mono text-gold text-sm">
-                  {agg.total_score != null
-                    ? `${agg.total_score} / 100`
-                    : agg.scoredCriteria > 0
-                      ? `parcial (${agg.scoredCriteria}/4 critérios)`
-                      : '—'}
-                  {agg.eliminated && <span className="ml-2 text-hot">⚠ eliminado</span>}
-                </span>
-              </div>
+              <AiAggregateView agg={agg} />
 
               {DELIVERABLE_UNITS.map(unit => (
                 <DeliverableEvaluator
