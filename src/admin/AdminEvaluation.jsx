@@ -38,6 +38,7 @@ export default function AdminEvaluation({ readOnly }) {
   const load = useCallback(() => {
     if (!supabase) { setLoading(false); return }
     setLoading(true)
+    setErr(null)
     supabase.rpc('get_event_evaluation_results').then(({ data, error }) => {
       if (error || !data) { setErr('Não foi possível carregar os resultados.'); setLoading(false); return }
       setOpen(!!data.open)
@@ -50,6 +51,7 @@ export default function AdminEvaluation({ readOnly }) {
   useEffect(() => { load() }, [load]) // eslint-disable-line react-hooks/set-state-in-effect
 
   async function toggle() {
+    if (!supabase) return
     const next = !open
     setOpen(next)
     const { error } = await supabase.rpc('set_evaluation_open', { p_open: next })
