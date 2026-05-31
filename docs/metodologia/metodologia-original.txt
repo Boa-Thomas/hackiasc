@@ -1,3 +1,16 @@
+=====================================================================
+ AVISO: DOCUMENTO OBSOLETO / SUPERSEDIDO -- NAO USAR COMO REGRA
+ Este rascunho NAO reflete as regras vigentes. Em qualquer divergencia
+ prevalece o EDITAL (docs/metodologia/edital.txt) e a versao
+ reconciliada docs/metodologia/metodologia.html.
+ Desatualizacoes conhecidas aqui:
+  - Rito do pitch: este doc diz 8 min; o correto e 3+1+5+1 = 10 min,
+    incluindo 1 min para o juri USAR a solucao apos a apresentacao.
+  - Rubrica: este doc usa 6 criterios/100 pts; o correto sao os
+    4 criterios do edital (30/25/25/20), com Execucao Tecnica e IA
+    de carater ELIMINATORIO.
+=====================================================================
+
 METODOLOGIA · 1ª EDIÇÃO
 HackIA
 AI Hackathon Blumenau 2026

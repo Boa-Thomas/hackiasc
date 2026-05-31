@@ -83,6 +83,32 @@ const STATUS_META = {
 // membros/eixos, entregas finais (Fase 3, com links) e transcrição do pitch.
 // Sem avaliação da IA por decisão de produto (julgamento independente).
 // -------------------------------------------------------------------------
+// -------------------------------------------------------------------------
+// SolutionBanner — chamada destacada para o jurado abrir o SLC (solução
+// deployed) e testá-lo. O edital (5.2/6) dá 1 minuto para o júri usar a
+// solução após a apresentação; o link vem das entregas finais (deploy_url).
+// -------------------------------------------------------------------------
+function SolutionBanner({ fd }) {
+  const url = fd.deploy_url
+  return (
+    <div className="rounded-xl border border-cyan/40 bg-cyan/[0.08] px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-mono uppercase tracking-wider text-cyan/80 mb-0.5">Testar a solução · SLC</p>
+        <p className="text-xs text-white/75 leading-relaxed">
+          Você tem <strong className="text-cyan">1 minuto</strong> para usar a solução da equipe após a apresentação (edital 5.2/6).
+        </p>
+      </div>
+      {url ? (
+        <a href={url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-cyan/20 text-cyan border border-cyan/40 hover:bg-cyan/30 transition-colors">
+          Abrir SLC ↗
+        </a>
+      ) : (
+        <span className="flex-shrink-0 text-xs font-mono text-text-muted">link não informado</span>
+      )}
+    </div>
+  )
+}
+
 function TeamContext({ team }) {
   const [showPitch, setShowPitch] = useState(false)
   const members = team.members || []
@@ -330,6 +356,7 @@ export default function JurorTeamCard({ team, existing, expanded, onToggle, onSu
       {/* Corpo — contexto + formulário de avaliação */}
       {expanded && (
         <div className="px-5 sm:px-6 pb-6 pt-1 space-y-5 border-t border-dark-border">
+          <SolutionBanner fd={team.final_deliverables || {}} />
           <TeamContext team={team} />
 
           {/* Aviso de rascunho local restaurado */}
