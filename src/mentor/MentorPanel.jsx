@@ -7,6 +7,7 @@ import SectionMeta from '../participant/SectionMeta'
 import { relativeTime } from '../lib/relativeTime'
 import { aggregateTeamEvaluation, DELIVERABLE_UNITS } from '../lib/iaEvaluator'
 import AiEvaluationView from '../lib/AiEvaluationView'
+import EventEvaluationForm from '../lib/EventEvaluationForm'
 
 export default function MentorPanel({ auth }) {
   const { mentor, teams } = auth
@@ -193,6 +194,8 @@ export default function MentorPanel({ auth }) {
             </div>
           </>
         )}
+
+        <EventEvaluationForm respondentType="mentor" token={auth.token} />
       </main>
     </div>
   )
