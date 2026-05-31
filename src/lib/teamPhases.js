@@ -48,7 +48,7 @@ export function mapExternalRows(rows) {
   }));
 }
 
-// Map chave->fase (primeira ocorrência vence).
+// Map chave->fase (primeira fase valida vence; null nao sobrescreve fase boa).
 export function buildPhaseLookup(externalList) {
   const map = new Map();
   for (const e of externalList) {
