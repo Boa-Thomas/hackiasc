@@ -4,6 +4,9 @@
 -- Cada chamada de notify_event é best-effort: embrulhada em
 -- BEGIN/EXCEPTION WHEN OTHERS THEN NULL para NUNCA quebrar a ação principal.
 -- Recria funções existentes preservando o corpo original + a notificação.
+-- NOTA: participant_save_team_deliverable ganha "SET search_path TO 'public'"
+--       (o original não tinha) — endurecimento seguro; todos os objetos
+--       referenciados estão em public.
 -- ============================================================
 
 -- ---------- #1 Mural liberado (OFF->ON) ----------
