@@ -582,36 +582,60 @@ function AllSlidesDownload({ teams }) {
           const has = !!(d.slides_path || d.slides_url)
           const ord = orderOf.get(t.id)
           return (
-            <div key={t.id} className="flex items-center justify-between gap-3 px-4 py-2.5 bg-white/5">
-              <div className="flex items-center gap-3 min-w-0">
-                <span className={`flex-shrink-0 w-8 text-center font-mono text-sm ${ord ? 'text-cyan font-bold' : 'text-white/30'}`}>{ord ? `#${ord}` : '—'}</span>
-                <div className="min-w-0">
-                  <p className="text-sm text-white font-medium truncate">{t.name}</p>
-                  <p className="text-xs text-text-muted truncate">
-                    {has ? (at ? `enviado ${fmt(at)}` : (d.slides_name || d.slides_url || 'slides.pdf')) : 'Sem envio'}
-                  </p>
+            <div key={t.id} className="px-4 py-2.5 bg-white/5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className={`flex-shrink-0 w-8 text-center font-mono text-sm ${ord ? 'text-cyan font-bold' : 'text-white/30'}`}>{ord ? `#${ord}` : '—'}</span>
+                  <div className="min-w-0">
+                    <p className="text-sm text-white font-medium truncate">{t.name}</p>
+                    <p className="text-xs text-text-muted truncate">
+                      {has ? (at ? `enviado ${fmt(at)}` : (d.slides_name || d.slides_url || 'slides.pdf')) : 'Sem envio'}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              {has ? (
-                d.slides_path ? (
-                  <button onClick={() => handleOne(t)} disabled={busyId === t.id}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-electric/20 text-electric border border-electric/40 hover:bg-electric/30 disabled:opacity-50 whitespace-nowrap">
-                    {busyId === t.id ? '...' : 'Baixar'}
-                  </button>
+                {has ? (
+                  d.slides_path ? (
+                    <button onClick={() => handleOne(t)} disabled={busyId === t.id}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-electric/20 text-electric border border-electric/40 hover:bg-electric/30 disabled:opacity-50 whitespace-nowrap">
+                      {busyId === t.id ? '...' : 'Baixar'}
+                    </button>
+                  ) : (
+                    <a href={d.slides_url} target="_blank" rel="noopener noreferrer"
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-electric/20 text-electric border border-electric/40 hover:bg-electric/30 whitespace-nowrap">
+                      Abrir
+                    </a>
+                  )
                 ) : (
-                  <a href={d.slides_url} target="_blank" rel="noopener noreferrer"
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-electric/20 text-electric border border-electric/40 hover:bg-electric/30 whitespace-nowrap">
-                    Abrir
-                  </a>
-                )
-              ) : (
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase bg-white/5 text-white/40 border border-white/10 whitespace-nowrap">Pendente</span>
-              )}
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase bg-white/5 text-white/40 border border-white/10 whitespace-nowrap">Pendente</span>
+                )}
+              </div>
+              {d.repo_url && <div className="mt-1.5 pl-11"><RepoLink url={d.repo_url} /></div>}
             </div>
           )
         })}
         {!teams.length && <div className="px-4 py-6 text-center text-white/40">Nenhuma equipe ainda.</div>}
       </div>
+    </div>
+  )
+}
+
+// Link do repositório no GitHub (final_deliverables.repo_url) com botão de copiar.
+// Estado de "copiado" por linha; o feedback some após ~1.8s.
+function RepoLink({ url }) {
+  const [copied, setCopied] = useState(false)
+  async function copy() {
+    try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1800) } catch { /* clipboard indisponível */ }
+  }
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      <span className="flex-shrink-0 text-[10px] font-mono uppercase tracking-wider text-white/40">GitHub</span>
+      {/^https?:\/\//i.test(url)
+        ? <a href={url} target="_blank" rel="noopener noreferrer" className="min-w-0 truncate text-xs text-electric hover:underline">{url}</a>
+        : <span className="min-w-0 truncate text-xs text-white/70">{url}</span>}
+      <button type="button" onClick={copy}
+        className="flex-shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold border border-white/10 text-white/60 hover:text-white hover:border-white/30">
+        {copied ? '✓ copiado' : 'copiar'}
+      </button>
     </div>
   )
 }
