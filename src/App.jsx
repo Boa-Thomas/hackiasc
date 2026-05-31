@@ -28,6 +28,7 @@ import JurorPanel from './juror/JurorPanel'
 import WallParticipant from './wall/WallParticipant'
 import WallScreen from './wall/WallScreen'
 import TeamsShowcase from './teams/TeamsShowcase'
+import EnablePushPrompt from './components/EnablePushPrompt'
 
 const PAYMENT_HASHES = ['#pagamento-sucesso', '#pagamento-erro', '#pagamento-pendente']
 const ADMIN_HASHES = ['#admin', '#admin-login']
@@ -87,7 +88,12 @@ export default function App() {
       return <AdminLogin onLogin={login} error={authError} />
     }
 
-    return <AdminPanel onLogout={logout} role={role} />
+    return (
+      <>
+        <AdminPanel onLogout={logout} role={role} />
+        <EnablePushPrompt auth={{ kind: 'admin' }} />
+      </>
+    )
   }
 
   // Participant routes
@@ -110,7 +116,12 @@ export default function App() {
       )
     }
 
-    return <ParticipantPanel auth={participantAuth} />
+    return (
+      <>
+        <ParticipantPanel auth={participantAuth} />
+        <EnablePushPrompt auth={{ kind: 'participant', token: participantAuth.token }} />
+      </>
+    )
   }
 
   // Mentor routes — sessao (email+codigo via #mentor / #mentor-login) OU
@@ -133,7 +144,12 @@ export default function App() {
       return <MentorGuide onBack={() => { window.location.hash = '#mentor' }} />
     }
 
-    return <MentorPanel auth={mentorAuth} />
+    return (
+      <>
+        <MentorPanel auth={mentorAuth} />
+        <EnablePushPrompt auth={{ kind: 'mentor', token: mentorAuth.token }} />
+      </>
+    )
   }
 
   // Juror routes — token na querystring do hash: #jurado?t=<uuid> (sem login)
