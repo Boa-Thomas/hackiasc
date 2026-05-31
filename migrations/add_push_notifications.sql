@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS notification_recipients (
 );
 CREATE INDEX IF NOT EXISTS idx_notif_recip_user ON notification_recipients (user_key, read_at);
 CREATE INDEX IF NOT EXISTS idx_notif_recip_notif ON notification_recipients (notification_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_notif_recip ON notification_recipients (notification_id, user_key);
 
 ALTER TABLE push_subscriptions      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications           ENABLE ROW LEVEL SECURITY;
@@ -65,12 +66,13 @@ BEGIN
     SELECT 'mentor:' || mt.mentor_id::text FROM mentor_teams mt
      WHERE v_kind = 'team_mentors' AND mt.team_id = (p_audience->>'team_id')::uuid
     UNION
-    SELECT 'participant:' || (p_audience->>'reg_id') WHERE v_kind = 'participant'
+    SELECT 'participant:' || (p_audience->>'reg_id')::uuid::text WHERE v_kind = 'participant'
     UNION
-    SELECT 'mentor:' || (p_audience->>'mentor_id') WHERE v_kind = 'mentor'
+    SELECT 'mentor:' || (p_audience->>'mentor_id')::uuid::text WHERE v_kind = 'mentor'
   )
   INSERT INTO notification_recipients (notification_id, user_key)
-  SELECT p_notification_id, user_key FROM keys WHERE user_key IS NOT NULL;
+  SELECT p_notification_id, user_key FROM keys WHERE user_key IS NOT NULL
+  ON CONFLICT (notification_id, user_key) DO NOTHING;
   GET DIAGNOSTICS v_count = ROW_COUNT;
   RETURN v_count;
 END; $$;
