@@ -59,6 +59,7 @@ src/
 ## Design System
 
 Custom theme defined in `index.css` via `@theme`:
+
 - **Colors**: `dark` (#050510), `cyan` (#06d6a0), `electric` (#3a86ff), `violet` (#8338ec), `hot` (#ff006e), `gold` (#ffbe0b)
 - **Fonts**: Sora (display), JetBrains Mono (monospace)
 - **Utilities**: `.card-glass`, `.glow-cyan`, `.glow-electric`, `.text-gradient-cyan`, `.text-gradient-fire`, `.text-gradient-violet`, `.bg-grid`, `.orb`
@@ -80,3 +81,15 @@ Schema in `supabase-setup.sql`. Single `registrations` table. Key columns: `occu
 ## Deployment
 
 Push to `main`/`master` triggers `.github/workflows/deploy.yml`: npm ci → build (with Supabase secrets) → deploy to GitHub Pages. Custom domain via `public/CNAME` (hackiasc.com).
+
+### Pre-deploy verification (REQUIRED)
+
+**Before any deploy (i.e., before pushing/merging to `main`/`master`), run the verification agent suite via the `/pre-deploy-verify` slash command** (`.claude/commands/pre-deploy-verify.md`). It launches read-only review agents in parallel over the branch diff vs `origin/master`:
+
+- **security-auditor** — authn/authz, RLS, SECURITY DEFINER/`search_path`, injection, secrets, edge functions.
+- **code-reviewer** — bugs, React hooks/deps, regressions, edge cases.
+- **architect-reviewer** — API/schema/contract/dependency impact and blast radius.
+- **general-purpose (DB verification)** — when Supabase changed: confirm objects/grants/RLS/triggers/switches and a safe, self-cleaning pipeline smoke test via the Supabase MCP (project `qshrzfahotmjshtjuvno`).
+- **general-purpose (integration QA)** — run `npx vitest run` + `npm run build`, verify `dist/` artifacts and frontend↔backend contract alignment (RPC names/params, event keys, role exclusions).
+
+**Gate:** do NOT push/deploy while any **Critical/High** finding is unresolved. Fix (or get explicit user sign-off on the residual risk) and re-run the affected agents first. Known config-only pendencies (e.g., unset secrets) are ops steps, not code blockers.
