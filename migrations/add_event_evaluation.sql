@@ -44,8 +44,15 @@ DECLARE
   v_id UUID;
 BEGIN
   IF p_type = 'participant' THEN
-    v_id := participant_session_owner(p_token);
-    IF v_id IS NOT NULL AND NOT EXISTS (
+    -- participant_session_owner LANCA excecao em token invalido/expirado (nao
+    -- retorna NULL). Capturamos para devolver NULL e manter o contrato "resolve
+    -- => id ou NULL", para get_my retornar authorized:false em vez de erro.
+    BEGIN
+      v_id := participant_session_owner(p_token);
+    EXCEPTION WHEN OTHERS THEN
+      RETURN NULL;
+    END;
+    IF v_id IS NULL OR NOT EXISTS (
       SELECT 1 FROM registrations WHERE id = v_id AND payment_status = 'confirmed'
     ) THEN
       RETURN NULL;
