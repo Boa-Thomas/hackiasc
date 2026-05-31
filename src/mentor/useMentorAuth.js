@@ -8,8 +8,10 @@ const TOKEN_KEY = 'hackiasc_mentor_token'
 const MODE_KEY = 'hackiasc_mentor_mode'
 
 // Le o access_token do mentor da URL (#mentor?t=<uuid>), espelha em
-// sessionStorage e limpa o token da barra de enderecos (history.replaceState)
+// localStorage e limpa o token da barra de enderecos (history.replaceState)
 // para nao vazar via historico/print — mesmo padrao do useJuror.
+// Persistimos em localStorage (nao sessionStorage) de proposito: a sessao
+// sobrevive ao fechar o navegador, mantendo o mentor logado durante o evento.
 function seedFromUrl() {
   let urlToken = null
   try {
@@ -28,8 +30,8 @@ function seedFromUrl() {
 
   if (urlToken) {
     try {
-      sessionStorage.setItem(TOKEN_KEY, urlToken)
-      sessionStorage.setItem(MODE_KEY, 'link')
+      localStorage.setItem(TOKEN_KEY, urlToken)
+      localStorage.setItem(MODE_KEY, 'link')
     } catch { /* private mode */ }
     // Remove o token da URL preservando a rota base (#mentor).
     try { window.history.replaceState(null, '', '#mentor') } catch { /* ignore */ }
@@ -37,14 +39,14 @@ function seedFromUrl() {
   }
 
   try {
-    return { token: sessionStorage.getItem(TOKEN_KEY), mode: sessionStorage.getItem(MODE_KEY) || 'session' }
+    return { token: localStorage.getItem(TOKEN_KEY), mode: localStorage.getItem(MODE_KEY) || 'session' }
   } catch { return { token: null, mode: 'session' } }
 }
 
 // Auth do mentor: por sessao (email + codigo) OU por link secreto (token na URL).
 // Os dois caminhos sao aditivos — o link e uma forma adicional de acesso.
 export function useMentorAuth() {
-  // Seed unico (le URL/sessionStorage, faz replaceState) calculado uma vez
+  // Seed unico (le URL/localStorage, faz replaceState) calculado uma vez
   // via lazy initializer — espelha o padrao do useJuror.
   const [seed] = useState(seedFromUrl)
   const [token, setToken] = useState(seed.token)
@@ -57,11 +59,11 @@ export function useMentorAuth() {
   const persist = (t, m) => {
     try {
       if (t) {
-        sessionStorage.setItem(TOKEN_KEY, t)
-        sessionStorage.setItem(MODE_KEY, m)
+        localStorage.setItem(TOKEN_KEY, t)
+        localStorage.setItem(MODE_KEY, m)
       } else {
-        sessionStorage.removeItem(TOKEN_KEY)
-        sessionStorage.removeItem(MODE_KEY)
+        localStorage.removeItem(TOKEN_KEY)
+        localStorage.removeItem(MODE_KEY)
       }
     } catch { /* ignore quota / private mode errors */ }
   }
@@ -126,7 +128,7 @@ export function useMentorAuth() {
 
   const logout = useCallback(async () => {
     // So invalida a sessao server-side no modo email+codigo. No modo link,
-    // o access_token segue valido — apenas limpamos o sessionStorage local.
+    // o access_token segue valido — apenas limpamos o localStorage local.
     if (token && mode === 'session' && supabase) {
       try { await supabase.rpc('mentor_logout', { p_token: token }) } catch { /* best-effort */ }
     }

@@ -23,7 +23,7 @@ const PRIZES = [
 ]
 
 const CRITERIA = [
-  { name: 'Execução Técnica e IA', weight: '30%', hex: '#06d6a0' },
+  { name: 'Execução Técnica e IA', weight: '30%', hex: '#06d6a0', elim: true },
   { name: 'Validação do Problema', weight: '25%', hex: '#3a86ff' },
   { name: 'Escalabilidade e Negócio', weight: '25%', hex: '#8338ec' },
   { name: 'Pitch e Equipe', weight: '20%', hex: '#ff006e' },
@@ -75,11 +75,12 @@ export default function Prizes() {
 
           {/* Mobile: stacked list */}
           <div className="sm:hidden space-y-3">
-            {CRITERIA.map(({ name, weight, hex }) => (
+            {CRITERIA.map(({ name, weight, hex, elim }) => (
               <div key={name} className="flex items-center gap-3">
                 <div className="w-2 h-8 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />
                 <div className="flex-1">
                   <span className="text-sm font-semibold text-white">{name}</span>
+                  {elim && <span className="ml-2 text-[10px] font-mono uppercase tracking-wider text-hot border border-hot/30 bg-hot/10 rounded px-1.5 py-0.5">eliminatório</span>}
                 </div>
                 <span className="font-mono text-lg font-bold flex-shrink-0" style={{ color: hex }}>{weight}</span>
               </div>
@@ -89,7 +90,7 @@ export default function Prizes() {
           {/* Desktop: bar chart */}
           <div className="hidden sm:block">
             <div className="flex mb-2">
-              {CRITERIA.map(({ name, weight, hex }) => (
+              {CRITERIA.map(({ name, weight, hex, elim }) => (
                 <div key={name} className="text-center" style={{ width: weight }}>
                   <span className="block font-mono text-base sm:text-lg font-bold" style={{ color: hex }}>
                     {weight}
@@ -97,6 +98,7 @@ export default function Prizes() {
                   <span className="block text-[10px] sm:text-xs text-text-muted leading-tight">
                     {name}
                   </span>
+                  {elim && <span className="block text-[9px] font-mono uppercase tracking-wider text-hot mt-0.5">eliminatório</span>}
                 </div>
               ))}
             </div>
@@ -107,7 +109,10 @@ export default function Prizes() {
             </div>
           </div>
 
-          <p className="text-[10px] sm:text-xs text-text-muted text-center mt-4 font-mono">
+          <p className="text-[10px] sm:text-xs text-hot/90 text-center mt-4 font-mono">
+            ⚠ Execução Técnica e IA tem caráter eliminatório (edital, cláusula 6).
+          </p>
+          <p className="text-[10px] sm:text-xs text-text-muted text-center mt-2 font-mono">
             + Bônus: Avaliação do Mentor Fixo | Vendas comprovadas | Internacionalização | Eixos de Governança
           </p>
         </div>
