@@ -189,7 +189,7 @@ export default function MentorPrePitch({ token }) {
   return (
     <div className="space-y-4">
       {/* Cabeçalho */}
-      <div className="card-glass rounded-2xl p-6">
+      <div className="card-glass rounded-2xl p-4 sm:p-6">
         <p className="text-xs font-mono text-gold uppercase tracking-wider mb-1">Avaliação de Pré-Pitch</p>
         <p className="text-sm text-text-muted">
           Avalie qualquer equipe em até 2 rodadas. As notas são opcionais — você pode
@@ -284,7 +284,7 @@ export default function MentorPrePitch({ token }) {
       )}
 
       {/* Scorecard */}
-      <div className="card-glass rounded-2xl p-6">
+      <div className="card-glass rounded-2xl p-4 sm:p-6">
         <div className="flex items-center gap-2 mb-4">
           <p className="text-xs font-mono text-gold uppercase tracking-wider">
             {selectedTeam?.name} · Rodada {round}

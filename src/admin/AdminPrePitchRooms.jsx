@@ -290,9 +290,9 @@ export default function AdminPrePitchRooms() {
                         <span className="text-xs font-mono text-cyan w-5 text-center">{idx + 1}</span>
                         <span className="flex-1 text-sm text-white truncate">{rt.team.name}</span>
                         <div className="flex items-center gap-1">
-                          <button onClick={() => moveTeam(room.id, rt.team_id, -1)} disabled={busy || idx === 0} className="text-white/50 hover:text-white disabled:opacity-20" title="Subir" aria-label="Subir">▲</button>
-                          <button onClick={() => moveTeam(room.id, rt.team_id, 1)} disabled={busy || idx === roomTeamList.length - 1} className="text-white/50 hover:text-white disabled:opacity-20" title="Descer" aria-label="Descer">▼</button>
-                          <button onClick={() => removeTeam(room.id, rt.team_id)} disabled={busy} className="text-hot hover:text-white ml-1 disabled:opacity-50" title="Remover" aria-label={`Remover ${rt.team.name}`}>×</button>
+                          <button onClick={() => moveTeam(room.id, rt.team_id, -1)} disabled={busy || idx === 0} className="px-2 py-1 text-base leading-none text-white/50 hover:text-white disabled:opacity-20" title="Subir" aria-label="Subir">▲</button>
+                          <button onClick={() => moveTeam(room.id, rt.team_id, 1)} disabled={busy || idx === roomTeamList.length - 1} className="px-2 py-1 text-base leading-none text-white/50 hover:text-white disabled:opacity-20" title="Descer" aria-label="Descer">▼</button>
+                          <button onClick={() => removeTeam(room.id, rt.team_id)} disabled={busy} className="px-2 py-1 text-base leading-none text-hot hover:text-white ml-0.5 disabled:opacity-50" title="Remover" aria-label={`Remover ${rt.team.name}`}>×</button>
                         </div>
                       </div>
                     ))}

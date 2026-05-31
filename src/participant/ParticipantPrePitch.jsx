@@ -70,7 +70,7 @@ export default function ParticipantPrePitch({ token }) {
 
   return (
     <div className="space-y-4">
-      <div className="card-glass rounded-2xl p-6">
+      <div className="card-glass rounded-2xl p-4 sm:p-6">
         <p className="text-xs font-mono text-violet uppercase tracking-wider">Pré-Pitch</p>
         <h2 className="text-xl font-bold text-white mt-1">Feedback dos Mentores</h2>
         <p className="text-sm text-text-muted mt-1">
@@ -83,13 +83,13 @@ export default function ParticipantPrePitch({ token }) {
       )}
 
       {loading && (
-        <div className="card-glass rounded-2xl p-6 text-center text-text-muted text-sm animate-pulse">
+        <div className="card-glass rounded-2xl p-4 sm:p-6 text-center text-text-muted text-sm animate-pulse">
           Carregando feedback...
         </div>
       )}
 
       {!loading && !error && !hasAnyEval && (
-        <div className="card-glass rounded-2xl p-6 border border-dark-border text-center">
+        <div className="card-glass rounded-2xl p-4 sm:p-6 border border-dark-border text-center">
           <p className="text-text-muted text-sm">
             Seu feedback de pré-pitch aparecerá aqui após os mentores avaliarem.
           </p>

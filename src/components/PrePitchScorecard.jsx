@@ -30,8 +30,8 @@ export function prePitchTotal(scores, criteria = EDITAL_RUBRIC.criteria) {
 
 // Slider com proteção anti-toque (motivo do #232): um <input range> nativo "salta"
 // para a posição do toque, registrando nota acidental. Aqui a mudança só é aceita
-// após um ARRASTE deliberado (pointermove) ou tecla de seta — um toque/clique seco
-// na trilha é ignorado. A entrada direta da nota continua sendo o campo numérico.
+// após um ARRASTE deliberado (pointermove) ou tecla de navegação — um toque/clique
+// seco na trilha é ignorado. A entrada direta da nota continua sendo o campo numérico.
 function ScoreSlider({ value, accent, onChange, label }) {
   const movedRef = useRef(false)
   const valid = value !== '' && value != null && Number.isFinite(Number(value))
@@ -46,7 +46,7 @@ function ScoreSlider({ value, accent, onChange, label }) {
       onChange={e => { if (movedRef.current) onChange(e.target.value) }}
       style={{ accentColor: accent }}
       aria-label={label}
-      className={`w-full mt-3 h-1.5 cursor-pointer ${valid ? '' : 'opacity-50'}`}
+      className={`w-full mt-3 h-2 cursor-pointer ${valid ? '' : 'opacity-50'}`}
     />
   )
 }
@@ -123,22 +123,22 @@ export default function PrePitchScorecard({
           const contrib = valid ? Math.round((n * c.weight) / 100 * 10) / 10 : null
 
           return (
-            <div key={c.key} className="border border-dark-border rounded-xl p-4">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div>
+            <div key={c.key} className="border border-dark-border rounded-xl p-3 sm:p-4">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="min-w-0">
                   <span className="text-sm font-semibold text-white">{c.label}</span>
                   <span className="text-xs text-white/40 ml-2 font-mono">vale até {c.weight} pts</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-[11px] font-mono ${fa.text} w-20 text-right`}>{fa.label}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`text-[11px] font-mono ${fa.text}`}>{fa.label}</span>
                   <label className="text-[11px] font-mono text-white/50 uppercase tracking-wider">Nota</label>
                   <input
-                    type="number" min={0} max={100} step={1}
+                    type="number" inputMode="numeric" min={0} max={100} step={1}
                     value={raw}
                     onChange={e => onScoreChange?.(c.key, 'score', e.target.value)}
                     placeholder="0–100"
                     aria-label={`Nota de ${c.label} (0 a 100, opcional)`}
-                    className="w-20 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm text-right font-mono focus:outline-none focus:border-cyan/50"
+                    className="w-20 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm text-right font-mono focus:outline-none focus:border-cyan/50"
                   />
                 </div>
               </div>
@@ -152,8 +152,8 @@ export default function PrePitchScorecard({
               />
 
               {/* Contribuição ponderada ao vivo */}
-              <div className="flex items-center justify-between mt-1.5">
-                <p className="text-[11px] text-text-muted leading-relaxed pr-3">{c.describe}</p>
+              <div className="flex items-center justify-between mt-1.5 gap-3">
+                <p className="text-[11px] text-text-muted leading-relaxed">{c.describe}</p>
                 <span className={`text-[11px] font-mono whitespace-nowrap ${fa.text}`}>
                   {contrib != null ? `+${contrib}` : '—'} / {c.weight} pts
                 </span>
