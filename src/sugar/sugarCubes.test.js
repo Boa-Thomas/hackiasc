@@ -66,4 +66,9 @@ describe('errorText', () => {
   it('usa fallback para erro desconhecido', () => {
     expect(errorText('algo estranho')).toMatch(/não foi possível/i)
   })
+
+  it('mapeia sessão expirada para a mensagem de sessão', () => {
+    expect(errorText('payment_not_confirmed')).toMatch(/sessão/i)
+    expect(errorText('invalid_or_expired_session')).toMatch(/sessão/i)
+  })
 })

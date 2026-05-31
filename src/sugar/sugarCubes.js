@@ -38,6 +38,8 @@ const ERROR_MESSAGES = [
   ['invalid_recipient', 'Destinatário inválido.'],
   ['unauthorized', 'Sessão inválida. Entre novamente.'],
   ['forbidden', 'Sessão inválida. Entre novamente.'],
+  ['payment_not_confirmed', 'Sessão inválida. Entre novamente.'],
+  ['invalid_or_expired_session', 'Sessão inválida. Entre novamente.'],
 ]
 
 // Traduz a mensagem de erro do Supabase (que contém o texto do RAISE) para
