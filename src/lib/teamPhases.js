@@ -71,8 +71,10 @@ export function buildPhaseLookup(externalList) {
   return map;
 }
 
-// Nomes externos que não têm par entre os nomes HackIA.
-export function findUnmatchedExternal(hackiaNames, externalList, aliasMap = DEFAULT_ALIAS_MAP) {
-  const hackiaKeys = new Set(hackiaNames.map((n) => matchKey(n, aliasMap)));
+// O alias e UNIDIRECIONAL: so transforma nomes EXTERNOS para o espaco de nomes
+// do HackIA (em mapExternalRows). O lado HackIA casa por normalizacao pura, para
+// que adicionar um apelido nunca reescreva/quebre o match de uma equipe daqui.
+export function findUnmatchedExternal(hackiaNames, externalList) {
+  const hackiaKeys = new Set(hackiaNames.map((n) => normalizeTeamName(n)));
   return externalList.filter((e) => !hackiaKeys.has(e.key)).map((e) => e.name);
 }

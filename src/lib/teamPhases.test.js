@@ -130,6 +130,17 @@ describe("matchKey com aliasMap", () => {
   });
 });
 
+describe("alias unidirecional (nao reescreve o lado HackIA)", () => {
+  it("aliasar um nome externo nao quebra o match por normalizacao do nome HackIA", () => {
+    // Alias afirma que o externo "Solo" e a equipe "Outro". Uma equipe HackIA
+    // literalmente chamada "Solo" deve manter sua chave "solo" (nao virar "outro").
+    const m = buildAliasMap([{ external: "Solo", hackia: "Outro" }]);
+    const ext = mapExternalRows([{ name: "Solo", stage: "slc" }], m); // chave -> "outro"
+    // HackIA so tem "Solo" (chave "solo"); o externo (chave "outro") fica orfao.
+    expect(findUnmatchedExternal(["Solo"], ext)).toEqual(["Solo"]);
+  });
+});
+
 describe("override dinamico de apelido", () => {
   const rows = [{ name: "Revisa.Ai", stage: "slc" }];
   it("com override, Revisa.Ai casa com Revisai e some das orfas", () => {

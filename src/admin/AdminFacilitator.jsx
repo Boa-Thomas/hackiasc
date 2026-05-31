@@ -652,7 +652,7 @@ function PulseStat({ label, value, total, accent }) {
 
 // Fase atual de cada equipe, lida (read-only) do painel externo. Atualiza ~20s.
 function TeamPhases() {
-  const { getPhase, getUnmatched, externalList, aliases, saveAliases, loading, error, lastUpdated } = useTeamPhases()
+  const { getPhase, getUnmatched, externalList, aliases, aliasesLoaded, saveAliases, loading, error, lastUpdated } = useTeamPhases()
   const [names, setNames] = useState([])
   const [editing, setEditing] = useState(false)
 
@@ -702,12 +702,14 @@ function TeamPhases() {
         <button
           type="button"
           onClick={() => setEditing(v => !v)}
-          className="text-[10px] font-mono text-white/40 hover:text-cyan transition-colors"
+          disabled={!aliasesLoaded}
+          title={aliasesLoaded ? undefined : 'Carregando apelidos...'}
+          className="text-[10px] font-mono text-white/40 hover:text-cyan transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {editing ? 'fechar' : '✎ ajustar apelidos'}
         </button>
       </div>
-      {editing && (
+      {editing && aliasesLoaded && (
         <TeamPhaseAliasesEditor
           aliases={aliases}
           externalNames={externalList.map((e) => e.name)}
