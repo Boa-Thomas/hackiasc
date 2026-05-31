@@ -61,3 +61,38 @@ export const EVENT_CONFIG = {
 // Conta dedicada usada pelo link de auto-login da equipe (#admin-acesso?t=<senha>).
 // O email nao e segredo; o token do link e a senha desta conta (role 'staff').
 export const STAFF_ACCESS_EMAIL = 'equipe-muro@hackiasc.com'
+
+// ============================================================
+// Tracking de fase das equipes - projeto Supabase EXTERNO (read-only).
+// O painel externo registra a fase de cada equipe na tabela teams (coluna
+// stage). A anon key abaixo e PUBLICA (ja exposta no HTML deployado deles);
+// aqui e usada SOMENTE para leitura.
+// ============================================================
+export const EXTERNAL_PHASE_TRACKER = {
+  url: 'https://kpcaokuqblutdkfdqwfg.supabase.co',
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtwY2Fva3VxYmx1dGRrZmRxd2ZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0NDM4MDksImV4cCI6MjA5MTAxOTgwOX0.Vf5pqPFersTEHmpZ3BewjWHX9nUGBm-R5iisLCvhZms',
+
+  PHASES: [
+    { key: 'equipe',   label: 'Equipe',   order: 0, color: '#22c55e' },
+    { key: 'problema', label: 'Problema', order: 1, color: '#3b82f6' },
+    { key: 'slc',      label: 'SLC-IA',   order: 2, color: '#06b6d4' },
+    { key: 'pivotar',  label: 'Pivotar',  order: 3, color: '#a855f7' },
+    { key: 'venda',    label: 'Venda',    order: 4, color: '#f59e0b' },
+    { key: 'pitch',    label: 'Pitch',    order: 5, color: '#ec4899' },
+    { key: 'hero',     label: 'Hero',     order: 6, color: '#f97316' },
+  ],
+
+  STAGE_ALIASES: {
+    ideia: 'equipe',
+    mvp: 'slc',
+    prototipo: 'slc',
+    solucao: 'slc',
+    codigo: 'pivotar',
+    vendas: 'venda',
+  },
+
+  TEAM_NAME_ALIASES: {
+    byaitas: 'baitas',
+    easyaiitcompany: 'easyiaitcompany',
+  },
+}

@@ -1,10 +1,13 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { computeNowNext, neighborToSwap, cascadeShift, reorderByDrag, markAsCurrent, parseTime, computePulse } from './facilitatorSchedule'
 import FacilitatorGuide from '../facilitator/FacilitatorGuide'
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { useTeamPhases } from '../hooks/useTeamPhases'
+import { findUnmatchedExternal } from '../lib/teamPhases'
+import PhaseBadge from './PhaseBadge'
 
 const ACCENT = {
   cyan: { text: 'text-cyan', dot: 'bg-cyan', border: 'border-cyan/40', soft: 'bg-cyan/10' },
@@ -126,6 +129,7 @@ export default function AdminFacilitator() {
       {error && <div className="bg-hot/10 border border-hot/30 rounded-lg px-4 py-2.5 text-hot text-sm">{error}</div>}
       <NowNext days={days} items={items} onError={setError} onChanged={loadSchedule} />
       <Pulse pulse={pulse} />
+      <TeamPhases />
       <SessionTimer />
       <ScheduleEditor days={days} items={items} onError={setError} onChanged={loadSchedule} />
       <AnnouncementBox current={announcement} history={history} onError={setError} onChanged={loadSchedule} />
@@ -642,6 +646,56 @@ function PulseStat({ label, value, total, accent }) {
       <div className="mt-2 h-1 rounded-full bg-white/10 overflow-hidden">
         <div className={`h-full ${a.dot}`} style={{ width: `${pct}%` }} />
       </div>
+    </div>
+  )
+}
+
+// Fase atual de cada equipe, lida (read-only) do painel externo. Atualiza ~20s.
+function TeamPhases() {
+  const { getPhase, externalList, loading, error, lastUpdated } = useTeamPhases()
+  const [names, setNames] = useState([])
+
+  useEffect(() => {
+    if (!supabase) return
+    supabase.from('teams').select('name').order('name').then(({ data }) => {
+      if (data) setNames(data.map((t) => t.name))
+    })
+  }, [])
+
+  const orphans = useMemo(() => findUnmatchedExternal(names, externalList), [names, externalList])
+  const updatedLabel = lastUpdated
+    ? lastUpdated.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : null
+
+  return (
+    <div className="card-glass rounded-2xl p-5">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-mono text-cyan uppercase tracking-wider">Fases das equipes</p>
+        <span className="text-[10px] font-mono text-white/30">
+          {error ? 'offline — último valor' : updatedLabel ? `atualizado ${updatedLabel}` : ''}
+        </span>
+      </div>
+
+      {loading && names.length === 0 ? (
+        <p className="text-white/40 text-sm font-mono">Carregando fases...</p>
+      ) : names.length === 0 ? (
+        <p className="text-white/40 text-sm font-mono">Nenhuma equipe cadastrada.</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {names.map((name) => (
+            <div key={name} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5">
+              <span className="text-sm text-white/80 truncate">{name}</span>
+              <PhaseBadge phase={getPhase(name)} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {orphans.length > 0 && (
+        <p className="mt-3 text-[10px] font-mono text-white/30">
+          No tracking externo sem par aqui: {orphans.join(', ')}
+        </p>
+      )}
     </div>
   )
 }
