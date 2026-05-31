@@ -90,3 +90,13 @@ describe("findUnmatchedExternal", () => {
     expect(findUnmatchedExternal(hackiaNames, external)).toEqual(["Revisa.Ai"]);
   });
 });
+
+describe('buildPhaseLookup precedencia', () => {
+  it('fase valida vence sobre null anterior na mesma chave', () => {
+    const lookup = buildPhaseLookup(mapExternalRows([
+      { name: 'Foo', stage: 'desconhecido' },
+      { name: 'Foo', stage: 'slc' },
+    ]))
+    expect(lookup.get(matchKey('Foo')).key).toBe('slc')
+  })
+})

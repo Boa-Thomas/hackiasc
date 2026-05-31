@@ -52,7 +52,7 @@ export function mapExternalRows(rows) {
 export function buildPhaseLookup(externalList) {
   const map = new Map();
   for (const e of externalList) {
-    if (!map.has(e.key)) map.set(e.key, e.phase);
+    if (!map.has(e.key) || map.get(e.key) === null) map.set(e.key, e.phase);
   }
   return map;
 }
