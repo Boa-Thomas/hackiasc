@@ -162,15 +162,22 @@ const verified = await parallel(
       )
     ).then((votes) => {
       const good = votes.filter(Boolean)
-      const real = good.filter((v) => v.real).length > good.length / 2
-      return { f, real, votes: good }
+      const realVotes = good.filter((v) => v.real).length
+      // Fixed denominator (panelSize): an errored panelist must NOT raise the bar for the rest.
+      const confirmedReal = realVotes > cfg.panelSize / 2
+      // Fail-open for security: if the panel was degraded (some/all panelists errored) and we
+      // cannot clearly clear the finding, keep it but mark it unverified for human review —
+      // never silently drop a possible real bug because the verifiers crashed.
+      const degraded = good.length < cfg.panelSize
+      const keep = confirmedReal || (degraded && (realVotes > 0 || good.length === 0))
+      return { f, keep, unverified: keep && !confirmedReal, votes: good }
     })
   )
 )
 
 const confirmed = []
 for (const v of verified.filter(Boolean)) {
-  if (v.real) confirmed.push({ ...v.f, fence: fenceFor(v.f.file) })
+  if (v.keep) confirmed.push({ ...v.f, fence: fenceFor(v.f.file), unverified: v.unverified })
 }
 
 log(`Confirmed ${confirmed.length}/${fresh.length} candidates across ${round} rounds`)
