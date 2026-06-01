@@ -117,13 +117,16 @@ Deno.serve(async (req: Request) => {
         console.error('teams lookup error:', teamError)
         return json({ error: 'Internal server error' }, 500)
       }
-      const slidesPath = team?.final_deliverables?.slides_path
-      if (!slidesPath) {
+      // SECURITY: presence check only — final_deliverables.slides_path is writable
+      // by any confirmed participant (participant_save_team_deliverable), so it must
+      // NOT be used to SIGN. Always sign the server-authoritative canonical path
+      // derived from teamId; the stored value is just a "has the team uploaded?" flag.
+      if (!team?.final_deliverables?.slides_path) {
         return json({ error: 'no_slides' }, 404)
       }
       const { data: dl, error: dlError } = await supabase.storage
         .from('files')
-        .createSignedUrl(slidesPath, 60)
+        .createSignedUrl(path, 60)
 
       if (dlError || !dl?.signedUrl) {
         console.error('createSignedUrl error:', dlError)
