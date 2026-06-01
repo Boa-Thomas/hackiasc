@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-// Phase 1 offers only the jwt-exchange roles whose panel + RLS already accept the
-// session: staff, checkin, viewer. facilitator/mentor/juror/admin need panel+RLS
-// wiring (Phase 2) before a link can actually work, so they are not offered here yet.
-const ROLES = ['staff', 'checkin', 'viewer']
+// Phase 2: facilitator panel + RLS wired; mentor/juror RPCs accept grant tokens.
+// jwt-exchange (facilitator/staff/checkin/viewer) + rpc_token (mentor/juror).
+const ROLES = ['facilitator', 'staff', 'mentor', 'juror', 'checkin', 'viewer']
 
 function accessLink(token) {
   const base = window.location.origin + window.location.pathname
@@ -14,7 +13,7 @@ function accessLink(token) {
 export default function AdminAccess() {
   const [grants, setGrants] = useState([])
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState({ label: '', role: 'staff', expires_at: '' })
+  const [form, setForm] = useState({ label: '', role: 'facilitator', expires_at: '' })
   const [newLink, setNewLink] = useState(null)
   const [error, setError] = useState(null)
 
@@ -43,9 +42,31 @@ export default function AdminAccess() {
     load()
   }
 
-  async function revoke(id) {
-    const { error } = await supabase.rpc('admin_revoke_grant', { p_grant_id: id })
-    if (error) setError(error.message); else load()
+  async function revoke(g) {
+    // jwt_exchange grants: edge bans the backing user (kills the live session now).
+    // rpc_token grants (mentor/juror): just mark revoked (grant_resolve rejects it).
+    if (g.auth_kind === 'jwt_exchange') {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) { setError('Sessão admin expirada — refaça login.'); return }
+      try {
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/access-admin`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ grant_id: g.id }),
+        })
+        if (!res.ok) { setError('Falha ao revogar (acesso).'); return }
+        load()
+      } catch {
+        setError('Falha na rede ao revogar.')
+      }
+    } else {
+      const { error } = await supabase.rpc('admin_revoke_grant', { p_grant_id: g.id })
+      if (error) setError(error.message); else load()
+    }
   }
 
   async function regenerate(id) {
@@ -97,7 +118,7 @@ export default function AdminAccess() {
                   <td className={g.active ? 'text-cyan' : 'text-hot'}>{g.active ? 'ativo' : 'inativo'}</td>
                   <td className="text-right space-x-2">
                     <button onClick={() => regenerate(g.id)} className="text-electric underline">novo link</button>
-                    {g.active && <button onClick={() => revoke(g.id)} className="text-hot underline">revogar</button>}
+                    {g.active && <button onClick={() => revoke(g)} className="text-hot underline">revogar</button>}
                   </td>
                 </tr>
               ))}
