@@ -29,6 +29,7 @@ import WallParticipant from './wall/WallParticipant'
 import WallScreen from './wall/WallScreen'
 import TeamsShowcase from './teams/TeamsShowcase'
 import EnablePushPrompt from './components/EnablePushPrompt'
+import AccessExchange from './components/AccessExchange'
 
 const PAYMENT_HASHES = ['#pagamento-sucesso', '#pagamento-erro', '#pagamento-pendente']
 const ADMIN_HASHES = ['#admin', '#admin-login']
@@ -68,6 +69,11 @@ export default function App() {
       }, 100)
     }
   }, [page])
+
+  // Unified access route — #acesso?t=<token>
+  if (page.startsWith('#acesso')) {
+    return <AccessExchange />
+  }
 
   // Auto-login da equipe (Muro + Check-in) — #admin-acesso?t=<token>
   if (page.startsWith('#admin-acesso')) {
