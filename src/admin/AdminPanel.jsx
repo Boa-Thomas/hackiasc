@@ -54,6 +54,11 @@ export default function AdminPanel({ onLogout, role = 'viewer' }) {
         ? ALL_TABS.filter(t => !t.adminOnly)
         : ALL_TABS
   const [activeTab, setActiveTab] = useState(staffOnly ? 'wall' : checkinOnly ? 'checkin' : 'dashboard')
+  // Defense-in-depth: gate content rendering by the same role-filtered tab set
+  // used for nav, so a forced activeTab cannot expose a tab the role can't see.
+  // (RLS remains the real boundary.)
+  const allowedTabs = new Set(TABS.map(t => t.id))
+  const show = (id) => allowedTabs.has(id) && activeTab === id
   const [selectedRegistrationId, setSelectedRegistrationId] = useState(null)
   const [confirmedOnly, setConfirmedOnly] = useState(() => {
     try { return localStorage.getItem('admin.confirmedOnly') !== 'false' } catch { return true }
@@ -132,10 +137,10 @@ export default function AdminPanel({ onLogout, role = 'viewer' }) {
 
       {/* Content */}
       <main className="p-4 sm:p-6 max-w-[1400px] mx-auto">
-        {activeTab === 'dashboard' && (
+        {show('dashboard') && (
           <AdminDashboard onViewRegistration={handleViewRegistration} readOnly={readOnly} />
         )}
-        {activeTab === 'registrations' && (
+        {show('registrations') && (
           <AdminRegistrations
             selectedId={selectedRegistrationId}
             onClearSelection={() => setSelectedRegistrationId(null)}
@@ -144,23 +149,23 @@ export default function AdminPanel({ onLogout, role = 'viewer' }) {
             confirmedOnly={confirmedOnly}
           />
         )}
-        {activeTab === 'teams' && <AdminTeams readOnly={readOnly} confirmedOnly={confirmedOnly} />}
-        {activeTab === 'deliverables' && <AdminDeliverables readOnly={readOnly} />}
-        {activeTab === 'ranking' && <AdminRanking />}
-        {activeTab === 'evaluation' && <AdminEvaluation readOnly={readOnly} />}
-        {activeTab === 'financeiro' && <AdminFinanceiro readOnly={readOnly} />}
-        {activeTab === 'bulk' && <AdminBulkOrders readOnly={readOnly} />}
-        {!readOnly && activeTab === 'mentors' && <AdminMentors />}
-        {!readOnly && activeTab === 'prepitch-rooms' && <AdminPrePitchRooms />}
-        {!readOnly && activeTab === 'jurors' && <AdminJurors />}
-        {!readOnly && activeTab === 'wall' && <AdminWall />}
-        {!readOnly && activeTab === 'sugarcubes' && <AdminSugarCubes />}
-        {!readOnly && activeTab === 'resources' && <AdminResources />}
-        {!readOnly && activeTab === 'facilitator' && <AdminFacilitator />}
-        {!readOnly && activeTab === 'notifications' && <AdminNotifications />}
-        {!readOnly && activeTab === 'checkin' && <AdminCheckin />}
-        {!readOnly && activeTab === 'logs' && <AdminAuditLog />}
-        {role === 'admin' && activeTab === 'access' && <AdminAccess />}
+        {show('teams') && <AdminTeams readOnly={readOnly} confirmedOnly={confirmedOnly} />}
+        {show('deliverables') && <AdminDeliverables readOnly={readOnly} />}
+        {show('ranking') && <AdminRanking />}
+        {show('evaluation') && <AdminEvaluation readOnly={readOnly} />}
+        {show('financeiro') && <AdminFinanceiro readOnly={readOnly} />}
+        {show('bulk') && <AdminBulkOrders readOnly={readOnly} />}
+        {!readOnly && show('mentors') && <AdminMentors />}
+        {!readOnly && show('prepitch-rooms') && <AdminPrePitchRooms />}
+        {!readOnly && show('jurors') && <AdminJurors />}
+        {!readOnly && show('wall') && <AdminWall />}
+        {!readOnly && show('sugarcubes') && <AdminSugarCubes />}
+        {!readOnly && show('resources') && <AdminResources />}
+        {!readOnly && show('facilitator') && <AdminFacilitator />}
+        {!readOnly && show('notifications') && <AdminNotifications />}
+        {!readOnly && show('checkin') && <AdminCheckin />}
+        {!readOnly && show('logs') && <AdminAuditLog />}
+        {role === 'admin' && show('access') && <AdminAccess />}
       </main>
     </div>
   )

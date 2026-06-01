@@ -171,7 +171,13 @@ export default function AdminDeliverables({ readOnly = false }) {
       ...FINAL_FIELDS.map(f => ({ field: 'final_deliverables', key: f.key, label: `Final · ${f.label}` })),
     ]
     const headers = ['Equipe', 'Status', 'Membros', 'Atualizado em', ...flat.map(c => c.label)]
-    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
+    // Neutralize CSV formula injection: cells starting with = + - @ tab or CR
+    // are prefixed with a single quote before being quote-escaped.
+    const esc = (v) => {
+      let s = String(v ?? '')
+      if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
+      return `"${s.replace(/"/g, '""')}"`
+    }
     const rows = teams.map(t => {
       const cells = [t.name, statusMeta(t.status).label, memberCount(t.id), t.updated_at || '']
       for (const c of flat) {
