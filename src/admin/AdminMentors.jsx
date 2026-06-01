@@ -23,7 +23,7 @@ export default function AdminMentors({ readOnly = false }) {
     if (!supabase) { setError('Supabase não configurado.'); setLoading(false); return }
     setError(null)
     const [{ data: ms, error: mErr }, { data: ts, error: tErr }, { data: ls, error: lErr }, { data: activeRegs, error: arErr }] = await Promise.all([
-      supabase.from('mentors').select('id, email, name, access_token').order('created_at', { ascending: true }),
+      supabase.rpc('admin_list_mentors'),
       supabase.from('teams').select('id, name').order('name', { ascending: true }),
       supabase.from('mentor_teams').select('mentor_id, team_id'),
       supabase.from('registrations').select('team_id').not('team_id', 'is', null).neq('payment_status', 'cancelled'),
