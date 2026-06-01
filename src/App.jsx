@@ -30,6 +30,7 @@ import WallScreen from './wall/WallScreen'
 import TeamsShowcase from './teams/TeamsShowcase'
 import EnablePushPrompt from './components/EnablePushPrompt'
 import AccessExchange from './components/AccessExchange'
+import FacilitatorPanel from './facilitator/FacilitatorPanel'
 
 const PAYMENT_HASHES = ['#pagamento-sucesso', '#pagamento-erro', '#pagamento-pendente']
 const ADMIN_HASHES = ['#admin', '#admin-login']
@@ -60,7 +61,8 @@ export default function App() {
       !PARTICIPANT_HASHES.includes(page) &&
       !page.startsWith('#mentor') &&
       !WALL_HASHES.includes(page) &&
-      !page.startsWith('#jurado')
+      !page.startsWith('#jurado') &&
+      !page.startsWith('#facilitador')
     ) {
       if (!/^#[a-zA-Z][\w-]*$/.test(page)) return
       setTimeout(() => {
@@ -161,6 +163,11 @@ export default function App() {
   // Juror routes — token na querystring do hash: #jurado?t=<uuid> (sem login)
   if (page.startsWith('#jurado')) {
     return <JurorPanel />
+  }
+
+  // Facilitator routes — sessão estabelecida via #acesso?t=<token> (jwt-exchange)
+  if (page.startsWith('#facilitador')) {
+    return <FacilitatorPanel />
   }
 
   // Muro de Dores / Telão — telas fullscreen, sem login
