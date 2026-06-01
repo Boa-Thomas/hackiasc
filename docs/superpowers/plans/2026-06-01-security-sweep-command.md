@@ -319,15 +319,22 @@ const verified = await parallel(
       )
     ).then((votes) => {
       const good = votes.filter(Boolean)
-      const real = good.filter((v) => v.real).length > good.length / 2
-      return { f, real, votes: good }
+      const realVotes = good.filter((v) => v.real).length
+      // Fixed denominator (panelSize): an errored panelist must NOT raise the bar for the rest.
+      const confirmedReal = realVotes > cfg.panelSize / 2
+      // Fail-open for security: if the panel was degraded (some/all panelists errored) and we
+      // cannot clearly clear the finding, keep it but mark it unverified for human review —
+      // never silently drop a possible real bug because the verifiers crashed.
+      const degraded = good.length < cfg.panelSize
+      const keep = confirmedReal || (degraded && (realVotes > 0 || good.length === 0))
+      return { f, keep, unverified: keep && !confirmedReal, votes: good }
     })
   )
 )
 
 const confirmed = []
 for (const v of verified.filter(Boolean)) {
-  if (v.real) confirmed.push({ ...v.f, fence: fenceFor(v.f.file) })
+  if (v.keep) confirmed.push({ ...v.f, fence: fenceFor(v.f.file), unverified: v.unverified })
 }
 
 log(`Confirmed ${confirmed.length}/${fresh.length} candidates across ${round} rounds`)
@@ -489,9 +496,10 @@ Workflow({ name: 'security-sweep-hunt', args: { audit_known: <array>, head: '<sh
 > **Resolution fallback:** if `Workflow({ name: 'security-sweep-hunt', ... })` errors with an unknown-workflow error (project-scoped name resolution from `.claude/workflows/` not available), retry the same call with `{ scriptPath: '.claude/workflows/security-sweep-hunt.js', args: {...} }`. Same for Workflow B in §5 (`scriptPath: '.claude/workflows/security-sweep-fix.js'`).
 
 It loops finders until dry, then adversarially verifies. It returns:
-`{ head, rounds, total_candidates, findings: [{ title, file, line, class, severity, status, evidence, exploit_sketch, fence }] }`.
+`{ head, rounds, total_candidates, findings: [{ title, file, line, class, severity, status, evidence, exploit_sketch, fence, unverified }] }`.
+(`unverified: true` means the verification panel was degraded/crashed and the finding was kept fail-open for human review — treat it like report-only, never auto-fix it.)
 
-When it returns, present a summary grouped by **severity** and **fence** (auto vs report-only), marking each as `known` or `new`. Lead with new criticals/highs.
+When it returns, present a summary grouped by **severity** and **fence** (auto vs report-only), marking each as `known` or `new`, and flag any `unverified` findings separately. Lead with new criticals/highs.
 
 ## 3. Dry-run exit
 
@@ -503,7 +511,7 @@ Use `AskUserQuestion` to confirm scope before touching code. Show the count of a
 
 ## 5. Workflow B — generate fixes (eligible only)
 
-Filter the confirmed findings to `fence === 'auto'` ∩ the user's selection. If empty, skip to section 7. Otherwise call:
+Filter the confirmed findings to `fence === 'auto' && !unverified` ∩ the user's selection (unverified findings are never auto-fixed — they go to the report for human review). If empty, skip to section 7. Otherwise call:
 
 ```
 Workflow({ name: 'security-sweep-fix', args: { findings: <auto-fixable subset> } })
@@ -525,6 +533,7 @@ Write `docs/changelog/$(date +%F)-security-sweep.md` containing:
 - Summary: rounds, candidates, confirmed (new vs known), auto-fixed vs report-only.
 - Auto-fixed: each finding + file + the fix branch name + gate result + regression-validator verdict.
 - Report-only: each finding + the proposed diff (so a human can apply it manually against prod).
+- Unverified (panel degraded/crashed): list separately so a human reviews them — these were kept fail-open and were NOT auto-fixed.
 - **Gate-coverage honesty statement:** "vitest + build validates JS/JSX only; SQL, RLS, SECURITY DEFINER and edge-function fixes are report-only and require manual review and application against production."
 - Residual risks / follow-ups.
 
