@@ -170,14 +170,25 @@ const verified = await parallel(
       // never silently drop a possible real bug because the verifiers crashed.
       const degraded = good.length < cfg.panelSize
       const keep = confirmedReal || (degraded && (realVotes > 0 || good.length === 0))
-      return { f, keep, unverified: keep && !confirmedReal, votes: good }
+      // Apply the panel's severity reassessment: if a majority of the panel agree on the same
+      // adjusted severity (anything but 'unchanged'), use it; otherwise keep the finder's value.
+      const tally = {}
+      for (const v of good) {
+        const s = v.severity_adjust
+        if (s && s !== 'unchanged') tally[s] = (tally[s] || 0) + 1
+      }
+      let severity = f.severity
+      for (const [s, n] of Object.entries(tally)) {
+        if (n > cfg.panelSize / 2) severity = s
+      }
+      return { f, keep, unverified: keep && !confirmedReal, severity, votes: good }
     })
   )
 )
 
 const confirmed = []
 for (const v of verified.filter(Boolean)) {
-  if (v.keep) confirmed.push({ ...v.f, fence: fenceFor(v.f.file), unverified: v.unverified })
+  if (v.keep) confirmed.push({ ...v.f, severity: v.severity, fence: fenceFor(v.f.file), unverified: v.unverified })
 }
 
 log(`Confirmed ${confirmed.length}/${fresh.length} candidates across ${round} rounds`)
