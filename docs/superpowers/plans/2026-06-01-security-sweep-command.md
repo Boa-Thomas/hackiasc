@@ -327,14 +327,25 @@ const verified = await parallel(
       // never silently drop a possible real bug because the verifiers crashed.
       const degraded = good.length < cfg.panelSize
       const keep = confirmedReal || (degraded && (realVotes > 0 || good.length === 0))
-      return { f, keep, unverified: keep && !confirmedReal, votes: good }
+      // Apply the panel's severity reassessment: if a majority of the panel agree on the same
+      // adjusted severity (anything but 'unchanged'), use it; otherwise keep the finder's value.
+      const tally = {}
+      for (const v of good) {
+        const s = v.severity_adjust
+        if (s && s !== 'unchanged') tally[s] = (tally[s] || 0) + 1
+      }
+      let severity = f.severity
+      for (const [s, n] of Object.entries(tally)) {
+        if (n > cfg.panelSize / 2) severity = s
+      }
+      return { f, keep, unverified: keep && !confirmedReal, severity, votes: good }
     })
   )
 )
 
 const confirmed = []
 for (const v of verified.filter(Boolean)) {
-  if (v.keep) confirmed.push({ ...v.f, fence: fenceFor(v.f.file), unverified: v.unverified })
+  if (v.keep) confirmed.push({ ...v.f, severity: v.severity, fence: fenceFor(v.f.file), unverified: v.unverified })
 }
 
 log(`Confirmed ${confirmed.length}/${fresh.length} candidates across ${round} rounds`)
@@ -522,10 +533,10 @@ It returns `{ patches: [{ file, diff, rationale, bug_refs }], partitions }`. The
 ## 6. Apply + gate + validate (main thread)
 
 1. Create the branch: `git switch -c fix/security-sweep-$(date +%Y%m%d)` (if it exists, append `-2`, `-3`, …). **Run all `git` and `$(date …)` commands here and in §7 via the Bash tool** — they use POSIX `date +%F` / `+%Y%m%d` syntax. Do NOT run them via the PowerShell tool, where `date` is a `Get-Date` alias and those format flags break; the PowerShell equivalents are `(Get-Date -Format 'yyyyMMdd')` and `(Get-Date -Format 'yyyy-MM-dd')`.
-2. **Reconcile coverage:** cross-check the auto-fixable findings sent to Workflow B against the returned `patches` (by file). Any finding whose file got no patch (the fixer crashed → `null`, or abstained → empty) must NOT vanish — add it to the report-only / needs-review list with a "no safe auto-fix produced" note. A security finding never silently disappears.
+2. **Reconcile coverage by finding, not by file:** cross-check each auto-fixable finding sent to Workflow B against the union of `patches[*].bug_refs` across all returned patches. Any finding whose title appears in NO patch's `bug_refs` (the fixer crashed, abstained, or fixed only some bugs in a shared file) must NOT vanish — add it to the report-only / needs-review list with a "no safe auto-fix produced" note. (Keying by file would mask a second unfixed bug in a file that got one patch.) A security finding never silently disappears.
 3. For each patch: write the diff to a temp file and `git apply --3way <tmp>`. If it fails to apply, dispatch one `Agent` (general-purpose) to re-implement that single file's fix by editing the file directly (give it the bug + rationale), then continue.
 4. Run the regression gate: `npx vitest run` then `npm run build`.
-   - On failure: dispatch a `debugger` Agent scoped to the failing partition's files to fix the breakage, then re-run the gate. If it still fails after one repair pass, revert that partition's changes (`git checkout -- <files>`) and move those findings to the report-only list with a note.
+   - On failure: dispatch a `debugger` Agent with the gate output and `git diff master...HEAD` to localize and fix the breakage (the gate runs after all patches are applied, so the failure isn't pre-attributed to one partition — let the debugger localize from the diff), then re-run the gate. If it still fails after one repair pass, revert the offending patch(es) (`git checkout -- <files>`) and move those findings to the report-only list with a note.
 5. Dispatch a **regression-validator** Agent (use `architect-reviewer`): given the diff `git diff master...HEAD`, confirm no functionality was lost, no RLS/role-exclusion weakened, and frontend↔backend contracts (RPC names/params, event keys, role exclusions like juror) are intact. Capture its verdict.
 
 ## 7. Report + stop

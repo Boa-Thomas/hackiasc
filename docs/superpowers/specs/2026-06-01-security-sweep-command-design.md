@@ -84,9 +84,13 @@ skipping the checkpoint, Workflow B, and any branch/file mutation.
     rounds** with no new finding (configurable). Cross-reference the audit changelog to
     pre-tag `já-corrigido | novo`.
 - **Verify (adversarial):** each fresh candidate gets a small skeptic panel with distinct
-  lenses (correctness / exploitability / false-positive); keep if majority say real.
-- **Returns** structured: `{ findings: [{ id, title, file, line, class, severity,
-  status: known|new, fence: auto|report, evidence, exploit_sketch }] }`.
+  lenses (correctness / exploitability / false-positive); keep if a majority of the panel
+  (fixed denominator = panel size) say real. If the panel is degraded (some/all panelists
+  errored) and can't clearly clear the finding, keep it as `unverified` for human review
+  (fail-open — never silently drop a possible real bug). The panel's majority
+  `severity_adjust` is applied to the confirmed finding's severity.
+- **Returns** structured: `{ findings: [{ title, file, line, class, severity,
+  status: known|new, evidence, exploit_sketch, fence: auto|report, unverified }] }`.
 
 ### Component 3 — `.claude/workflows/security-sweep-fix.js` (Workflow B)
 - `meta` with phase `Fix`. Receives eligible findings via `args`.
@@ -94,7 +98,7 @@ skipping the checkpoint, Workflow B, and any branch/file mutation.
   partitions never touch the same file → conflict-free application.
 - One fixer agent per partition: reads the repo, writes a **structured diff** for every
   bug in its partition. **Does not apply, does not touch git.**
-- **Returns** `{ patches: [{ partition, file, diff, rationale, bug_refs }] }`.
+- **Returns** `{ patches: [{ file, diff, rationale, bug_refs }], partitions: [{ partition, count }] }`.
 
 ### The fix-eligibility fence
 The gate (`vitest + build`) cannot exercise SQL/RLS/SECURITY DEFINER functions or edge
