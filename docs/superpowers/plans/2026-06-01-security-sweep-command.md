@@ -477,7 +477,7 @@ description: Multi-agent looping security sweep — hunts bugs across the whole 
 
 You are running a full-project security audit with gated auto-fix. This command **explicitly opts into multi-agent orchestration: you WILL call the `Workflow` tool.** Production has real data (CPF, payments) — never push, never merge, never auto-apply SQL/edge to prod.
 
-Argument: if the invocation includes `--dry-run`, do recon + Workflow A + report only (skip the checkpoint, Workflow B, and all branch/file mutation).
+Argument: if the invocation includes `--dry-run`, do recon + Workflow A + write the report only — skip the checkpoint, Workflow B, branch creation, and all patch/fix file mutation (the report file in §7 is still written).
 
 ## 1. Recon (main thread, inline)
 
@@ -521,7 +521,7 @@ It returns `{ patches: [{ file, diff, rationale, bug_refs }], partitions }`. The
 
 ## 6. Apply + gate + validate (main thread)
 
-1. Create the branch: `git switch -c fix/security-sweep-$(date +%Y%m%d)` (if it exists, append `-2`, `-3`, …).
+1. Create the branch: `git switch -c fix/security-sweep-$(date +%Y%m%d)` (if it exists, append `-2`, `-3`, …). **Run all `git` and `$(date …)` commands here and in §7 via the Bash tool** — they use POSIX `date +%F` / `+%Y%m%d` syntax. Do NOT run them via the PowerShell tool, where `date` is a `Get-Date` alias and those format flags break; the PowerShell equivalents are `(Get-Date -Format 'yyyyMMdd')` and `(Get-Date -Format 'yyyy-MM-dd')`.
 2. **Reconcile coverage:** cross-check the auto-fixable findings sent to Workflow B against the returned `patches` (by file). Any finding whose file got no patch (the fixer crashed → `null`, or abstained → empty) must NOT vanish — add it to the report-only / needs-review list with a "no safe auto-fix produced" note. A security finding never silently disappears.
 3. For each patch: write the diff to a temp file and `git apply --3way <tmp>`. If it fails to apply, dispatch one `Agent` (general-purpose) to re-implement that single file's fix by editing the file directly (give it the bug + rationale), then continue.
 4. Run the regression gate: `npx vitest run` then `npm run build`.
