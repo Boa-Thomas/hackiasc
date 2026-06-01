@@ -522,10 +522,11 @@ It returns `{ patches: [{ file, diff, rationale, bug_refs }], partitions }`. The
 ## 6. Apply + gate + validate (main thread)
 
 1. Create the branch: `git switch -c fix/security-sweep-$(date +%Y%m%d)` (if it exists, append `-2`, `-3`, …).
-2. For each patch: write the diff to a temp file and `git apply --3way <tmp>`. If it fails to apply, dispatch one `Agent` (general-purpose) to re-implement that single file's fix by editing the file directly (give it the bug + rationale), then continue.
-3. Run the regression gate: `npx vitest run` then `npm run build`.
+2. **Reconcile coverage:** cross-check the auto-fixable findings sent to Workflow B against the returned `patches` (by file). Any finding whose file got no patch (the fixer crashed → `null`, or abstained → empty) must NOT vanish — add it to the report-only / needs-review list with a "no safe auto-fix produced" note. A security finding never silently disappears.
+3. For each patch: write the diff to a temp file and `git apply --3way <tmp>`. If it fails to apply, dispatch one `Agent` (general-purpose) to re-implement that single file's fix by editing the file directly (give it the bug + rationale), then continue.
+4. Run the regression gate: `npx vitest run` then `npm run build`.
    - On failure: dispatch a `debugger` Agent scoped to the failing partition's files to fix the breakage, then re-run the gate. If it still fails after one repair pass, revert that partition's changes (`git checkout -- <files>`) and move those findings to the report-only list with a note.
-4. Dispatch a **regression-validator** Agent (use `architect-reviewer`): given the diff `git diff master...HEAD`, confirm no functionality was lost, no RLS/role-exclusion weakened, and frontend↔backend contracts (RPC names/params, event keys, role exclusions like juror) are intact. Capture its verdict.
+5. Dispatch a **regression-validator** Agent (use `architect-reviewer`): given the diff `git diff master...HEAD`, confirm no functionality was lost, no RLS/role-exclusion weakened, and frontend↔backend contracts (RPC names/params, event keys, role exclusions like juror) are intact. Capture its verdict.
 
 ## 7. Report + stop
 
