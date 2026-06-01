@@ -93,3 +93,5 @@ Push to `main`/`master` triggers `.github/workflows/deploy.yml`: npm ci → buil
 - **general-purpose (integration QA)** — run `npx vitest run` + `npm run build`, verify `dist/` artifacts and frontend↔backend contract alignment (RPC names/params, event keys, role exclusions).
 
 **Gate:** do NOT push/deploy while any **Critical/High** finding is unresolved. Fix (or get explicit user sign-off on the residual risk) and re-run the affected agents first. Known config-only pendencies (e.g., unset secrets) are ops steps, not code blockers.
+
+For a deeper, looping audit beyond the branch diff, use **`/security-sweep`** (`.claude/commands/security-sweep.md`): it fans out finders across the whole project until coverage is dry, adversarially verifies findings, then generates gated auto-fixes on an isolated `fix/security-sweep-*` branch (JS/JSX only — SQL/RLS/edge/payment findings are report-only). It is heavier than `/pre-deploy-verify`; reach for it for periodic hardening, not every push. Pass `--dry-run` to find + report without changing code.
