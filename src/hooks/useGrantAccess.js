@@ -22,6 +22,9 @@ export function useGrantAccess() {
           headers: {
             'Content-Type': 'application/json',
             apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            // anon key as Bearer satisfies the function gateway's verify_jwt
+            // (the link-holder has no session yet; the grant token is validated in-function)
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           },
           body: JSON.stringify({ token }),
         })
