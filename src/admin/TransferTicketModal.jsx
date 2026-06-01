@@ -64,7 +64,9 @@ export default function TransferTicketModal({ source, onClose, onDone }) {
 
   // Debounced search for pending registrations matching the query
   useEffect(() => {
-    const q = search.trim()
+    // Sanitize: strip PostgREST operators to prevent .or() filter injection.
+    // Keep '.' so email/domain matching still works.
+    const q = search.trim().replace(/[,()*%]/g, ' ').trim()
     if (q.length < 2) return
     let cancelled = false
     const handle = setTimeout(async () => {

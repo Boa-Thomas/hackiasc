@@ -22,6 +22,14 @@ function buildVoucherUrl(code) {
   return `${base}?voucher=${code}#inscricao`
 }
 
+// Neutralize CSV formula injection: cells starting with = + - @ tab or CR are
+// prefixed with a single quote before being quote-escaped.
+function csvCell(value) {
+  let s = String(value ?? '')
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
+  return `"${s.replace(/"/g, '""')}"`
+}
+
 const STATUS_BADGE = {
   pending:   { label: 'Aguardando pagto',  text: 'text-gold',   bg: 'bg-gold/15',   border: 'border-gold/30'   },
   confirmed: { label: 'Pago',              text: 'text-cyan',   bg: 'bg-cyan/15',   border: 'border-cyan/30'   },
@@ -389,7 +397,7 @@ function OrderDetail({ orderId, onBack, onChanged }) {
         v.redeemed_at ? new Date(v.redeemed_at).toLocaleString('pt-BR') : '',
         v.redeemed_by_name || '',
         v.redeemed_by_email || '',
-      ].map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')),
+      ].map(csvCell).join(',')),
     ].join('\n')
     const blob = new Blob([rows], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)

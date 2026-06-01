@@ -7,6 +7,33 @@ const SESSION_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes of inactivity
 const MAX_FAILED_ATTEMPTS = 5
 const LOCKOUT_DURATION_MS = 5 * 60 * 1000 // 5 minutes
 
+// Persist the client-side login throttle so a page reload can't reset it.
+// Defense-in-depth only — Supabase Auth enforces its own server-side limit.
+const THROTTLE_STORAGE_KEY = 'admin.loginThrottle'
+
+function loadThrottleState() {
+  try {
+    const raw = localStorage.getItem(THROTTLE_STORAGE_KEY)
+    if (!raw) return { failedAttempts: 0, lockoutUntil: null }
+    const parsed = JSON.parse(raw)
+    return {
+      failedAttempts: Number(parsed?.failedAttempts) || 0,
+      lockoutUntil: parsed?.lockoutUntil ?? null,
+    }
+  } catch {
+    return { failedAttempts: 0, lockoutUntil: null }
+  }
+}
+
+function saveThrottleState(failedAttempts, lockoutUntil) {
+  try {
+    localStorage.setItem(
+      THROTTLE_STORAGE_KEY,
+      JSON.stringify({ failedAttempts, lockoutUntil }),
+    )
+  } catch { /* ignore */ }
+}
+
 export function useAdminAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [role, setRole] = useState(null) // 'admin' | 'viewer'
@@ -16,8 +43,10 @@ export function useAdminAuth() {
   // Refs are used to avoid stale closures inside event listeners
   const lastActivityRef = useRef(Date.now())
   const inactivityTimerRef = useRef(null)
-  const failedAttemptsRef = useRef(0)
-  const lockoutUntilRef = useRef(null)
+  // Rehydrate the throttle from storage so a reload keeps the lockout/count.
+  const initialThrottle = loadThrottleState()
+  const failedAttemptsRef = useRef(initialThrottle.failedAttempts)
+  const lockoutUntilRef = useRef(initialThrottle.lockoutUntil)
 
   // --- Inactivity timeout ---
 
@@ -125,6 +154,7 @@ export function useAdminAuth() {
     // Lockout expired — reset
     lockoutUntilRef.current = null
     failedAttemptsRef.current = 0
+    saveThrottleState(0, null)
     return false
   }, [])
 
@@ -161,8 +191,10 @@ export function useAdminAuth() {
         if (failedAttemptsRef.current >= MAX_FAILED_ATTEMPTS) {
           lockoutUntilRef.current = Date.now() + LOCKOUT_DURATION_MS
           failedAttemptsRef.current = 0
+          saveThrottleState(0, lockoutUntilRef.current)
           setError('Conta bloqueada por 5 minutos após múltiplas tentativas inválidas.')
         } else {
+          saveThrottleState(failedAttemptsRef.current, null)
           setError(`Credenciais inválidas. (${authError.message})`)
         }
         return false
@@ -171,6 +203,7 @@ export function useAdminAuth() {
       // Success — reset rate limit counters
       failedAttemptsRef.current = 0
       lockoutUntilRef.current = null
+      saveThrottleState(0, null)
 
       const userRole = data.user?.app_metadata?.role ?? null
       if (!VALID_ROLES.includes(userRole)) {

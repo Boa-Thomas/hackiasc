@@ -21,6 +21,14 @@ function formatDate(isoString) {
   })
 }
 
+// Neutralize CSV formula injection: cells starting with = + - @ tab or CR are
+// prefixed with a single quote before being quote-escaped.
+function csvCell(value) {
+  let s = String(value ?? '')
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
+  return `"${s.replace(/"/g, '""')}"`
+}
+
 // Demographic aggregations — applied to a filtered subset (by audience).
 function computeDemographics(registrations) {
   const byType = {
@@ -1021,7 +1029,7 @@ export default function AdminDashboard({ onViewRegistration }) {
   // ─── Export helpers ────────────────────────────────────────────────────────
 
   function exportFinanceiro() {
-    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
+    const esc = csvCell
     const row = (label, value) => [esc(label), esc(value)].join(',')
     const blank = ','
     const section = (title) => [esc(`=== ${title} ===`), esc('')].join(',')
@@ -1088,7 +1096,7 @@ export default function AdminDashboard({ onViewRegistration }) {
   }
 
   function exportDemografico() {
-    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
+    const esc = csvCell
     const row = (label, value) => [esc(label), esc(value)].join(',')
     const blank = ','
     const section = (title) => [esc(`=== ${title} ===`), esc('')].join(',')

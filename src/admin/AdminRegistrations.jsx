@@ -38,6 +38,14 @@ function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
 
+// Neutralize CSV formula injection: cells starting with = + - @ tab or CR are
+// prefixed with a single quote before being quote-escaped.
+function csvCell(value) {
+  let s = String(value ?? '')
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
+  return `"${s.replace(/"/g, '""')}"`
+}
+
 function formatBRL(cents) {
   if (cents == null) return '—'
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -104,7 +112,7 @@ function exportCSV(data) {
   ])
 
   const csv = [headers, ...rows]
-    .map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(','))
+    .map(r => r.map(csvCell).join(','))
     .join('\n')
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
@@ -752,9 +760,13 @@ function DetailView({ registration, registrations, onBack, onRefetch, readOnly, 
         <ReadField label="Data de nascimento">{formatDate(r.birth_date)}</ReadField>
         <ReadField label="LinkedIn">
           {r.linkedin_url ? (
-            <a href={r.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-electric hover:underline break-all">
-              {r.linkedin_url}
-            </a>
+            /^https?:\/\//i.test(r.linkedin_url) ? (
+              <a href={r.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-electric hover:underline break-all">
+                {r.linkedin_url}
+              </a>
+            ) : (
+              <span className="break-all">{r.linkedin_url}</span>
+            )
           ) : null}
         </ReadField>
       </Section>
