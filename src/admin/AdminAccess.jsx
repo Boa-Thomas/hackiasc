@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-// Phase 2: facilitator panel + RLS are wired; all jwt-exchange roles are offered.
-const ROLES = ['facilitator', 'staff', 'checkin', 'viewer']
+// Phase 2: facilitator panel + RLS wired; mentor/juror RPCs accept grant tokens.
+// jwt-exchange (facilitator/staff/checkin/viewer) + rpc_token (mentor/juror).
+const ROLES = ['facilitator', 'staff', 'mentor', 'juror', 'checkin', 'viewer']
 
 function accessLink(token) {
   const base = window.location.origin + window.location.pathname
@@ -41,9 +42,26 @@ export default function AdminAccess() {
     load()
   }
 
-  async function revoke(id) {
-    const { error } = await supabase.rpc('admin_revoke_grant', { p_grant_id: id })
-    if (error) setError(error.message); else load()
+  async function revoke(g) {
+    // jwt_exchange grants: edge bans the backing user (kills the live session now).
+    // rpc_token grants (mentor/juror): just mark revoked (grant_resolve rejects it).
+    if (g.auth_kind === 'jwt_exchange') {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/access-admin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ grant_id: g.id }),
+      })
+      if (!res.ok) { setError('Falha ao revogar (acesso).'); return }
+      load()
+    } else {
+      const { error } = await supabase.rpc('admin_revoke_grant', { p_grant_id: g.id })
+      if (error) setError(error.message); else load()
+    }
   }
 
   async function regenerate(id) {
@@ -95,7 +113,7 @@ export default function AdminAccess() {
                   <td className={g.active ? 'text-cyan' : 'text-hot'}>{g.active ? 'ativo' : 'inativo'}</td>
                   <td className="text-right space-x-2">
                     <button onClick={() => regenerate(g.id)} className="text-electric underline">novo link</button>
-                    {g.active && <button onClick={() => revoke(g.id)} className="text-hot underline">revogar</button>}
+                    {g.active && <button onClick={() => revoke(g)} className="text-hot underline">revogar</button>}
                   </td>
                 </tr>
               ))}
