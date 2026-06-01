@@ -51,9 +51,10 @@ async function detectAuth(
     return { valid: true, mode: 'cron', actor: 'system' }
   }
 
-  // Verify as user JWT
+  // Verify as user JWT — must be an admin (this returns full revenue figures).
   const { data: { user }, error } = await supabase.auth.getUser(token)
   if (error || !user) return { valid: false }
+  if (user.app_metadata?.role !== 'admin') return { valid: false }
   return { valid: true, mode: 'user', actor: user.email ?? 'unknown' }
 }
 
