@@ -17,7 +17,7 @@
 | File | Responsibility |
 |---|---|
 | `scripts/validate-workflow.mjs` | Tested harness: structural + syntax validation of a workflow script (used to verify Tasks 2-3). Exports `validateWorkflowSource(src)` + CLI. |
-| `scripts/validate-workflow.test.mjs` | Vitest unit tests for the validator. |
+| `tests/validate-workflow.test.js` | Vitest unit tests for the validator. Placed under `tests/` (already in `vite.config.js` `test.include`) and named `.js` so the existing glob `tests/**/*.test.{js,jsx}` collects it; it imports the `.mjs` validator. |
 | `.claude/workflows/security-sweep-hunt.js` | Workflow A: loop-until-dry finders → adversarial verify → confirmed findings (deduped, severity, known/new, fence). |
 | `.claude/workflows/security-sweep-fix.js` | Workflow B: partition auto-fixable findings by subsystem → one fixer per partition returns unified diffs (does not apply). |
 | `.claude/commands/security-sweep.md` | Orchestration command: recon → Workflow A → checkpoint → Workflow B → apply on branch → gate + repair → regression-validator → report. |
@@ -31,16 +31,18 @@ Why a validator harness: the workflow scripts use runtime-only globals (`agent`,
 ## Task 1: Workflow validator harness (TDD)
 
 **Files:**
-- Test: `scripts/validate-workflow.test.mjs`
+- Test: `tests/validate-workflow.test.js`
 - Create: `scripts/validate-workflow.mjs`
+
+> **Why this test path:** `vite.config.js` sets `test.include = ['tests/**/*.test.{js,jsx}', 'src/**/*.test.{js,jsx}']`. A test under `scripts/` or with a `.mjs` extension would NOT be collected ("no test files found"). Placing it at `tests/validate-workflow.test.js` matches the existing glob with zero config change.
 
 - [ ] **Step 1: Write the failing test**
 
-Create `scripts/validate-workflow.test.mjs`:
+Create `tests/validate-workflow.test.js`:
 
 ```js
 import { describe, it, expect } from 'vitest'
-import { validateWorkflowSource } from './validate-workflow.mjs'
+import { validateWorkflowSource } from '../scripts/validate-workflow.mjs'
 
 const GOOD = `export const meta = { name: 'x', description: 'y' }
 phase('A')
@@ -72,8 +74,8 @@ describe('validateWorkflowSource', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npx vitest run scripts/validate-workflow.test.mjs`
-Expected: FAIL — cannot resolve `./validate-workflow.mjs` (module not found).
+Run: `npx vitest run tests/validate-workflow.test.js`
+Expected: FAIL — cannot resolve `../scripts/validate-workflow.mjs` (module not found).
 
 - [ ] **Step 3: Write minimal implementation**
 
@@ -131,13 +133,13 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npx vitest run scripts/validate-workflow.test.mjs`
+Run: `npx vitest run tests/validate-workflow.test.js`
 Expected: PASS — 4 tests pass.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add scripts/validate-workflow.mjs scripts/validate-workflow.test.mjs
+git add scripts/validate-workflow.mjs tests/validate-workflow.test.js
 git commit -m "feat(scripts): tested workflow-source validator"
 ```
 
@@ -484,6 +486,8 @@ Call the `Workflow` tool:
 Workflow({ name: 'security-sweep-hunt', args: { audit_known: <array>, head: '<sha>' } })
 ```
 
+> **Resolution fallback:** if `Workflow({ name: 'security-sweep-hunt', ... })` errors with an unknown-workflow error (project-scoped name resolution from `.claude/workflows/` not available), retry the same call with `{ scriptPath: '.claude/workflows/security-sweep-hunt.js', args: {...} }`. Same for Workflow B in §5 (`scriptPath: '.claude/workflows/security-sweep-fix.js'`).
+
 It loops finders until dry, then adversarially verifies. It returns:
 `{ head, rounds, total_candidates, findings: [{ title, file, line, class, severity, status, evidence, exploit_sketch, fence }] }`.
 
@@ -569,7 +573,7 @@ Create `docs/changelog/2026-06-01-security-sweep-command.md`:
 
 **Data:** 2026-06-01
 **Branch:** (feature branch)
-**Arquivos alterados:** scripts/validate-workflow.mjs, scripts/validate-workflow.test.mjs, .claude/workflows/security-sweep-hunt.js, .claude/workflows/security-sweep-fix.js, .claude/commands/security-sweep.md, CLAUDE.md
+**Arquivos alterados:** scripts/validate-workflow.mjs, tests/validate-workflow.test.js, .claude/workflows/security-sweep-hunt.js, .claude/workflows/security-sweep-fix.js, .claude/commands/security-sweep.md, CLAUDE.md
 
 ## O que foi feito
 Comando reutilizável `/security-sweep` que orquestra dois workflows: (A) caça
@@ -600,7 +604,7 @@ auditoria ampla e periódica que também propusesse/aplicasse correções com se
 
 - [ ] **Step 4: Run the full validator + test suite as a final check**
 
-Run: `node scripts/validate-workflow.mjs .claude/workflows/security-sweep-hunt.js .claude/workflows/security-sweep-fix.js && npx vitest run scripts/validate-workflow.test.mjs`
+Run: `node scripts/validate-workflow.mjs .claude/workflows/security-sweep-hunt.js .claude/workflows/security-sweep-fix.js && npx vitest run tests/validate-workflow.test.js`
 Expected: two `OK` lines, then 4 passing tests.
 
 - [ ] **Step 5: Commit**
