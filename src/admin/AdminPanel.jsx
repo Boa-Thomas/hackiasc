@@ -160,7 +160,7 @@ export default function AdminPanel({ onLogout, role = 'viewer' }) {
         {!readOnly && activeTab === 'notifications' && <AdminNotifications />}
         {!readOnly && activeTab === 'checkin' && <AdminCheckin />}
         {!readOnly && activeTab === 'logs' && <AdminAuditLog />}
-        {!readOnly && activeTab === 'access' && <AdminAccess />}
+        {role === 'admin' && activeTab === 'access' && <AdminAccess />}
       </main>
     </div>
   )

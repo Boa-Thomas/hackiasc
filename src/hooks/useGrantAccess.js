@@ -16,6 +16,9 @@ export function useGrantAccess() {
 
     ;(async () => {
       setState({ status: 'resolving', error: null })
+      // Strip the token from the URL immediately (before any await) so it never
+      // lingers in the address bar / history — on success OR error.
+      window.history.replaceState(null, '', window.location.pathname)
       try {
         const res = await fetch(EXCHANGE_URL, {
           method: 'POST',
@@ -47,7 +50,6 @@ export function useGrantAccess() {
 
         if (cancelled) return
         const dest = routeForRole(data.role)
-        window.history.replaceState(null, '', window.location.pathname)
         window.location.hash = dest || '#'
         setState({ status: 'done', error: null })
       } catch (e) {

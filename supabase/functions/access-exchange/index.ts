@@ -19,11 +19,6 @@ const json = (body: unknown, status: number, origin: string | null) =>
     headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' },
   })
 
-async function sha256Hex(input: string): Promise<string> {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input))
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
-}
-
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin')
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(origin) })
@@ -39,44 +34,51 @@ Deno.serve(async (req) => {
   try { token = (await req.json())?.token ?? '' } catch { /* ignore */ }
   if (!token || token.length < 32) return json({ error: 'invalid_grant' }, 400, origin)
 
-  const tokenHash = await sha256Hex(token)
-  const { data: grant, error: gErr } = await admin
-    .from('access_grants')
-    .select('id, role, auth_kind, scope, supabase_user_id, email, expires_at, revoked_at')
-    .eq('token_hash', tokenHash)
-    .maybeSingle()
-
-  if (gErr || !grant || grant.revoked_at ||
-      (grant.expires_at && new Date(grant.expires_at) <= new Date())) {
-    return json({ error: 'invalid_grant' }, 401, origin)
+  // Validate + rate-limit via the unified resolver (hash lookup, expiry/revocation,
+  // 5/min per token-hash). Keeps validation DRY and rate-limited in one place.
+  const { data: resolved, error: rErr } = await admin.rpc('grant_resolve', { p_token: token })
+  if (rErr || !resolved) {
+    const msg = (rErr?.message || '').includes('rate_limited') ? 'rate_limited' : 'invalid_grant'
+    return json({ error: msg }, msg === 'rate_limited' ? 429 : 401, origin)
   }
 
-  if (grant.auth_kind === 'rpc_token') {
+  const role = resolved.role as string
+  const grantId = resolved.grant_id as string
+  const scope = resolved.scope ?? {}
+
+  if (resolved.auth_kind === 'rpc_token') {
     // Mentor/juror: no Supabase session; client stores the token and routes.
-    return json({ rpc_token: true, role: grant.role }, 200, origin)
+    return json({ rpc_token: true, role }, 200, origin)
   }
 
   // jwt_exchange: ensure a per-grant backing user with the right role/scope.
-  const email = `grant+${grant.id}@hackiasc.internal`
-  const appMeta = { role: grant.role, grant_id: grant.id, scope: grant.scope ?? {} }
-  let userId = grant.supabase_user_id as string | null
+  const email = `grant+${grantId}@hackiasc.internal`
+  const appMeta = { role, grant_id: grantId, scope }
+
+  // Look up the stored backing user id (avoids re-creating on every exchange).
+  const { data: grantRow } = await admin
+    .from('access_grants')
+    .select('supabase_user_id')
+    .eq('id', grantId)
+    .maybeSingle()
+  let userId = (grantRow?.supabase_user_id as string | null) ?? null
 
   if (!userId) {
     const { data: created, error: cErr } = await admin.auth.admin.createUser({
       email, email_confirm: true, app_metadata: appMeta,
     })
     if (cErr || !created?.user) {
-      // Could already exist from a prior attempt — try to find it.
-      const { data: list } = await admin.auth.admin.listUsers()
+      // Likely already created in a prior attempt — find it (paginate generously).
+      const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
       const found = list?.users?.find((u) => u.email === email)
       if (!found) return json({ error: 'provision_failed' }, 500, origin)
       userId = found.id
     } else {
       userId = created.user.id
     }
-    await admin.from('access_grants').update({ supabase_user_id: userId }).eq('id', grant.id)
+    await admin.from('access_grants').update({ supabase_user_id: userId }).eq('id', grantId)
   } else {
-    // Keep role/scope current.
+    // Keep role/scope current on the backing user.
     await admin.auth.admin.updateUserById(userId, { app_metadata: appMeta })
   }
 
@@ -86,5 +88,5 @@ Deno.serve(async (req) => {
   if (lErr || !link?.properties?.hashed_token) {
     return json({ error: 'link_failed' }, 500, origin)
   }
-  return json({ hashed_token: link.properties.hashed_token, role: grant.role }, 200, origin)
+  return json({ hashed_token: link.properties.hashed_token, role }, 200, origin)
 })

@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-const ROLES = ['facilitator', 'staff', 'mentor', 'juror', 'viewer', 'checkin', 'admin']
+// Phase 1 offers only the jwt-exchange roles whose panel + RLS already accept the
+// session: staff, checkin, viewer. facilitator/mentor/juror/admin need panel+RLS
+// wiring (Phase 2) before a link can actually work, so they are not offered here yet.
+const ROLES = ['staff', 'checkin', 'viewer']
 
 function accessLink(token) {
   const base = window.location.origin + window.location.pathname
@@ -11,7 +14,7 @@ function accessLink(token) {
 export default function AdminAccess() {
   const [grants, setGrants] = useState([])
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState({ label: '', role: 'facilitator', expires_at: '' })
+  const [form, setForm] = useState({ label: '', role: 'staff', expires_at: '' })
   const [newLink, setNewLink] = useState(null)
   const [error, setError] = useState(null)
 
