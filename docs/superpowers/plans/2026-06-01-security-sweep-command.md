@@ -543,7 +543,10 @@ Then STOP. Print a final summary and tell the user the fix branch is ready for r
 
 - [ ] **Step 2: Verify the command structure**
 
-Run: `node -e "const s=require('fs').readFileSync('.claude/commands/security-sweep.md','utf8'); for (const k of ['security-sweep-hunt','security-sweep-fix','--dry-run','AskUserQuestion','regression-validator','fix/security-sweep']) if(!s.includes(k)){console.error('MISSING: '+k);process.exit(1)}; if(!/^---[\s\S]*description:/.test(s)){console.error('MISSING frontmatter');process.exit(1)}; console.log('OK command structure')"`
+Run (the `--input-type=commonjs` flag is required because `package.json` has `"type": "module"`, which would otherwise make `require` undefined in `-e`):
+
+`node --input-type=commonjs -e "const s=require('fs').readFileSync('.claude/commands/security-sweep.md','utf8'); for (const k of ['security-sweep-hunt','security-sweep-fix','--dry-run','AskUserQuestion','regression-validator','fix/security-sweep']) if(!s.includes(k)){console.error('MISSING: '+k);process.exit(1)}; if(!/^---[\s\S]*description:/.test(s)){console.error('MISSING frontmatter');process.exit(1)}; console.log('OK command structure')"`
+
 Expected: `OK command structure`
 
 - [ ] **Step 3: Commit**
@@ -571,7 +574,7 @@ For a deeper, looping audit beyond the branch diff, use **`/security-sweep`** (`
 
 - [ ] **Step 2: Verify the edit landed**
 
-Run: `node -e "process.exit(require('fs').readFileSync('CLAUDE.md','utf8').includes('/security-sweep')?0:1)"`
+Run: `node --input-type=commonjs -e "process.exit(require('fs').readFileSync('CLAUDE.md','utf8').includes('/security-sweep')?0:1)"`
 Expected: exit code 0 (no output).
 
 - [ ] **Step 3: Write the changelog**
