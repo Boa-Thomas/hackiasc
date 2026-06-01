@@ -117,7 +117,7 @@ export default function FacilitatorPanel() {
       const role = session.user?.app_metadata?.role
       setHasAccess(role === 'facilitator' || role === 'admin')
       setAuthChecked(true)
-    })
+    }).catch(() => { setAuthChecked(true); setHasAccess(false) })
   }, [])
 
   const loadSchedule = useCallback(async () => {

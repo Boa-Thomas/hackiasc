@@ -47,17 +47,22 @@ export default function AdminAccess() {
     // rpc_token grants (mentor/juror): just mark revoked (grant_resolve rejects it).
     if (g.auth_kind === 'jwt_exchange') {
       const { data: { session } } = await supabase.auth.getSession()
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/access-admin`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({ grant_id: g.id }),
-      })
-      if (!res.ok) { setError('Falha ao revogar (acesso).'); return }
-      load()
+      if (!session?.access_token) { setError('Sessão admin expirada — refaça login.'); return }
+      try {
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/access-admin`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ grant_id: g.id }),
+        })
+        if (!res.ok) { setError('Falha ao revogar (acesso).'); return }
+        load()
+      } catch {
+        setError('Falha na rede ao revogar.')
+      }
     } else {
       const { error } = await supabase.rpc('admin_revoke_grant', { p_grant_id: g.id })
       if (error) setError(error.message); else load()
