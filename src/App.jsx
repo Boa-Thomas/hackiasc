@@ -13,7 +13,6 @@ import SponsorshipPage from './components/SponsorshipPage'
 import PaymentReturn from './components/PaymentReturn'
 import AdminLogin from './admin/AdminLogin'
 import AdminPanel from './admin/AdminPanel'
-import StaffAccess from './admin/StaffAccess'
 import { useAdminAuth } from './admin/useAdminAuth'
 import ParticipantLogin from './participant/ParticipantLogin'
 import ParticipantPanel from './participant/ParticipantPanel'
@@ -29,6 +28,8 @@ import WallParticipant from './wall/WallParticipant'
 import WallScreen from './wall/WallScreen'
 import TeamsShowcase from './teams/TeamsShowcase'
 import EnablePushPrompt from './components/EnablePushPrompt'
+import AccessExchange from './components/AccessExchange'
+import FacilitatorPanel from './facilitator/FacilitatorPanel'
 
 const PAYMENT_HASHES = ['#pagamento-sucesso', '#pagamento-erro', '#pagamento-pendente']
 const ADMIN_HASHES = ['#admin', '#admin-login']
@@ -59,7 +60,8 @@ export default function App() {
       !PARTICIPANT_HASHES.includes(page) &&
       !page.startsWith('#mentor') &&
       !WALL_HASHES.includes(page) &&
-      !page.startsWith('#jurado')
+      !page.startsWith('#jurado') &&
+      !page.startsWith('#facilitador')
     ) {
       if (!/^#[a-zA-Z][\w-]*$/.test(page)) return
       setTimeout(() => {
@@ -69,9 +71,9 @@ export default function App() {
     }
   }, [page])
 
-  // Auto-login da equipe (Muro + Check-in) — #admin-acesso?t=<token>
-  if (page.startsWith('#admin-acesso')) {
-    return <StaffAccess />
+  // Unified access route — #acesso?t=<token>
+  if (page.startsWith('#acesso')) {
+    return <AccessExchange />
   }
 
   // Admin routes
@@ -155,6 +157,11 @@ export default function App() {
   // Juror routes — token na querystring do hash: #jurado?t=<uuid> (sem login)
   if (page.startsWith('#jurado')) {
     return <JurorPanel />
+  }
+
+  // Facilitator routes — sessão estabelecida via #acesso?t=<token> (jwt-exchange)
+  if (page.startsWith('#facilitador')) {
+    return <FacilitatorPanel />
   }
 
   // Muro de Dores / Telão — telas fullscreen, sem login

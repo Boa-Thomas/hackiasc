@@ -17,6 +17,7 @@ import AdminResources from './AdminResources'
 import AdminFacilitator from './AdminFacilitator'
 import AdminEvaluation from './AdminEvaluation'
 import AdminNotifications from './AdminNotifications'
+import AdminAccess from './AdminAccess'
 import NotificationBell from '../components/NotificationBell'
 
 const ALL_TABS = [
@@ -38,6 +39,7 @@ const ALL_TABS = [
   { id: 'bulk', label: 'Empresarial', icon: '🏢', adminOnly: true },
   { id: 'checkin', label: 'Check-in', icon: '✅', adminOnly: true },
   { id: 'logs', label: 'Logs', icon: '📜', adminOnly: true },
+  { id: 'access', label: 'Acessos', icon: '🔑', adminOnly: true },
 ]
 
 export default function AdminPanel({ onLogout, role = 'viewer' }) {
@@ -163,6 +165,7 @@ export default function AdminPanel({ onLogout, role = 'viewer' }) {
         {!readOnly && show('notifications') && <AdminNotifications />}
         {!readOnly && show('checkin') && <AdminCheckin />}
         {!readOnly && show('logs') && <AdminAuditLog />}
+        {role === 'admin' && show('access') && <AdminAccess />}
       </main>
     </div>
   )
