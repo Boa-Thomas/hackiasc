@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseAccessToken, routeForRole, isExchangeRole } from '../src/lib/grantRouting.js'
+import { parseAccessToken, routeForRole, isExchangeRole, usesEdgeRevoke } from '../src/lib/grantRouting.js'
 
 describe('parseAccessToken', () => {
   it('extracts the token from a #acesso hash', () => {
@@ -32,5 +32,16 @@ describe('isExchangeRole', () => {
     expect(isExchangeRole('facilitator')).toBe(true)
     expect(isExchangeRole('mentor')).toBe(false)
     expect(isExchangeRole('juror')).toBe(false)
+  })
+})
+
+describe('usesEdgeRevoke', () => {
+  it('routes backing-user grants to the edge', () => {
+    expect(usesEdgeRevoke('jwt_exchange')).toBe(true)
+    expect(usesEdgeRevoke('password')).toBe(true)
+  })
+  it('routes token-only grants to the RPC', () => {
+    expect(usesEdgeRevoke('rpc_token')).toBe(false)
+    expect(usesEdgeRevoke(undefined)).toBe(false)
   })
 })
