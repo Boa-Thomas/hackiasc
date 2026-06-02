@@ -3,8 +3,6 @@
 // enforces it). Empty/unset => {} which always means "unrestricted".
 // Row-scope keys (team_ids/idea_ids) are NOT collected here: SP1 only provisions
 // admin/viewer/checkin/staff (capability/UI scope), never mentor/juror.
-export const ASSIGNABLE_TABS = ['registrations', 'payments', 'results', 'teams', 'access', 'checkin']
-
 export function buildScope({ readOnly = false, allowedTabs = [] } = {}) {
   const scope = {}
   if (readOnly) scope.read_only = true

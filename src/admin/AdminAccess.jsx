@@ -99,7 +99,7 @@ export default function AdminAccess() {
   }
 
   async function revoke(g) {
-    setError(null)
+    setError(null); setSecret(null)
     if (usesEdgeRevoke(g.auth_kind)) {
       const data = await callEdge('access-admin', { grant_id: g.id })
       if (data) load()

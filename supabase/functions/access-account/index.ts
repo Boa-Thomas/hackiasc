@@ -37,6 +37,23 @@ function generatePassword(len = 20): string {
 function isEmail(s: unknown): s is string {
   return typeof s === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)
 }
+// Hybrid scope schema (stored in SP1, enforced in SP3). Validate the SHAPE so a
+// malformed/over-broad scope cannot be persisted now and silently inherited by
+// SP3. Tab/team/idea VALUES are not whitelisted here (SP3 owns the canonical sets
+// and treats unknown entries as no-ops, never deny).
+const SCOPE_KEYS = ['read_only', 'allowed_tabs', 'team_ids', 'idea_ids']
+function validScope(scope: unknown): boolean {
+  if (typeof scope !== 'object' || scope === null || Array.isArray(scope)) return false
+  for (const [k, v] of Object.entries(scope)) {
+    if (!SCOPE_KEYS.includes(k)) return false
+    if (k === 'read_only') {
+      if (typeof v !== 'boolean') return false
+    } else if (!Array.isArray(v) || !v.every((x) => typeof x === 'string')) {
+      return false
+    }
+  }
+  return true
+}
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin')
@@ -69,7 +86,7 @@ Deno.serve(async (req) => {
     if (typeof role !== 'string' || !PASSWORD_ROLES.includes(role)) return json({ error: 'invalid_role' }, 400, origin)
     if (!label) return json({ error: 'label_required' }, 400, origin)
     if (!isEmail(email)) return json({ error: 'invalid_email' }, 400, origin)
-    if (typeof scope !== 'object' || Array.isArray(scope) || scope === null) return json({ error: 'invalid_scope' }, 400, origin)
+    if (!validScope(scope)) return json({ error: 'invalid_scope' }, 400, origin)
 
     // 1. Insert the grant first so grant_id is known before user creation (clean rollback).
     const { data: grant, error: gErr } = await admin
