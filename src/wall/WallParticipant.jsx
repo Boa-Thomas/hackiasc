@@ -1,12 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import {
-  useWallSession,
-  maskCpf,
-  cleanCpf,
-  ECONOMIC_AXES,
-  PHASE_LABELS,
-} from './useWallSession'
+import { ECONOMIC_AXES, PHASE_LABELS } from './useWallSession'
 
 const POLL_MS = 3000
 
@@ -35,22 +29,16 @@ function friendlyError(err) {
 }
 
 export default function WallParticipant({ participantAuth }) {
-  const { session: wallSession, identify, logout: wallLogout } = useWallSession()
-
-  // Sessao herdada: se o participante ja esta logado no painel E com pagamento
-  // confirmado, reaproveitamos a identidade dele - sem pedir CPF + nascimento de
-  // novo. A sessao propria do muro (quem entrou direto em #muro) tem prioridade.
-  const inheritedSession =
+  // Option A: wall identity comes exclusively from the participant session token.
+  // Only confirmed participants can access the wall.
+  const wallToken =
     participantAuth?.isAuthenticated &&
     participantAuth.profile?.payment_status === 'confirmed'
-      ? {
-          registration_id: participantAuth.profile.id,
-          full_name: participantAuth.profile.full_name,
-          inherited: true,
-        }
+      ? participantAuth.token
       : null
 
-  const session = wallSession || inheritedSession
+  const participantName =
+    participantAuth?.profile?.full_name ?? null
 
   const [phase, setPhase] = useState(null)
   const [pains, setPains] = useState([])
@@ -67,20 +55,18 @@ export default function WallParticipant({ participantAuth }) {
   const [submitting, setSubmitting] = useState(false)
   const [busyVote, setBusyVote] = useState(null)
 
-  const registrationId = session?.registration_id || null
-
   const load = useCallback(async () => {
     if (!supabase) {
       setError('Sistema indisponível no momento.')
       setLoading(false)
       return
     }
-    if (!registrationId) {
+    if (!wallToken) {
       setLoading(false)
       return
     }
     const { data, error: err } = await supabase.rpc('wall_list', {
-      p_registration_id: registrationId,
+      p_token: wallToken,
     })
     if (err) {
       setError(friendlyError(err))
@@ -92,14 +78,14 @@ export default function WallParticipant({ participantAuth }) {
       setVotesLeft(typeof data.votos_restantes === 'number' ? data.votos_restantes : 3)
     }
     setLoading(false)
-  }, [registrationId])
+  }, [wallToken])
 
   useEffect(() => {
-    if (!registrationId) return
+    if (!wallToken) return
     load() // eslint-disable-line react-hooks/set-state-in-effect
     const t = setInterval(load, POLL_MS)
     return () => clearInterval(t)
-  }, [load, registrationId])
+  }, [load, wallToken])
 
   // Limpa o aviso temporario
   useEffect(() => {
@@ -110,11 +96,11 @@ export default function WallParticipant({ participantAuth }) {
 
   async function submitPain(e) {
     e.preventDefault()
-    if (!supabase || !title.trim() || submitting || !registrationId) return
+    if (!supabase || !title.trim() || submitting || !wallToken) return
     setSubmitting(true)
     setError(null)
     const { error: err } = await supabase.rpc('wall_submit_pain', {
-      p_registration_id: registrationId,
+      p_token: wallToken,
       p_title: title.trim(),
       p_description: description.trim() || null,
       p_axis: axis || null,
@@ -132,13 +118,13 @@ export default function WallParticipant({ participantAuth }) {
   }
 
   async function toggleVote(painId) {
-    if (!supabase || busyVote || !registrationId) return
+    if (!supabase || busyVote || !wallToken) return
     const hasVoted = myVotes.includes(painId)
     setBusyVote(painId)
     setError(null)
     const rpc = hasVoted ? 'wall_unvote' : 'wall_vote'
     const { error: err } = await supabase.rpc(rpc, {
-      p_registration_id: registrationId,
+      p_token: wallToken,
       p_pain_id: painId,
     })
     setBusyVote(null)
@@ -148,17 +134,33 @@ export default function WallParticipant({ participantAuth }) {
     await load()
   }
 
-  // Sem sessao: espera o auth do participante resolver (evita piscar a tela de
-  // identificacao para quem ja esta logado) e entao pede CPF + data de nascimento.
-  if (!session) {
-    if (participantAuth?.loading) {
-      return (
-        <WallShell>
-          <p className="text-white/60 font-mono">Carregando...</p>
-        </WallShell>
-      )
-    }
-    return <IdentifyScreen onIdentify={identify} />
+  // Aguarda resolucao do auth antes de decidir se mostra gate ou wall.
+  if (participantAuth?.loading) {
+    return (
+      <WallShell>
+        <p className="text-white/60 font-mono">Carregando...</p>
+      </WallShell>
+    )
+  }
+
+  // Gate: sem sessao de participante confirmado → instrui a fazer login no painel.
+  if (!wallToken) {
+    return (
+      <WallShell>
+        <div className="card-glass rounded-2xl p-8 max-w-md w-full text-center space-y-4">
+          <h2 className="text-2xl font-display font-bold text-gradient-cyan">Muro de Dores</h2>
+          <p className="text-white/60 text-sm">
+            Para usar o Muro, entre no seu painel de participante com a inscrição confirmada.
+          </p>
+          <a
+            href="#participante"
+            className="inline-block px-6 py-3 rounded-lg font-semibold bg-cyan/20 text-cyan border border-cyan/40 hover:bg-cyan/30 transition-colors"
+          >
+            Entrar no painel de participante
+          </a>
+        </div>
+      </WallShell>
+    )
   }
 
   return (
@@ -169,22 +171,13 @@ export default function WallParticipant({ participantAuth }) {
           <div>
             <h2 className="text-2xl font-display font-bold text-gradient-cyan">Muro de Dores</h2>
             <p className="text-white/50 text-sm">
-              Oi, {session.full_name} 👋
-              {session.inherited ? (
-                <button
-                  onClick={() => { window.location.hash = '#participante' }}
-                  className="ml-3 text-white/30 hover:text-white/60 text-xs underline transition-colors"
-                >
-                  voltar ao painel
-                </button>
-              ) : (
-                <button
-                  onClick={wallLogout}
-                  className="ml-3 text-white/30 hover:text-white/60 text-xs underline transition-colors"
-                >
-                  sair
-                </button>
-              )}
+              Oi, {participantName} 👋
+              <button
+                onClick={() => { window.location.hash = '#participante' }}
+                className="ml-3 text-white/30 hover:text-white/60 text-xs underline transition-colors"
+              >
+                voltar ao painel
+              </button>
             </p>
           </div>
           <PhaseBadge phase={phase} />
@@ -308,73 +301,6 @@ export default function WallParticipant({ participantAuth }) {
           </div>
         )}
       </div>
-    </WallShell>
-  )
-}
-
-// Tela inicial: identificacao por CPF + data de nascimento.
-function IdentifyScreen({ onIdentify }) {
-  const [cpf, setCpf] = useState('')
-  const [birthDate, setBirthDate] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState(null)
-
-  const cpfDigits = cleanCpf(cpf)
-  const canSubmit = cpfDigits.length === 11 && !!birthDate && !busy
-
-  async function handleSubmit(e) {
-    e.preventDefault()
-    if (!canSubmit) return
-    setBusy(true)
-    setError(null)
-    try {
-      await onIdentify(cpf, birthDate)
-    } catch (err) {
-      setError(friendlyError(err))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <WallShell>
-      <form onSubmit={handleSubmit} className="card-glass rounded-2xl p-8 max-w-md w-full">
-        <h2 className="text-2xl font-display font-bold text-gradient-cyan mb-2">Muro de Dores</h2>
-        <p className="text-white/60 text-sm mb-6">
-          Identifique-se para participar. Apenas inscritos com pagamento confirmado podem entrar.
-        </p>
-
-        <label className="block text-white/50 text-xs mb-1 font-mono uppercase tracking-wide">CPF</label>
-        <input
-          value={cpf}
-          onChange={(e) => setCpf(maskCpf(e.target.value))}
-          placeholder="000.000.000-00"
-          inputMode="numeric"
-          autoComplete="off"
-          autoFocus
-          className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan/50 mb-4"
-        />
-
-        <label className="block text-white/50 text-xs mb-1 font-mono uppercase tracking-wide">Data de nascimento</label>
-        <input
-          type="date"
-          value={birthDate}
-          onChange={(e) => setBirthDate(e.target.value)}
-          className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan/50 mb-4 [color-scheme:dark]"
-        />
-
-        {error && (
-          <div className="bg-hot/10 border border-hot/30 rounded-lg px-4 py-2.5 text-hot text-sm mb-4">{error}</div>
-        )}
-
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          className="w-full px-4 py-3 rounded-lg font-semibold bg-cyan/20 text-cyan border border-cyan/40 hover:bg-cyan/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {busy ? 'Entrando...' : 'Entrar'}
-        </button>
-      </form>
     </WallShell>
   )
 }

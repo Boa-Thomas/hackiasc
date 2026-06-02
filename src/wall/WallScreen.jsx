@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { PHASE_LABELS } from './useWallSession'
 import { densityFor, gridColsClass, sortPainsForPhase } from './wallLayout'
 
-// Telao read-only para projecao. Sem identidade (p_registration_id NULL). Polling 2s.
+// Telao read-only para projecao. Sem token (wall_list sem args). Polling 2s.
 const POLL_MS = 2000
 
 export default function WallScreen() {
@@ -18,7 +18,7 @@ export default function WallScreen() {
       setLoaded(true)
       return
     }
-    const { data, error: err } = await supabase.rpc('wall_list', { p_registration_id: null })
+    const { data, error: err } = await supabase.rpc('wall_list')
     if (err) {
       setError(err.message)
     } else if (data) {
