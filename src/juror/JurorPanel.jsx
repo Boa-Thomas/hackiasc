@@ -180,15 +180,15 @@ export default function JurorPanel() {
     )
   }
 
-  if (!token || !isValid) {
+  if (!isValid) {
     return (
       <div className="min-h-screen bg-dark text-white bg-grid flex items-center justify-center px-4">
         <div className="card-glass rounded-2xl p-8 max-w-md text-center">
           <p className="text-xs font-mono text-hot uppercase tracking-wider mb-2">Acesso inválido</p>
           <h1 className="text-xl font-bold">Link de jurado inválido ou desativado</h1>
           <p className="text-sm text-text-muted mt-3">
-            Verifique se você abriu o link completo enviado pela organização. Se o problema persistir,
-            peça um novo link ao time do HackIA SC.
+            Acesse pelo link enviado pela organização ou pelo seu link de acesso (#acesso).
+            Se o problema persistir, peça um novo link ao time do HackIA SC.
           </p>
           <a href="#" onClick={(e) => { e.preventDefault(); window.location.hash = '' }}
             className="inline-block mt-5 text-sm text-cyan hover:underline font-mono">

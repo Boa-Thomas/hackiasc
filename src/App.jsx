@@ -17,7 +17,6 @@ import { useAdminAuth } from './admin/useAdminAuth'
 import ParticipantLogin from './participant/ParticipantLogin'
 import ParticipantPanel from './participant/ParticipantPanel'
 import { useParticipantAuth } from './participant/useParticipantAuth'
-import MentorLogin from './mentor/MentorLogin'
 import MentorPanel from './mentor/MentorPanel'
 import MentorGuide from './mentor/MentorGuide'
 import { useMentorAuth } from './mentor/useMentorAuth'
@@ -138,7 +137,25 @@ export default function App() {
     }
 
     if (!mentorAuth.isAuthenticated) {
-      return <MentorLogin onLogin={mentorAuth.login} error={mentorAuth.error} loading={mentorAuth.loading} />
+      return (
+        <div className="min-h-screen bg-dark text-white bg-grid flex items-center justify-center px-4">
+          <div className="card-glass rounded-2xl p-8 max-w-md text-center">
+            <p className="text-xs font-mono text-violet uppercase tracking-wider mb-2">Painel do Mentor</p>
+            <h1 className="text-xl font-bold mb-4">Acesso restrito</h1>
+            <p className="text-sm text-text-muted mb-3">
+              Acesse pelo seu link de acesso (<span className="font-mono text-cyan">#acesso</span>).
+              Peça um novo ao organizador se o seu link expirou.
+            </p>
+            <a
+              href="#"
+              onClick={(e) => { e.preventDefault(); window.location.hash = '' }}
+              className="inline-block mt-2 text-sm text-white/40 hover:text-white/60 transition-colors"
+            >
+              ← Voltar ao site
+            </a>
+          </div>
+        </div>
+      )
     }
 
     // Guia do Mentor — página de consulta restrita (herda o gate de auth acima)

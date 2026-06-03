@@ -41,9 +41,16 @@ export function useGrantAccess() {
         } else if (data.hashed_token) {
           const { error } = await supabase.auth.verifyOtp({
             token_hash: data.hashed_token,
-            type: 'email',
+            type: 'magiclink',
           })
-          if (error) throw error
+          if (error) {
+            // The #acesso link is single-use. If verifyOtp fails, the token was
+            // already consumed (e.g. a refresh after first load). The user must
+            // reopen the original link or request a new one.
+            throw new Error(
+              'Este link já foi utilizado e não pode ser reaberto. Feche e reabra o link original, ou peça um novo link ao organizador.'
+            )
+          }
         } else {
           throw new Error('invalid_grant')
         }
