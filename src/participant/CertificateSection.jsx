@@ -120,11 +120,16 @@ export default function CertificateSection({ profile, token, onGoToEvaluation })
   function handlePrint() {
     const prev = document.title
     document.title = `certificado-hackia-sc-${toSlug(profile.full_name)}`
+    // afterprint pode não disparar em alguns navegadores; o foco volta à janela ao
+    // fechar o diálogo (depois de o nome do arquivo já ter sido capturado), então
+    // serve de fallback para não deixar o título preso.
     const restore = () => {
       document.title = prev
       window.removeEventListener('afterprint', restore)
+      window.removeEventListener('focus', restore)
     }
-    window.addEventListener('afterprint', restore)
+    window.addEventListener('afterprint', restore, { once: true })
+    window.addEventListener('focus', restore, { once: true })
     window.print()
   }
 
