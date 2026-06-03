@@ -102,13 +102,13 @@ const { error } = await supabase.auth.verifyOtp({
 
 ---
 
-## Task 6: push identity for session mentor/juror
+## Task 6: push/notification — backend re-key + frontend passes null
 
-**Files:** Read `src/lib/push.js`, `src/components/NotificationBell.jsx`, `src/components/EnablePushPrompt.jsx` (they receive `{kind, token}`). Modify as needed.
+**Discovered scope:** mentor push/notifications also go through token-param RPCs (B1 missed these): `push_subscribe_mentor`, `notifications_list_mentor`, `notifications_mark_read_mentor` (via `src/lib/push.js` `enablePush` and `src/hooks/useNotifications.js`). They resolve the mentor inline (`mentor_sessions` → `mentors.access_token`). **Juror has no push/notifications** (only `MentorPanel` mounts `NotificationBell`/`EnablePushPrompt`). The server-side derive (consistent with B1) is the fix — NOT a frontend key.
 
-- [ ] **Step 1:** Determine how push subscriptions are keyed (likely `user_key` from the token). A session mentor/juror has no localStorage token — derive a stable `user_key` from the session (mentor/juror id, available via the hook's `mentor`/`juror` object, or `app_metadata.grant_id`).
-- [ ] **Step 2:** Pass that stable key from `App.jsx`/panels instead of `auth.token` for session users (keep token for legacy-fallback users during coexistence). Ensure `notification_recipients.user_key` matching still works (so broadcast/push still reaches them).
-- [ ] **Step 3:** Build + a manual push subscribe check in the E2E. Commit.
+- [x] **Backend (DONE — additive, B1 pattern):** `migrations/phase3_sp2_b2_rekey_push_notif.sql` re-keys the 3 RPCs to session-first dual-mode (`current_mentor_id()` then the existing inline token resolution). Applied like B1 (dormant until the frontend passes null).
+- [ ] **Frontend:** for a **session** mentor, pass `token: null` to `enablePush`/`NotificationBell`/`EnablePushPrompt` (they already accept `{kind:'mentor', token}`; `null` → the RPC resolves via the session). Keep the legacy token for fallback users. So `MentorPanel` passes `auth.token` as today (which is `null` in session mode per Task 4's hook) — verify the hook returns `token: null` in session mode and the components tolerate it. `useNotifications`/`push.js` already send `p_token: token` → `null` is fine.
+- [ ] **Build + manual push subscribe check in E2E. Commit.**
 
 ---
 
