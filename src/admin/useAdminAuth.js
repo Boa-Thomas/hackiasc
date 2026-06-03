@@ -82,7 +82,10 @@ export function useAdminAuth() {
     stopActivityTracking()
     setIsAuthenticated(false)
     setRole(null)
-    window.location.hash = '#admin-login'
+    // Only redirect to the admin login when actually on an admin route. Otherwise
+    // a mentor/juror signing out (shared Supabase auth fires SIGNED_OUT here too)
+    // would be yanked to #admin-login.
+    if (window.location.hash.startsWith('#admin')) window.location.hash = '#admin-login'
   }, [stopActivityTracking])
 
   const performLogout = useCallback(async () => {
@@ -105,9 +108,10 @@ export function useAdminAuth() {
           setRole(userRole)
           setIsAuthenticated(true)
           startActivityTracking()
-        } else {
-          await supabase.auth.signOut()
         }
+        // else: a non-admin session (mentor/juror via #acesso) — leave it untouched.
+        // This hook (mounted globally in App) manages ONLY admin-role sessions;
+        // signing out here would kill a legitimate mentor/juror Supabase session.
       }
     } catch {
       setIsAuthenticated(false)
