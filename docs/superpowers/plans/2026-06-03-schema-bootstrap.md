@@ -241,3 +241,24 @@ Expect identical to prod (37 / 155 / 67 / 10 / 1). Then a per-object normalized 
 - Spec coverage: extraction-from-live-catalog ✓; verbatim ✓; ordering with `check_function_bodies=false` ✓; in/out scope ✓ (edges/secrets/cron/data excluded, Supabase-managed `auth`/`storage` tables not recreated — only bucket+policies); seed singletons ✓; throwaway-Supabase parity verification ✓ (cost-gated).
 - Placeholder scan: generator queries are concrete; seed values are illustrative and Task 0 Step 2 pins the real set before writing Task 9.
 - Risk: grants reconstruction (Task 7) is the fiddliest — the Task 11 parity diff is its safety net; iterate the grant query until the diff is empty.
+
+---
+
+## EXECUTION STATUS — RESUME HERE (2026-06-03, branch `feat/schema-bootstrap`)
+
+**Done (parts generated from prod + written + committed):**
+- `bootstrap/parts/00_header.sql`, `10_extensions.sql`, `20_tables.sql` (37 tables), `50_triggers.sql` (10), `55_rls_enable.sql` (37), `80_storage.sql` (bucket + 6 policies), `90_seed.sql` (3 singletons).
+- Task 0 pre-flight: **0 custom-function defaults** (ordering free); seed singletons = `mp_sync_status` id=1, `wall_state` id=true phase='closed', `slides_config` id=true.
+
+**GOTCHA already hit + fixed:** the table generator first used `format('…(%s\n);')` (plain string) → emitted a LITERAL `\n` before `)` (syntax error). FIX: use `format(E'…\n…')` (E-string) for any newline inside a format template; the columns already used `E'\n'`. Re-verify any NEW generator for the same trap.
+
+**Remaining (follow plan Tasks 3,4,6,7,10,11,12 in order):**
+1. **Task 3 — functions (155, verbatim):** `pg_get_functiondef` chunked (`LIMIT 40 OFFSET 0/40/80/120`) → `bootstrap/parts/30_functions.sql`. Confirm 155 emitted.
+2. **Task 4 — constraints:** the constraints query → `40_constraints.sql`.
+3. **Task 6 (policies portion) — public policies:** the CREATE POLICY reconstruction (schemaname='public') → `60_policies.sql`. (RLS-enable already in 55.)
+4. **Task 7 — grants:** table grants + function EXECUTE/REVOKE-PUBLIC → `70_grants.sql`. Fiddliest; iterate against parity diff.
+5. **Task 10 — assemble:** `cat 00 10 20 30 40 50 55 60 70 80 90 > bootstrap/bootstrap.sql` (note order: 50 triggers + 55 rls before 60 policies; 30 functions before 40 constraints since CHECKs may call functions and check_function_bodies is off anyway).
+6. **Task 11 — verify:** USER CHOSE to do the heavy generation in a fresh session. Verification cost-gate STILL PENDING A USER DECISION: paid `create_branch` (gold standard, run `get_cost`/`confirm_cost` first) vs. apply-to-prod idempotency check (free, weaker). Ask before creating a branch.
+7. **Task 12 — README + changelog + PR + merge.**
+
+Branch `feat/schema-bootstrap` pushed; resume there.
