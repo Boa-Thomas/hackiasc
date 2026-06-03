@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Landing page for **HackIA SC — AI Venture Hackathon Blumenau 2026** (29-31 May). Single-page React app with registration form that saves to Supabase. Deployed to GitHub Pages at hackiasc.com.
 
+## Project Status & Master Plan
+
+**The event (Blumenau 2026) is over and frozen.** Before starting any work, read **[`docs/MASTER-PLAN.md`](docs/MASTER-PLAN.md)** — the single source of truth for current project state, the remaining work streams, and how to resume. Auth Phase 3 (unified-auth) is **complete in prod**; the open product front is **multi-edition** (a blueprint — build only when an edition is scheduled). Detailed context lives in the Claude Code memories `auth-phase3-progress` and `multi-edition-architecture`. **Keep `docs/MASTER-PLAN.md` updated when a work stream changes status.**
+
 ## Commands
 
 ```bash
