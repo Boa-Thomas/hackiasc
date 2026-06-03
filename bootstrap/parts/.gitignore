@@ -1,0 +1,4 @@
+# scratch da geração chunked do bootstrap (regenerável)
+*.b64
+*.bin
+.tmp.*
