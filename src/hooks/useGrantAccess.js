@@ -24,9 +24,11 @@ export function useGrantAccess() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            // access-exchange is verify_jwt=false (pre-session entry point — the
+            // link-holder has no session yet; the grant token IS the credential,
+            // validated in-function by grant_resolve + rate-limit). apikey is sent
+            // for routing; Authorization is not required (kept harmless for parity).
             apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-            // anon key as Bearer satisfies the function gateway's verify_jwt
-            // (the link-holder has no session yet; the grant token is validated in-function)
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           },
           body: JSON.stringify({ token }),
@@ -56,9 +58,15 @@ export function useGrantAccess() {
         }
 
         if (cancelled) return
-        const dest = routeForRole(data.role)
-        window.location.hash = dest || '#'
-        setState({ status: 'done', error: null })
+        const dest = routeForRole(data.role) || '#'
+        // A real Supabase session was just established (jwt_exchange) or a token
+        // stored (rpc_token). The destination panel's auth hooks (useMentorAuth/
+        // useJuror/useAdminAuth/facilitator) run their session detection ONCE at
+        // mount — which already happened before this session/token existed. Force a
+        // full reload at the destination so they re-init WITH it; otherwise the
+        // panel renders its "no access" gate despite a valid session.
+        window.location.hash = dest
+        window.location.reload()
       } catch (e) {
         if (!cancelled) setState({ status: 'error', error: e.message || 'invalid_grant' })
       }
