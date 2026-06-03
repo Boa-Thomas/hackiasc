@@ -65,9 +65,6 @@ function CertificateSheet({ profile }) {
       {/* Rodapé — organização */}
       <div className="absolute inset-x-0 bottom-7 text-center">
         <p className="text-[9px] text-text-muted sm:text-[11px] print:text-[9pt] print:text-neutral-600">
-          {EVENT_CONFIG.organizer.company}
-        </p>
-        <p className="text-[9px] text-text-muted sm:text-[11px] print:text-[9pt] print:text-neutral-600">
           {EVENT_CONFIG.organizer.email}
         </p>
       </div>
