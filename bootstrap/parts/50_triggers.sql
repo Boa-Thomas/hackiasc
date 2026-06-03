@@ -1,0 +1,10 @@
+CREATE TRIGGER notify_mentor_assigned AFTER INSERT ON public.mentor_teams FOR EACH ROW EXECUTE FUNCTION trg_notify_mentor_assigned();
+CREATE TRIGGER notifications_send_push AFTER INSERT ON public.notifications FOR EACH ROW EXECUTE FUNCTION trg_notifications_send_push();
+CREATE TRIGGER notify_payment_confirmed AFTER UPDATE OF payment_status ON public.registrations FOR EACH ROW EXECUTE FUNCTION trg_notify_payment_confirmed();
+CREATE TRIGGER trg_check_team_size BEFORE INSERT ON public.registrations FOR EACH ROW EXECUTE FUNCTION check_team_size();
+CREATE TRIGGER trg_check_team_size_update BEFORE UPDATE OF team_name ON public.registrations FOR EACH ROW EXECUTE FUNCTION check_team_size_update();
+CREATE TRIGGER trg_enforce_anon_insert_defaults BEFORE INSERT ON public.registrations FOR EACH ROW EXECUTE FUNCTION enforce_anon_insert_defaults();
+CREATE TRIGGER trg_enforce_ticket_price BEFORE INSERT ON public.registrations FOR EACH ROW EXECUTE FUNCTION enforce_ticket_price();
+CREATE TRIGGER trg_sync_team_id_ins BEFORE INSERT ON public.registrations FOR EACH ROW EXECUTE FUNCTION sync_registration_team_id();
+CREATE TRIGGER trg_sync_team_id_upd BEFORE UPDATE OF team_name ON public.registrations FOR EACH ROW EXECUTE FUNCTION sync_registration_team_id();
+CREATE TRIGGER trg_cascade_team_rename AFTER UPDATE OF name ON public.teams FOR EACH ROW EXECUTE FUNCTION cascade_team_rename();
