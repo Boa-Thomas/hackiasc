@@ -123,3 +123,24 @@ select optgroup {
   filter: blur(80px);
   pointer-events: none;
 }
+
+/* Certificado — impressão: oculta o resto da página e renderiza só o certificado
+   em A4 paisagem, tema claro. print-color-adjust:exact é herdado pelos filhos,
+   então as barras de cor (background) saem mesmo sem "gráficos de plano de fundo". */
+@media print {
+  @page { size: A4 landscape; margin: 0; }
+
+  body * { visibility: hidden; }
+  #participant-certificate,
+  #participant-certificate * { visibility: visible; }
+
+  #participant-certificate {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
