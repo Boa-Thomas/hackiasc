@@ -55,6 +55,18 @@ async function detectAuth(
   const { data: { user }, error } = await supabase.auth.getUser(token)
   if (error || !user) return { valid: false }
   if (user.app_metadata?.role !== 'admin') return { valid: false }
+  // A read_only-scoped admin must NOT trigger a sync (it writes payment status).
+  // Read scope LIVE as the caller ({} / no-grant => not read_only => allowed). Cron
+  // mode (service key) skips this entirely. SP3 parity.
+  const callerClient = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_ANON_KEY')!,
+    { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false } },
+  )
+  // Fail-CLOSED (service-role writes bypass RLS, so this is the only gate):
+  // scope_read_only() is literal false for {}/null/no-grant; only error or true denies.
+  const { data: callerReadOnly, error: roErr } = await callerClient.rpc('scope_read_only')
+  if (roErr || callerReadOnly !== false) return { valid: false }
   return { valid: true, mode: 'user', actor: user.email ?? 'unknown' }
 }
 
