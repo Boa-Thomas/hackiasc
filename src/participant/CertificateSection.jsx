@@ -102,11 +102,13 @@ export default function CertificateSection({ profile, token, onGoToEvaluation })
   }, [token])
 
   const eventEnded = new Date() >= new Date(EVENT_CONFIG.eventEndDate)
+  const surveyBypassed = new Date() >= new Date(EVENT_CONFIG.certificateSurveyBypassDate)
   const state = gateState({
     loaded: evalStatus.loaded,
     eventEnded,
     submitted: evalStatus.submitted,
     surveyOpen: evalStatus.surveyOpen,
+    surveyBypassed,
   })
 
   const endDateLabel = new Date(EVENT_CONFIG.eventEndDate).toLocaleDateString('pt-BR', {

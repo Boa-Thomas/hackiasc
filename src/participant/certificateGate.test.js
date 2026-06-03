@@ -29,4 +29,19 @@ describe('gateState', () => {
     expect(gateState({ loaded: true, eventEnded: true, submitted: false, surveyOpen: false }))
       .toBe('locked_survey_closed')
   })
+
+  it('libera por prazo de dispensa mesmo sem responder (pesquisa aberta)', () => {
+    expect(gateState({ ...base, submitted: false, surveyOpen: true, surveyBypassed: true }))
+      .toBe('available')
+  })
+
+  it('libera por prazo de dispensa mesmo sem responder (pesquisa fechada)', () => {
+    expect(gateState({ ...base, submitted: false, surveyOpen: false, surveyBypassed: true }))
+      .toBe('available')
+  })
+
+  it('o prazo de dispensa não fura a trava de data do evento', () => {
+    expect(gateState({ ...base, eventEnded: false, submitted: false, surveyBypassed: true }))
+      .toBe('locked_event')
+  })
 })
