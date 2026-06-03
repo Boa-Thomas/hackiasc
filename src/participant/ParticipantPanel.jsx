@@ -156,7 +156,13 @@ export default function ParticipantPanel({ auth }) {
 
         {/* Content */}
         {tab === 'team' && isPaid && <TeamSection auth={auth} />}
-        {tab === 'event' && isPaid && <EventInfoSection profile={profile} />}
+        {tab === 'event' && isPaid && (
+          <EventInfoSection
+            profile={profile}
+            token={auth.token}
+            onGoToEvaluation={() => setTab('evaluation')}
+          />
+        )}
         {tab === 'deliverables' && isPaid && <DeliverablesSection auth={auth} goToTeam={() => setTab('team')} />}
         {tab === 'resources' && isPaid && <ResourcesSection auth={auth} />}
         {tab === 'evaluation' && isPaid && (
@@ -175,7 +181,7 @@ export default function ParticipantPanel({ auth }) {
   )
 }
 
-function EventInfoSection({ profile }) {
+function EventInfoSection({ profile, token, onGoToEvaluation }) {
   return (
     <div className="space-y-4">
       {/* Credencial de check-in (QR) */}
@@ -290,7 +296,7 @@ function EventInfoSection({ profile }) {
       </div>
 
       {/* Certificado de Participação */}
-      <CertificateSection profile={profile} />
+      <CertificateSection profile={profile} token={token} onGoToEvaluation={onGoToEvaluation} />
     </div>
   )
 }
