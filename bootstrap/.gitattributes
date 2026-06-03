@@ -1,0 +1,4 @@
+# bootstrap SQL is generated verbatim from the prod catalog (project qshrzfahotmjshtjuvno).
+# Preserve exact bytes — including CRLF inside dashboard-edited function bodies — so the
+# files stay byte-identical to prod. No end-of-line conversion.
+*.sql -text
