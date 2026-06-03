@@ -2,9 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
 const TOKEN_KEY = 'hackiasc_mentor_token'
-// Modo de auth: 'session' (email+codigo) ou 'link' (access_token na URL).
-// Guardado para saber qual RPC usar em refreshMe e se o logout deve invalidar
-// a sessao server-side (mentor_logout) — o link permanece valido apos sair.
 const MODE_KEY = 'hackiasc_mentor_mode'
 
 // Le o access_token do mentor da URL (#mentor?t=<uuid>), espelha em
@@ -39,22 +36,28 @@ function seedFromUrl() {
   }
 
   try {
-    return { token: localStorage.getItem(TOKEN_KEY), mode: localStorage.getItem(MODE_KEY) || 'session' }
-  } catch { return { token: null, mode: 'session' } }
+    return { token: localStorage.getItem(TOKEN_KEY), mode: localStorage.getItem(MODE_KEY) || 'link' }
+  } catch { return { token: null, mode: 'link' } }
 }
 
-// Auth do mentor: por sessao (email + codigo) OU por link secreto (token na URL).
-// Os dois caminhos sao aditivos — o link e uma forma adicional de acesso.
+// Auth do mentor: por sessao Supabase (jwt_exchange via #acesso) OU por link
+// secreto legado (#mentor?t=<uuid>). O modo email+codigo foi removido em B2.
 export function useMentorAuth() {
   // Seed unico (le URL/localStorage, faz replaceState) calculado uma vez
   // via lazy initializer — espelha o padrao do useJuror.
   const [seed] = useState(seedFromUrl)
+  // isSession: true → authenticated via Supabase session (role=mentor).
+  // Starts false; set to true after getSession() confirms a mentor session.
+  const [isSession, setIsSession] = useState(false)
+  // Legacy link token (null in session mode). Kept for coexistence (B3 removes).
   const [token, setToken] = useState(seed.token)
-  const [mode, setMode] = useState(seed.mode)
   const [me, setMe] = useState(null)
-  const [loading, setLoading] = useState(!!seed.token)
+  // loading stays true until session detection + optional fetch completes.
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const initialized = useRef(false)
+  // Stable ref for isSession to avoid stale closures.
+  const isSessionRef = useRef(false)
 
   const persist = (t, m) => {
     try {
@@ -68,78 +71,78 @@ export function useMentorAuth() {
     } catch { /* ignore quota / private mode errors */ }
   }
 
-  const refreshMe = useCallback(async (t, m) => {
-    const useToken = t ?? token
-    const useMode = m ?? mode
-    if (!useToken || !supabase) return null
-    // Modo link valida pelo access_token (retorna NULL em token invalido);
-    // modo sessao usa o token de mentor_sessions (email+codigo).
-    const rpc = useMode === 'link' ? 'mentor_get_me_by_token' : 'mentor_get_me'
-    const args = useMode === 'link' ? { p_access_token: useToken } : { p_token: useToken }
-    const { data, error: rpcError } = await supabase.rpc(rpc, args)
+  // refreshMe calls mentor_get_me for both session and legacy-link modes.
+  // B1 re-keyed mentor_get_me to dual-mode (null → session identity, uuid → link token).
+  // Called with no args by MentorNotes/MentorPanel after a mutation.
+  const refreshMe = useCallback(async (overrideToken) => {
+    const useSession = isSessionRef.current
+    const useToken = overrideToken !== undefined ? overrideToken : (useSession ? null : token)
+    const authed = useSession || !!useToken
+    if (!authed || !supabase) return null
+    const { data, error: rpcError } = await supabase.rpc('mentor_get_me', {
+      p_token: useToken ?? null,
+    })
     if (rpcError || !data) {
-      persist(null)
-      setToken(null)
+      if (!useSession) {
+        // Legacy token is invalid — clear it.
+        persist(null)
+        setToken(null)
+      }
       setMe(null)
       return null
     }
     setMe(data)
     return data
-  }, [token, mode])
+  }, [token]) // isSession read via ref
 
   useEffect(() => {
     if (initialized.current) return
     initialized.current = true
-    if (token) {
-      refreshMe(token, mode).finally(() => setLoading(false)) // eslint-disable-line react-hooks/set-state-in-effect
-    } else {
-      setLoading(false)
-    }
-  }, [token, mode, refreshMe])
+    if (!supabase) { setLoading(false); return }
 
-  const login = useCallback(async (email, code) => {
-    setError(null)
-    if (!supabase) {
-      setError('Sistema indisponível. Tente novamente mais tarde.')
-      return false
-    }
-    setLoading(true)
-    const { data, error: rpcError } = await supabase.rpc('mentor_login', {
-      p_email: email.trim().toLowerCase(),
-      p_code: code.trim(),
-    })
-    if (rpcError) {
-      setError('Erro de conexão. Tente novamente.')
+    ;(async () => {
+      // (a) Session-first: check for a real Supabase session with role=mentor.
+      // IMPORTANT: only treat it as mentor if app_metadata.role === 'mentor'
+      // (admin/viewer sessions must NOT get mentor access — this hook is mounted globally).
+      const { data: { session } } = await supabase.auth.getSession()
+      const sessionIsMentor = session?.user?.app_metadata?.role === 'mentor'
+      if (sessionIsMentor) {
+        isSessionRef.current = true
+        setIsSession(true)
+        await refreshMe(null)
+        setLoading(false)
+        return
+      }
+
+      // (b) Legacy link token fallback (coexistence — removed in B3).
+      if (seed.token) {
+        await refreshMe(seed.token)
+        setLoading(false)
+        return
+      }
+
       setLoading(false)
-      return false
-    }
-    if (!data) {
-      setError('Email ou código inválidos. Após várias tentativas o acesso é bloqueado por 1 minuto.')
-      setLoading(false)
-      return false
-    }
-    persist(data.token, 'session')
-    setToken(data.token)
-    setMode('session')
-    await refreshMe(data.token, 'session')
-    setLoading(false)
-    return true
-  }, [refreshMe])
+    })()
+  }, [seed.token, refreshMe])
 
   const logout = useCallback(async () => {
-    // So invalida a sessao server-side no modo email+codigo. No modo link,
-    // o access_token segue valido — apenas limpamos o localStorage local.
-    if (token && mode === 'session' && supabase) {
-      try { await supabase.rpc('mentor_logout', { p_token: token }) } catch { /* best-effort */ }
+    if (supabase) {
+      try { await supabase.auth.signOut() } catch { /* best-effort */ }
     }
+    // Clear any legacy localStorage token/mode.
     persist(null)
     setToken(null)
-    setMode('session')
+    isSessionRef.current = false
+    setIsSession(false)
     setMe(null)
-  }, [token, mode])
+  }, [])
+
+  const isAuthenticated = (isSession || !!token) && !!me
 
   return {
-    token,
+    // In session mode, token is null — push/notif RPCs resolve via the session.
+    // In legacy-link mode, token is the uuid access_token.
+    token: isSession ? null : token,
     me,
     mentor: me?.mentor ?? null,
     teams: me?.teams ?? [],
@@ -147,8 +150,7 @@ export function useMentorAuth() {
     evaluations: me?.evaluations ?? [],
     loading,
     error,
-    isAuthenticated: !!token && !!me,
-    login,
+    isAuthenticated,
     logout,
     refreshMe,
   }

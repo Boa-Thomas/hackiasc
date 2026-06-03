@@ -32,9 +32,13 @@ function seedTokenFromUrl() {
 }
 
 export function useJuror() {
+  // isSession: true → authenticated via Supabase session (no token needed).
+  // Starts null until getSession() resolves to avoid false negatives.
+  const [isSession, setIsSession] = useState(false)
   const [token] = useState(seedTokenFromUrl)
   const [context, setContext] = useState(null)
-  const [loading, setLoading] = useState(!!token)
+  // loading starts true until session detection + optional fetch completes.
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const initialized = useRef(false)
   // Último valor do sinal de recarga visto. Null até a primeira carga.
@@ -43,10 +47,16 @@ export function useJuror() {
   // Evita que o refresh() pós-mutação dispare window.location.reload() no meio da
   // operação; o próximo poll (<=30s) aplica o sinal de recarga com segurança.
   const mutatingRef = useRef(false)
+  // Stable ref for isSession to avoid stale closures in poll/callbacks.
+  const isSessionRef = useRef(false)
 
-  const refresh = useCallback(async () => {
-    if (!token || !supabase) return null
-    const { data, error: rpcError } = await supabase.rpc('juror_get_context', { p_token: token })
+  const refresh = useCallback(async (sessionMode) => {
+    // sessionMode param allows calling refresh before isSession state updates.
+    const useSession = sessionMode !== undefined ? sessionMode : isSessionRef.current
+    const authed = useSession || !!token
+    if (!authed || !supabase) return null
+    const p_token = useSession ? null : token
+    const { data, error: rpcError } = await supabase.rpc('juror_get_context', { p_token })
     if (rpcError || !data) {
       setContext(null)
       setError('invalid_token')
@@ -69,15 +79,31 @@ export function useJuror() {
     setContext(data)
     setError(null)
     return data
-  }, [token])
+  }, [token]) // isSession not in deps — read via ref to avoid re-creating on session detect
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (initialized.current) return
     initialized.current = true
-    if (!token) { setLoading(false); return }
     if (!supabase) { setError('unavailable'); setLoading(false); return }
-    refresh().finally(() => setLoading(false))
+
+    ;(async () => {
+      // (a) Session-first: check for a real Supabase session with role=juror.
+      const { data: { session } } = await supabase.auth.getSession()
+      const sessionIsJuror = session?.user?.app_metadata?.role === 'juror'
+      if (sessionIsJuror) {
+        isSessionRef.current = true
+        setIsSession(true)
+        await refresh(true)
+        setLoading(false)
+        return
+      }
+
+      // (b) Legacy token fallback (coexistence — removed in B3).
+      if (!token) { setLoading(false); return }
+      await refresh(false)
+      setLoading(false)
+    })()
   }, [token, refresh])
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -85,18 +111,21 @@ export function useJuror() {
   // de visibilidade da ideia em painéis já abertos sem recarga dura e (2) detecta
   // o sinal de "forçar recarga" disparado pelo admin (ver refresh()).
   useEffect(() => {
-    if (!token || !supabase) return undefined
+    const authed = isSession || !!token
+    if (!authed || !supabase) return undefined
     const id = setInterval(() => { refresh() }, POLL_MS)
     return () => clearInterval(id)
-  }, [token, refresh])
+  }, [isSession, token, refresh])
 
   // Grava/atualiza um scorecard. scores: [{criterion_key, score, justification}].
   const submitScore = useCallback(async ({ teamId, scores, summary, eliminated }) => {
-    if (!token || !supabase) return { ok: false, error: 'unavailable' }
+    const authed = isSessionRef.current || !!token
+    if (!authed || !supabase) return { ok: false, error: 'unavailable' }
     mutatingRef.current = true
     try {
+      const p_token = isSessionRef.current ? null : token
       const { data, error: rpcError } = await supabase.rpc('juror_submit_score', {
-        p_token: token,
+        p_token,
         p_team_id: teamId,
         p_scores: scores,
         p_summary: summary ?? '',
@@ -112,11 +141,13 @@ export function useJuror() {
 
   // Registra o aceite do termo de consentimento (cláusula 5.3 do edital).
   const acceptConsent = useCallback(async () => {
-    if (!token || !supabase) return { ok: false, error: 'unavailable' }
+    const authed = isSessionRef.current || !!token
+    if (!authed || !supabase) return { ok: false, error: 'unavailable' }
     mutatingRef.current = true
     try {
+      const p_token = isSessionRef.current ? null : token
       const { data, error: rpcError } = await supabase.rpc('juror_accept_consent', {
-        p_token: token,
+        p_token,
       })
       if (rpcError) return { ok: false, error: rpcError.message }
       await refresh()
@@ -125,6 +156,8 @@ export function useJuror() {
       mutatingRef.current = false
     }
   }, [token, refresh])
+
+  const authed = isSession || !!token
 
   return {
     token,
@@ -135,7 +168,7 @@ export function useJuror() {
     myScores: context?.my_scores ?? [],
     loading,
     error,
-    isValid: !!token && !!context,
+    isValid: authed && !!context,
     submitScore,
     acceptConsent,
     refresh,
