@@ -8,6 +8,8 @@ export const EVENT_CONFIG = {
   dates: '29 - 31 de Maio de 2026',
   eventStartDate: '2026-05-29T08:00:00-03:00',
   eventEndDate: '2026-05-31T22:00:00-03:00',
+  // A partir desta data o certificado é liberado mesmo sem a pesquisa de avaliação respondida.
+  certificateSurveyBypassDate: '2026-06-05T16:00:00-03:00',
   maxCapacity: 100,
   earlyBirdLimit: 10,
   registrationStart: '2026-04-08T12:00:00-03:00',
