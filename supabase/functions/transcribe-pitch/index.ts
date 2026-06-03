@@ -47,6 +47,18 @@ Deno.serve(async (req: Request) => {
     if (userError || !user) return json({ error: 'unauthorized' }, 401)
     if (user.app_metadata?.role !== 'admin') return json({ error: 'forbidden' }, 403)
 
+    // A read_only-scoped admin must NOT trigger writes (transcription). Read scope
+    // LIVE as the caller ({} / no-grant => not read_only => allowed). SP3 parity.
+    const callerClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } },
+    )
+    // Fail-CLOSED (service-role writes below bypass RLS, so this is the only gate):
+    // scope_read_only() is literal false for {}/null/no-grant; only error or true denies.
+    const { data: callerReadOnly, error: roErr } = await callerClient.rpc('scope_read_only')
+    if (roErr || callerReadOnly !== false) return json({ error: 'read_only' }, 403)
+
     // 2. Input.
     const { team_id } = await req.json().catch(() => ({}))
     if (!team_id) return json({ error: 'team_id_required' }, 400)

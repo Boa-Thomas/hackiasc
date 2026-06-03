@@ -73,6 +73,16 @@ Deno.serve(async (req) => {
   const { data: { user }, error: uErr } = await caller.auth.getUser()
   if (uErr || !user || user.app_metadata?.role !== 'admin') return json({ error: 'forbidden' }, 403, origin)
 
+  // A read_only-scoped admin must NOT provision accounts — doing so would mint a
+  // non-read_only admin and escalate past read_only. Read scope LIVE via the
+  // caller's session ({} / null / no-grant => not read_only => allowed; legacy
+  // hand-made admins are unaffected). Mirrors SP3 Phase 2/3 enforcement.
+  // Fail-CLOSED: scope_read_only() returns literal false for {}/null/no-grant (legacy
+  // admins are never over-blocked); only an RPC error or true denies. These edges write
+  // with the service role (bypassing RLS + the Phase-2 guards), so this is the ONLY gate.
+  const { data: callerReadOnly, error: roErr } = await caller.rpc('scope_read_only')
+  if (roErr || callerReadOnly !== false) return json({ error: 'read_only' }, 403, origin)
+
   let body: Record<string, unknown>
   try { body = await req.json() } catch { return json({ error: 'bad_request' }, 400, origin) }
   const action = body?.action
