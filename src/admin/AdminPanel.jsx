@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import AdminDashboard from './AdminDashboard'
 import AdminRegistrations from './AdminRegistrations'
 import AdminTeams from './AdminTeams'
@@ -19,46 +19,47 @@ import AdminEvaluation from './AdminEvaluation'
 import AdminNotifications from './AdminNotifications'
 import AdminAccess from './AdminAccess'
 import NotificationBell from '../components/NotificationBell'
-
-const ALL_TABS = [
-  { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { id: 'facilitator', label: 'Facilitador', icon: '🎤', adminOnly: true },
-  { id: 'notifications', label: 'Notificações', icon: '🔔', adminOnly: true },
-  { id: 'registrations', label: 'Inscrições', icon: '📋' },
-  { id: 'teams', label: 'Times', icon: '👥' },
-  { id: 'deliverables', label: 'Entregas', icon: '📦' },
-  { id: 'ranking', label: 'Ranking', icon: '🏆' },
-  { id: 'evaluation', label: 'Avaliação', icon: '⭐' },
-  { id: 'mentors', label: 'Mentores', icon: '🎓', adminOnly: true },
-  { id: 'prepitch-rooms', label: 'Pré-Pitch', icon: '🎤', adminOnly: true },
-  { id: 'jurors', label: 'Jurados', icon: '⚖️', adminOnly: true },
-  { id: 'wall', label: 'Muro de Dores', icon: '🧱', adminOnly: true },
-  { id: 'sugarcubes', label: 'Elogios', icon: '🧁', adminOnly: true },
-  { id: 'resources', label: 'Recursos', icon: '📚', adminOnly: true },
-  { id: 'financeiro', label: 'Financeiro', icon: '💰' },
-  { id: 'bulk', label: 'Empresarial', icon: '🏢', adminOnly: true },
-  { id: 'checkin', label: 'Check-in', icon: '✅', adminOnly: true },
-  { id: 'logs', label: 'Logs', icon: '📜', adminOnly: true },
-  { id: 'access', label: 'Acessos', icon: '🔑', adminOnly: true },
-]
+import { supabase } from '../lib/supabase'
+import { ALL_TABS, tabsForRole, tabsForScope } from './adminTabs'
 
 export default function AdminPanel({ onLogout, role = 'viewer' }) {
-  const readOnly = role === 'viewer'
+  const isViewer = role === 'viewer'
   const checkinOnly = role === 'checkin'
   const staffOnly = role === 'staff'
-  const TABS = staffOnly
-    ? ALL_TABS.filter(t => t.id === 'wall' || t.id === 'checkin')
-    : checkinOnly
-      ? ALL_TABS.filter(t => t.id === 'checkin')
-      : readOnly
-        ? ALL_TABS.filter(t => !t.adminOnly)
-        : ALL_TABS
+
+  // Live per-grant scope (SP3). null until loaded => unrestricted. Password accounts
+  // don't bake scope in the JWT, so it's read live via the my_scope() RPC ({} when
+  // there is no grant — e.g. a legacy hand-made admin — which means unrestricted).
+  const [scope, setScope] = useState(null)
+  useEffect(() => {
+    if (!supabase) return undefined
+    let active = true
+    supabase.rpc('my_scope').then(({ data, error }) => {
+      if (!active) return
+      if (error) { console.error('[my_scope]', error.message); setScope({}) } // backend is the real gate
+      else setScope(data || {})
+    })
+    return () => { active = false }
+  }, [])
+
+  // Write actions are hidden for viewers (role) AND read_only-scoped grants (live
+  // scope). Tab VISIBILITY is by role only — a read_only admin still sees every
+  // admin tab (reads stay broad per SP3 Option 2); only writes are hidden. The
+  // backend (SP3 Phase 2 RPC guards + Phase 3 RLS) is the real gate; this is UX.
+  const readOnly = isViewer || !!scope?.read_only
+  // A read_only grant must not reach the Acessos (account provisioning) tab —
+  // creating an account there would escalate past read_only. Defense-in-depth; the
+  // access-account edge is also scope-gated server-side (the real boundary).
+  const roleTabs = tabsForRole(role, ALL_TABS).filter(t => !(readOnly && t.id === 'access'))
+  const TABS = tabsForScope(roleTabs, scope, ALL_TABS)
   const [activeTab, setActiveTab] = useState(staffOnly ? 'wall' : checkinOnly ? 'checkin' : 'dashboard')
-  // Defense-in-depth: gate content rendering by the same role-filtered tab set
-  // used for nav, so a forced activeTab cannot expose a tab the role can't see.
-  // (RLS remains the real boundary.)
+  // Defense-in-depth: gate content rendering by the same tab set used for nav, so a
+  // forced activeTab cannot expose a tab the role/scope can't see. (RLS remains the
+  // real boundary.) If scope's allowed_tabs excludes the current tab, fall back to
+  // the first allowed one without an extra effect/render.
   const allowedTabs = new Set(TABS.map(t => t.id))
-  const show = (id) => allowedTabs.has(id) && activeTab === id
+  const effectiveActive = allowedTabs.has(activeTab) ? activeTab : (TABS[0]?.id ?? activeTab)
+  const show = (id) => allowedTabs.has(id) && effectiveActive === id
   const [selectedRegistrationId, setSelectedRegistrationId] = useState(null)
   const [confirmedOnly, setConfirmedOnly] = useState(() => {
     try { return localStorage.getItem('admin.confirmedOnly') !== 'false' } catch { return true }
@@ -84,7 +85,8 @@ export default function AdminPanel({ onLogout, role = 'viewer' }) {
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-base sm:text-lg font-bold text-gradient-cyan font-display flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
             <span>HackIA Admin</span>
-            {readOnly && <span className="text-xs font-mono text-electric/60 border border-electric/20 px-2 py-0.5 rounded-full">visualização</span>}
+            {isViewer && <span className="text-xs font-mono text-electric/60 border border-electric/20 px-2 py-0.5 rounded-full">visualização</span>}
+            {!isViewer && scope?.read_only && <span className="text-xs font-mono text-gold/60 border border-gold/20 px-2 py-0.5 rounded-full">somente leitura</span>}
             {checkinOnly && <span className="text-xs font-mono text-cyan/60 border border-cyan/20 px-2 py-0.5 rounded-full">check-in</span>}
             {staffOnly && <span className="text-xs font-mono text-violet/60 border border-violet/20 px-2 py-0.5 rounded-full">equipe</span>}
           </h1>
@@ -123,7 +125,7 @@ export default function AdminPanel({ onLogout, role = 'viewer' }) {
                 setSelectedRegistrationId(null)
               }}
               className={`flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === tab.id
+                effectiveActive === tab.id
                   ? 'bg-cyan/20 text-cyan border border-cyan/30'
                   : 'text-white/60 hover:text-white hover:bg-white/5'
               }`}
@@ -155,17 +157,17 @@ export default function AdminPanel({ onLogout, role = 'viewer' }) {
         {show('evaluation') && <AdminEvaluation readOnly={readOnly} />}
         {show('financeiro') && <AdminFinanceiro readOnly={readOnly} />}
         {show('bulk') && <AdminBulkOrders readOnly={readOnly} />}
-        {!readOnly && show('mentors') && <AdminMentors />}
-        {!readOnly && show('prepitch-rooms') && <AdminPrePitchRooms />}
-        {!readOnly && show('jurors') && <AdminJurors />}
-        {!readOnly && show('wall') && <AdminWall />}
-        {!readOnly && show('sugarcubes') && <AdminSugarCubes />}
-        {!readOnly && show('resources') && <AdminResources />}
-        {!readOnly && show('facilitator') && <AdminFacilitator />}
-        {!readOnly && show('notifications') && <AdminNotifications />}
-        {!readOnly && show('checkin') && <AdminCheckin />}
-        {!readOnly && show('logs') && <AdminAuditLog />}
-        {role === 'admin' && show('access') && <AdminAccess />}
+        {show('mentors') && <AdminMentors />}
+        {show('prepitch-rooms') && <AdminPrePitchRooms />}
+        {show('jurors') && <AdminJurors />}
+        {show('wall') && <AdminWall />}
+        {show('sugarcubes') && <AdminSugarCubes />}
+        {show('resources') && <AdminResources />}
+        {show('facilitator') && <AdminFacilitator />}
+        {show('notifications') && <AdminNotifications />}
+        {show('checkin') && <AdminCheckin />}
+        {show('logs') && <AdminAuditLog />}
+        {role === 'admin' && !readOnly && show('access') && <AdminAccess />}
       </main>
     </div>
   )

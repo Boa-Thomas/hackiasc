@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { usesEdgeRevoke } from '../lib/grantRouting'
 import { buildScope } from './accountScope'
+import { ALL_TABS } from './adminTabs'
 
 // Link grants (magic-link personas).
 const LINK_ROLES = ['facilitator', 'staff', 'mentor', 'juror', 'checkin', 'viewer']
@@ -22,7 +23,16 @@ export default function AdminAccess() {
   const [grants, setGrants] = useState([])
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState({ label: '', role: 'facilitator', expires_at: '' })
-  const [acct, setAcct] = useState({ label: '', role: 'viewer', email: '', readOnly: false, allowedTabs: '' })
+  const [acct, setAcct] = useState({ label: '', role: 'viewer', email: '', readOnly: false, allowedTabs: [] })
+
+  function toggleTab(id) {
+    setAcct((a) => ({
+      ...a,
+      allowedTabs: a.allowedTabs.includes(id)
+        ? a.allowedTabs.filter((x) => x !== id)
+        : [...a.allowedTabs, id],
+    }))
+  }
   // Show-once secret: a link token OR a password.
   const [secret, setSecret] = useState(null) // { kind: 'link'|'password', value: string }
   const [error, setError] = useState(null)
@@ -78,16 +88,13 @@ export default function AdminAccess() {
   async function createAccount(e) {
     e.preventDefault()
     setError(null); setSecret(null)
-    const scope = buildScope({
-      readOnly: acct.readOnly,
-      allowedTabs: acct.allowedTabs.split(',').map((t) => t.trim()).filter(Boolean),
-    })
+    const scope = buildScope({ readOnly: acct.readOnly, allowedTabs: acct.allowedTabs })
     const data = await callEdge('access-account', {
       action: 'create', role: acct.role, label: acct.label.trim(), email: acct.email.trim(), scope,
     })
     if (!data) return
     setSecret({ kind: 'password', value: `${data.email} · ${data.password}` })
-    setAcct({ label: '', role: acct.role, email: '', readOnly: false, allowedTabs: '' })
+    setAcct({ label: '', role: acct.role, email: '', readOnly: false, allowedTabs: [] })
     load()
   }
 
@@ -154,10 +161,17 @@ export default function AdminAccess() {
               onChange={e => setAcct({ ...acct, readOnly: e.target.checked })} />
             somente leitura
           </label>
-          <input value={acct.allowedTabs} onChange={e => setAcct({ ...acct, allowedTabs: e.target.value })}
-            placeholder="abas (ex: results, payments)"
-            className="bg-dark/50 border border-white/10 rounded px-3 py-2 flex-1 min-w-[12rem]" />
-          <span className="text-white/30 font-mono text-xs">scope é armazenado; aplicado na SP3</span>
+        </div>
+        <div>
+          <p className="text-white/50 text-xs mb-1">Abas com escrita permitida (vazio = todas). Leituras seguem amplas pelo papel.</p>
+          <div className="flex flex-wrap gap-x-3 gap-y-1">
+            {ALL_TABS.map((t) => (
+              <label key={t.id} className="flex items-center gap-1.5 text-xs text-white/70">
+                <input type="checkbox" checked={acct.allowedTabs.includes(t.id)} onChange={() => toggleTab(t.id)} />
+                {t.label}
+              </label>
+            ))}
+          </div>
         </div>
       </form>
 
