@@ -17,7 +17,7 @@ The question this design answers: how to serve multiple editions cleanly.
 **One edition = one isolated instance, from a single shared codebase.** Each edition gets:
 1. its **own Supabase project** (its own DB, auth, storage, edge functions, secrets);
 2. its **own deploy** (Cloudflare Pages — recommended) with its **own env vars**;
-3. its **own subdomain** under an umbrella domain (e.g. `blumenau.hackia.com`).
+3. its **own subdomain** under the umbrella domain `hackiasc.com` (e.g. `blumenau.hackiasc.com`).
 
 The app stays single-event — almost no logic refactor. Isolation comes from **separate instances**, not from an in-DB tenant discriminator.
 
@@ -29,9 +29,9 @@ The original "register new mentors / disable old ones in one place" problem disa
 
 ## Hosting & domain
 
-- **Move off GitHub Pages → Cloudflare Pages.** One repo, multiple Pages "projects" (one per edition), each with its own env vars (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, + event config) and a subdomain. Cloudflare pairs DNS + Pages in one place for the `*.hackia.com` subdomains. (Netlify/Vercel are equivalent if preferred.)
-- **Umbrella domain:** `hackia.com`. **PREREQUISITE — confirm ownership/availability** before standing up edition #2; if unavailable, pick the umbrella domain first.
-- Blumenau 2026 stays at `hackiasc.com` as the frozen first-edition archive (it is NOT migrated).
+- **Move off GitHub Pages → Cloudflare Pages.** One repo, multiple Pages "projects" (one per edition), each with its own env vars (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, + event config) and a subdomain. Cloudflare pairs DNS + Pages in one place for the `*.hackiasc.com` subdomains. (Netlify/Vercel are equivalent if preferred.)
+- **Umbrella domain:** `hackiasc.com` — **owned (confirmed 2026-06-03).** Note: the name is SC-specific (HackIA Santa Catarina); fine while editions stay in SC. Revisit only if editions expand beyond SC.
+- **Blumenau 2026 disposition:** the apex `hackiasc.com` stays as the frozen first-edition archive; future editions live on subdomains `cidade.hackiasc.com`. (Alternative, if you prefer a clean apex: move Blumenau to `blumenau.hackiasc.com` and make the apex a simple landing/redirect — small extra DNS step. Defaulting to apex-stays-as-archive.)
 
 ## Per-edition configuration
 
@@ -43,7 +43,7 @@ The original "register new mentors / disable old ones in one place" problem disa
 
 1. **Schema bootstrap (foundation, highest value, do first).** Consolidate the full current schema — `supabase-setup.sql` + the ~40 `migrations/*.sql` + all SP1/SP2/SP3 auth work — into a single idempotent `bootstrap.sql` (plus the edge-function set), so a fresh Supabase project is provisioned in **one run**, not by replaying history. Highest rigor required: every table, RPC, RLS policy, GRANT, trigger, enum, extension quirk (e.g. pgcrypto in `extensions` schema), and the edge functions must be captured. Verification = stand up a throwaway Supabase project, run it, and diff its catalog against prod.
 2. **De-hardcode config.** Move Blumenau-specific values out of `config.js` into the parametric (env) source; keep the `EVENT_CONFIG` shape stable. Audit the whole app for other hardcoded event strings (page titles, dates, city, `public/CNAME`, OG/meta).
-3. **Hosting migration.** GitHub Pages → Cloudflare Pages: repo build config, one deploy per edition, env vars per deploy, DNS subdomains under `hackia.com`. Document the GitHub Actions → Cloudflare change.
+3. **Hosting migration.** GitHub Pages → Cloudflare Pages: repo build config, one deploy per edition, env vars per deploy, DNS subdomains under `hackiasc.com`. Document the GitHub Actions → Cloudflare change.
 4. **Provisioning runbook.** A checklist (later maybe a script) to launch edition N: create Supabase project → run `bootstrap.sql` → deploy the ~14 edge functions → set **all per-instance secrets** (Supabase service role; Mercado Pago `MP_ACCESS_TOKEN` + webhook secrets — each team uses their OWN MP account; push VAPID keys; `WHISPER_URL`; etc.) → set deploy env (Supabase URL/anon + event config) → add subdomain DNS → smoke test. Enumerate the full secret set.
 5. **Freeze Blumenau + optional D cleanup.** `hackiasc.com` is the frozen archive. The legacy mentor/juror token cleanup (SP2/B3, "Tarefa D") is now **zero-risk** (the event is over; 0/17 ever re-onboarded; nobody depends on those accounts) — it becomes optional housekeeping on the frozen instance, no longer a gated cutover.
 
@@ -57,8 +57,9 @@ The original "register new mentors / disable old ones in one place" problem disa
 - Migrating Blumenau 2026 into the new model — it stays frozen as-is.
 
 ## Open items / prerequisites
-- **Confirm `hackia.com` ownership/availability** (or choose the umbrella domain).
-- Confirm host = **Cloudflare Pages** (recommended) vs Netlify/Vercel.
+- ✅ Umbrella domain `hackiasc.com` owned (confirmed 2026-06-03).
+- Apex disposition: default = apex stays as the Blumenau-2026 archive, future editions on `cidade.hackiasc.com` subdomains (alternative noted in Hosting section).
+- Host = **Cloudflare Pages** (recommended) vs Netlify/Vercel — treated as accepted unless changed.
 - Each edition needs its **own** third-party accounts/secrets (Mercado Pago, push keys, Whisper box) — confirm local teams provide these, or that they're optional per edition.
 
 ## Next step
