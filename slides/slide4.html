@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Slide 4 — Apresentadora — HackIA SC</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --dark: #050510; --cyan: #06d6a0; --electric: #3a86ff; --violet: #8338ec;
+        --hot: #ff006e; --gold: #ffbe0b; --muted: #7a7aa0;
+        --font: "Sora", sans-serif; --mono: "JetBrains Mono", monospace;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      @page { size: 1280px 720px; margin: 0; }
+      @media print {
+        html, body { min-height: 0; display: block; background: var(--dark); }
+        .slide { transform: none; box-shadow: none; }
+        * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      }
+      html, body {
+        background: #000; font-family: var(--font); color: #fff;
+        display: flex; align-items: center; justify-content: center; min-height: 100vh;
+      }
+      .slide {
+        position: relative; width: 1280px; height: 720px; background: var(--dark); overflow: hidden;
+        transform: scale(min(calc(100vw / 1280), calc(100vh / 720))); transform-origin: center;
+        box-shadow: 0 30px 120px rgba(0,0,0,0.6);
+      }
+      .slide::before {
+        content: ""; position: absolute; inset: 0;
+        background-image:
+          linear-gradient(rgba(58,134,255,0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(58,134,255,0.04) 1px, transparent 1px);
+        background-size: 48px 48px; pointer-events: none;
+      }
+      .orb { position: absolute; border-radius: 50%; filter: blur(90px); pointer-events: none; }
+      .orb-1 { width: 470px; height: 470px; background: var(--electric); top: -170px; left: -120px; opacity: 0.34; }
+      .orb-2 { width: 470px; height: 470px; background: var(--cyan); bottom: -190px; right: -120px; opacity: 0.30; }
+      .orb-3 { width: 360px; height: 360px; background: var(--violet); top: 40%; left: 40%; opacity: 0.22; }
+
+      .kicker {
+        font-family: var(--mono); font-size: 13px; letter-spacing: 0.32em; text-transform: uppercase;
+        color: var(--cyan); display: flex; align-items: center; gap: 12px; margin-bottom: 18px;
+      }
+      .kicker::before { content: ""; width: 26px; height: 1px; background: var(--cyan); display: inline-block; }
+
+      .speaker {
+        position: relative; z-index: 2; height: 100%;
+        display: grid; grid-template-columns: 1.5fr 1fr; gap: 48px; padding: 54px 64px 70px;
+      }
+      .sp-left { display: flex; flex-direction: column; }
+      .sp-head { display: flex; align-items: center; gap: 22px; margin-bottom: 22px; }
+      .avatar {
+        width: 104px; height: 104px; border-radius: 50%; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        font-family: var(--mono); font-weight: 700; font-size: 38px; color: #fff;
+        background: linear-gradient(135deg, #06d6a0, #3a86ff 55%, #8338ec);
+        box-shadow: 0 0 30px rgba(58,134,255,0.35); letter-spacing: 1px;
+      }
+      .avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; object-position: 65% 35%; }
+      .sp-name { font-size: 38px; font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; }
+      .sp-name .acc {
+        background: linear-gradient(135deg, #06d6a0, #3a86ff 60%, #8338ec);
+        -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+      }
+      .sp-loc { font-family: var(--mono); font-size: 12.5px; color: var(--muted); margin-top: 6px; display: flex; align-items: center; gap: 7px; }
+      .sp-role { font-size: 15px; line-height: 1.5; color: #c4c4e4; font-weight: 400; margin-bottom: 22px; }
+      .sp-role b { color: #fff; font-weight: 600; }
+      .chips { display: flex; flex-wrap: wrap; gap: 9px; }
+      .chip {
+        font-family: var(--mono); font-size: 11.5px; color: #d4d4f0; padding: 7px 13px; border-radius: 999px;
+        border: 1px solid rgba(58,134,255,0.22);
+        background: linear-gradient(135deg, rgba(13,13,37,0.85), rgba(10,10,32,0.5));
+      }
+      .chip b { color: var(--cyan); font-weight: 700; }
+      .sp-right { display: flex; align-items: center; justify-content: center; }
+      .qr-card {
+        width: 100%; border-radius: 22px; border: 1px solid rgba(58,134,255,0.28);
+        background: linear-gradient(160deg, rgba(13,13,37,0.92), rgba(10,10,32,0.85));
+        box-shadow: 0 0 36px rgba(6,214,160,0.16), 0 24px 60px rgba(0,0,0,0.5);
+        padding: 26px 24px 22px; text-align: center;
+      }
+      .qr-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--cyan); margin-bottom: 16px; }
+      .qr-box { background: #fff; border-radius: 14px; padding: 12px; display: inline-block; line-height: 0; }
+      .qr-box img { width: 188px; height: 188px; display: block; }
+      .li { display: flex; align-items: center; justify-content: center; gap: 9px; margin-top: 18px; }
+      .li svg { width: 22px; height: 22px; flex-shrink: 0; }
+      .li-handle { font-family: var(--mono); font-size: 13.5px; color: #fff; font-weight: 500; }
+
+      .footer {
+        position: absolute; bottom: 22px; left: 64px; right: 64px; z-index: 3;
+        display: flex; justify-content: space-between; align-items: center;
+        font-family: var(--mono); font-size: 11px; color: var(--muted);
+        letter-spacing: 0.12em; text-transform: uppercase;
+      }
+      .footer .brand b {
+        background: linear-gradient(135deg, #06d6a0, #3a86ff);
+        -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="slide">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+
+      <div class="speaker">
+        <div class="sp-left">
+          <div class="kicker">Apresentadora · Mentora</div>
+          <div class="sp-head">
+            <div class="avatar"><img src="natali.jpg" alt="Natalí Pires de Campos" /></div>
+            <div>
+              <div class="sp-name">Natalí <span class="acc">Pires de Campos</span></div>
+              <div class="sp-loc">📍 Blumenau · Santa Catarina · Brasil</div>
+            </div>
+          </div>
+
+          <p class="sp-role">
+            <b>Microsoft Innovative Educator Expert (MIEE)</b> · Professora,
+            consultora e mentora. Nexialista apaixonada por desenvolvimento
+            humano através da educação e da inovação — já formou
+            <b>+2.000 profissionais</b>.
+          </p>
+
+          <div class="chips">
+            <span class="chip"><b>CEO</b> · Campos Treinamentos</span>
+            <span class="chip">Microsoft <b>MIEE</b></span>
+            <span class="chip">Mentora de Startups</span>
+            <span class="chip">Mestranda em Adm · FURB</span>
+            <span class="chip">Data Analytics · Excel</span>
+            <span class="chip">ESG · Controladoria</span>
+            <span class="chip">Org. Startup Weekend Blumenau</span>
+            <span class="chip">Soft Skills · Oratória</span>
+          </div>
+        </div>
+
+        <div class="sp-right">
+          <div class="qr-card">
+            <div class="qr-label">Conecte-se</div>
+            <div class="qr-box">
+              <img
+                src="https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=0&data=https%3A%2F%2Fwww.linkedin.com%2Fin%2Fnatalipcampos%2F"
+                alt="QR code LinkedIn"
+              />
+            </div>
+            <div class="li">
+              <svg viewBox="0 0 24 24" fill="#0a66c2" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/>
+              </svg>
+              <span class="li-handle">in/natalipcampos</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <span class="brand"><b>HackIA SC</b> · AI Venture Hackathon Blumenau 2026</span>
+        <span>29–31 MAI</span>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,1013 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HackIA SC 2026 — Resultados · Governança TIC</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --dark: #050510;
+        --dark-card: #0a0a20;
+        --dark-border: #1a1a3e;
+        --cyan: #06d6a0;
+        --electric: #3a86ff;
+        --violet: #8338ec;
+        --hot: #ff006e;
+        --gold: #ffbe0b;
+        --surface: #0d0d25;
+        --muted: #7a7aa0;
+        --ink: #d4d4f0;
+        --font: "Sora", sans-serif;
+        --mono: "JetBrains Mono", monospace;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: var(--dark);
+        color: #fff;
+        font-family: var(--font);
+        scroll-snap-type: y mandatory;
+        overflow-x: hidden;
+      }
+
+      /* fixed atmosphere */
+      .bg {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        overflow: hidden;
+        background: var(--dark);
+      }
+      .bg::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(58, 134, 255, 0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(58, 134, 255, 0.04) 1px, transparent 1px);
+        background-size: 48px 48px;
+      }
+      .orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(100px);
+        opacity: 0.45;
+      }
+      .orb-1 {
+        width: 520px;
+        height: 520px;
+        background: var(--violet);
+        top: -200px;
+        right: -140px;
+      }
+      .orb-2 {
+        width: 460px;
+        height: 460px;
+        background: var(--cyan);
+        bottom: -220px;
+        left: -160px;
+        opacity: 0.38;
+      }
+      .orb-3 {
+        width: 340px;
+        height: 340px;
+        background: var(--electric);
+        top: 42%;
+        left: 44%;
+        opacity: 0.22;
+      }
+
+      /* slides */
+      .slide {
+        position: relative;
+        z-index: 1;
+        min-height: 100vh;
+        scroll-snap-align: start;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 64px clamp(40px, 8vw, 130px);
+      }
+
+      .kicker {
+        font-family: var(--mono);
+        font-size: 13px;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        color: var(--cyan);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 22px;
+      }
+      .kicker::before {
+        content: "";
+        width: 28px;
+        height: 1px;
+        background: var(--cyan);
+      }
+      .kicker .idx {
+        color: var(--muted);
+        margin-left: auto;
+        letter-spacing: 0.2em;
+      }
+
+      h1 {
+        font-size: clamp(40px, 6vw, 76px);
+        line-height: 1.02;
+        font-weight: 800;
+        letter-spacing: -0.025em;
+      }
+      h2 {
+        font-size: clamp(30px, 4vw, 50px);
+        line-height: 1.06;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        margin-bottom: 12px;
+      }
+      .acc {
+        background: linear-gradient(135deg, #06d6a0, #3a86ff 55%, #8338ec);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .acc-fire {
+        background: linear-gradient(135deg, #ffbe0b, #ff006e);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .lead {
+        font-family: var(--mono);
+        font-size: clamp(14px, 1.4vw, 17px);
+        color: var(--muted);
+        margin-top: 18px;
+        max-width: 60ch;
+        line-height: 1.6;
+      }
+      .lead b {
+        color: var(--ink);
+        font-weight: 500;
+      }
+      .section-sub {
+        font-family: var(--mono);
+        font-size: 13.5px;
+        color: var(--muted);
+        margin-bottom: 36px;
+        max-width: 70ch;
+        line-height: 1.6;
+      }
+
+      /* cover hero stats */
+      .hero-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 48px;
+        margin-top: 54px;
+      }
+      .hero-stat .v {
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: clamp(38px, 5vw, 60px);
+        line-height: 1;
+      }
+      .hero-stat .l {
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-top: 10px;
+      }
+
+      /* stat grid */
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 18px;
+      }
+      .grid.cols-3 {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .grid.cols-4 {
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      .stat {
+        background: linear-gradient(
+          135deg,
+          rgba(13, 13, 37, 0.9),
+          rgba(10, 10, 32, 0.5)
+        );
+        border: 1px solid rgba(58, 134, 255, 0.12);
+        border-left: 3px solid var(--c, var(--electric));
+        border-radius: 16px;
+        padding: 22px 22px 20px;
+        backdrop-filter: blur(8px);
+      }
+      .stat .num {
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: clamp(30px, 3.4vw, 44px);
+        line-height: 1;
+        color: var(--c, var(--electric));
+        text-shadow: 0 0 22px
+          color-mix(in srgb, var(--c, var(--electric)) 45%, transparent);
+      }
+      .stat .num small {
+        font-size: 0.45em;
+        color: var(--muted);
+        letter-spacing: 0.05em;
+      }
+      .stat .cap {
+        font-size: 14px;
+        font-weight: 600;
+        margin-top: 12px;
+        color: #fff;
+      }
+      .stat .sub {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        color: var(--muted);
+        margin-top: 5px;
+        line-height: 1.45;
+      }
+
+      /* funnel chips */
+      .funnel {
+        display: flex;
+        align-items: stretch;
+        gap: 14px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+      .fstep {
+        flex: 1 1 150px;
+        background: linear-gradient(
+          135deg,
+          rgba(13, 13, 37, 0.9),
+          rgba(10, 10, 32, 0.5)
+        );
+        border: 1px solid rgba(58, 134, 255, 0.12);
+        border-radius: 16px;
+        padding: 24px 20px;
+        position: relative;
+      }
+      .fstep .num {
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: clamp(32px, 3.6vw, 46px);
+        line-height: 1;
+        color: var(--c);
+        text-shadow: 0 0 22px color-mix(in srgb, var(--c) 45%, transparent);
+      }
+      .fstep .cap {
+        font-size: 13.5px;
+        font-weight: 600;
+        margin-top: 10px;
+      }
+      .fstep .sub {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+      .fstep:not(:last-child)::after {
+        content: "→";
+        position: absolute;
+        right: -13px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--muted);
+        font-size: 20px;
+        z-index: 2;
+      }
+
+      /* two-col layout slide 4 */
+      .split {
+        display: grid;
+        grid-template-columns: 1fr 0.85fr;
+        gap: 40px;
+        align-items: start;
+      }
+
+      /* nps bars */
+      .bars {
+        display: flex;
+        flex-direction: column;
+        gap: 13px;
+      }
+      .bar-row {
+        display: grid;
+        grid-template-columns: 130px 1fr 46px;
+        align-items: center;
+        gap: 14px;
+      }
+      .bar-row .name {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        color: var(--ink);
+      }
+      .track {
+        height: 10px;
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 99px;
+        overflow: hidden;
+      }
+      .fill {
+        height: 100%;
+        border-radius: 99px;
+        background: linear-gradient(90deg, var(--cyan), var(--electric));
+        width: var(--w);
+      }
+      .bar-row .val {
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: 14px;
+        text-align: right;
+        color: #fff;
+      }
+
+      .nps-hero {
+        background: linear-gradient(
+          135deg,
+          rgba(6, 214, 160, 0.12),
+          rgba(58, 134, 255, 0.06)
+        );
+        border: 1px solid rgba(6, 214, 160, 0.3);
+        border-radius: 20px;
+        padding: 30px 28px;
+        margin-bottom: 22px;
+      }
+      .nps-hero .big {
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: clamp(58px, 7vw, 88px);
+        line-height: 1;
+      }
+      .nps-hero .lbl {
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--cyan);
+        margin-bottom: 8px;
+      }
+      .nps-hero .note {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        color: var(--muted);
+        margin-top: 10px;
+      }
+
+      .axes {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+      }
+      .axis {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 12px;
+        padding: 11px 16px;
+        background: linear-gradient(
+          135deg,
+          rgba(13, 13, 37, 0.9),
+          rgba(10, 10, 32, 0.5)
+        );
+        border: 1px solid rgba(58, 134, 255, 0.12);
+        border-radius: 12px;
+      }
+      .axis .a-name {
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .axis .a-name span {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+        display: block;
+      }
+      .axis .a-val {
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: 18px;
+        color: var(--gold);
+      }
+      .axis.tic {
+        border-color: rgba(255, 190, 11, 0.4);
+        background: linear-gradient(
+          135deg,
+          rgba(255, 190, 11, 0.12),
+          rgba(255, 0, 110, 0.04)
+        );
+      }
+
+      /* sample badge */
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--mono);
+        font-size: 11.5px;
+        letter-spacing: 0.06em;
+        color: var(--gold);
+        background: rgba(255, 190, 11, 0.1);
+        border: 1px solid rgba(255, 190, 11, 0.35);
+        border-radius: 99px;
+        padding: 6px 14px;
+        margin-top: 14px;
+      }
+      .pill::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--gold);
+        box-shadow: 0 0 10px var(--gold);
+      }
+
+      /* roadmap (slide 5) */
+      .roadmap {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 18px;
+        margin-top: 8px;
+      }
+      .step {
+        background: linear-gradient(
+          135deg,
+          rgba(13, 13, 37, 0.9),
+          rgba(10, 10, 32, 0.5)
+        );
+        border: 1px solid rgba(58, 134, 255, 0.12);
+        border-top: 3px solid var(--c, var(--electric));
+        border-radius: 16px;
+        padding: 24px 22px;
+      }
+      .step .n {
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: 14px;
+        color: var(--c, var(--electric));
+        letter-spacing: 0.1em;
+      }
+      .step h3 {
+        font-size: 18px;
+        font-weight: 700;
+        margin: 12px 0 8px;
+        line-height: 1.2;
+      }
+      .step p {
+        font-size: 13.5px;
+        line-height: 1.5;
+        color: #aeaecf;
+      }
+
+      /* footer */
+      .footer {
+        position: absolute;
+        bottom: 26px;
+        left: clamp(40px, 8vw, 130px);
+        right: clamp(40px, 8vw, 130px);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .footer b {
+        background: linear-gradient(135deg, #06d6a0, #3a86ff);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 700;
+      }
+
+      /* nav dots */
+      .dots {
+        position: fixed;
+        right: 22px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 20;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .dots a {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        transition: all 0.25s;
+      }
+      .dots a:hover {
+        background: var(--cyan);
+        transform: scale(1.3);
+      }
+
+      .takeaway {
+        margin-top: 30px;
+        font-size: clamp(15px, 1.6vw, 19px);
+        line-height: 1.5;
+        max-width: 70ch;
+        color: var(--ink);
+        border-left: 3px solid var(--cyan);
+        padding-left: 20px;
+      }
+
+      /* entrance animation per slide in view */
+      .anim > * {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+      .slide.in .anim > * {
+        animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+      }
+      .slide.in .anim > *:nth-child(1) {
+        animation-delay: 0.05s;
+      }
+      .slide.in .anim > *:nth-child(2) {
+        animation-delay: 0.12s;
+      }
+      .slide.in .anim > *:nth-child(3) {
+        animation-delay: 0.19s;
+      }
+      .slide.in .anim > *:nth-child(4) {
+        animation-delay: 0.26s;
+      }
+      .slide.in .anim > *:nth-child(5) {
+        animation-delay: 0.33s;
+      }
+      .slide.in .anim > *:nth-child(6) {
+        animation-delay: 0.4s;
+      }
+      @keyframes rise {
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+
+      @media (max-width: 820px) {
+        .grid.cols-3,
+        .grid.cols-4 {
+          grid-template-columns: 1fr 1fr;
+        }
+        .split {
+          grid-template-columns: 1fr;
+        }
+        .hero-stats {
+          gap: 28px;
+        }
+        .fstep:not(:last-child)::after {
+          content: "↓";
+          right: 50%;
+          top: auto;
+          bottom: -16px;
+          transform: translateX(50%);
+        }
+      }
+
+      @media print {
+        @page {
+          size: 1280px 720px;
+          margin: 0;
+        }
+        body {
+          scroll-snap-type: none;
+        }
+        .dots {
+          display: none;
+        }
+        .slide {
+          min-height: 720px;
+          height: 720px;
+          page-break-after: always;
+        }
+        .anim > * {
+          opacity: 1 !important;
+          transform: none !important;
+        }
+        * {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+    </div>
+
+    <nav class="dots">
+      <a href="#s1" title="Capa"></a>
+      <a href="#s2" title="Participação"></a>
+      <a href="#s3" title="Funil de inovação"></a>
+      <a href="#s4" title="Satisfação e impacto"></a>
+      <a href="#s5" title="Próximos passos"></a>
+    </nav>
+
+    <!-- ===== SLIDE 1 — CAPA ===== -->
+    <section class="slide" id="s1">
+      <div class="anim">
+        <div class="kicker">
+          Governança TIC · Resultados <span class="idx">01 / 05</span>
+        </div>
+        <h1>
+          HackIA SC 2026<br /><span class="acc">o que os números mostram</span>
+        </h1>
+        <p class="lead">
+          AI Venture Hackathon · Blumenau · <b>29–31 de maio de 2026</b><br />
+          Primeira edição — leitura de resultados a partir da nossa base de
+          dados.
+        </p>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <div class="v acc">101</div>
+            <div class="l">Inscritos</div>
+          </div>
+          <div class="hero-stat">
+            <div class="v acc">12</div>
+            <div class="l">Equipes formadas</div>
+          </div>
+          <div class="hero-stat">
+            <div class="v acc-fire">9,0</div>
+            <div class="l">NPS · /10</div>
+          </div>
+          <div class="hero-stat">
+            <div class="v acc">64</div>
+            <div class="l">Check-ins presenciais</div>
+          </div>
+        </div>
+      </div>
+      <div class="footer">
+        <span><b>HackIA SC</b> · AI Venture Hackathon Blumenau 2026</span>
+        <span>Fonte: base de dados do evento</span>
+      </div>
+    </section>
+
+    <!-- ===== SLIDE 2 — PARTICIPAÇÃO E PERFIL ===== -->
+    <section class="slide" id="s2">
+      <div class="anim">
+        <div class="kicker">
+          Participação &amp; perfil <span class="idx">02 / 05</span>
+        </div>
+        <h2>Quem esteve no evento</h2>
+        <p class="section-sub">
+          Captação de <b style="color: var(--ink)">08/abr a 30/mai</b> (27
+          dias). Comunidade técnica e empreendedora, com bom domínio prévio de
+          IA.
+        </p>
+        <div class="grid cols-4">
+          <div class="stat" style="--c: var(--cyan)">
+            <div class="num">101</div>
+            <div class="cap">Inscritos</div>
+            <div class="sub">72 pagamentos confirmados</div>
+          </div>
+          <div class="stat" style="--c: var(--electric)">
+            <div class="num">64</div>
+            <div class="cap">Check-ins presenciais</div>
+            <div class="sub">comparecimento confirmado</div>
+          </div>
+          <div class="stat" style="--c: var(--violet)">
+            <div class="num">5,9<small>/10</small></div>
+            <div class="cap">Experiência média em IA</div>
+            <div class="sub">autoavaliação na inscrição</div>
+          </div>
+          <div class="stat" style="--c: var(--gold)">
+            <div class="num">27</div>
+            <div class="cap">Já chegaram com projeto</div>
+            <div class="sub">+ 2 participantes PcD</div>
+          </div>
+        </div>
+        <div class="grid cols-4" style="margin-top: 18px">
+          <div class="stat" style="--c: var(--cyan)">
+            <div class="num">54</div>
+            <div class="cap">Hackers</div>
+            <div class="sub">perfil técnico / dev</div>
+          </div>
+          <div class="stat" style="--c: var(--hot)">
+            <div class="num">29</div>
+            <div class="cap">Hustlers</div>
+            <div class="sub">negócio / produto</div>
+          </div>
+          <div class="stat" style="--c: var(--violet)">
+            <div class="num">10</div>
+            <div class="cap">Hipsters</div>
+            <div class="sub">design / experiência</div>
+          </div>
+          <div class="stat" style="--c: var(--gold)">
+            <div class="num">8</div>
+            <div class="cap">Entusiastas</div>
+            <div class="sub">explorando a área</div>
+          </div>
+        </div>
+      </div>
+      <div class="footer">
+        <span><b>HackIA SC</b> · Participação &amp; perfil</span>
+        <span>n = 101 inscrições válidas</span>
+      </div>
+    </section>
+
+    <!-- ===== SLIDE 3 — FUNIL DE INOVAÇÃO ===== -->
+    <section class="slide" id="s3">
+      <div class="anim">
+        <div class="kicker">
+          Da dor à solução <span class="idx">03 / 05</span>
+        </div>
+        <h2>Funil de inovação <span class="acc">ponta a ponta</span></h2>
+        <p class="section-sub">
+          A comunidade levantou dores reais, priorizou por voto e transformou em
+          produtos com IA — tudo registrado e avaliado na plataforma do evento.
+        </p>
+        <div class="funnel">
+          <div class="fstep" style="--c: var(--cyan)">
+            <div class="num">26</div>
+            <div class="cap">Dores / ideias</div>
+            <div class="sub">submetidas pela comunidade</div>
+          </div>
+          <div class="fstep" style="--c: var(--electric)">
+            <div class="num">162</div>
+            <div class="cap">Votos</div>
+            <div class="sub">priorização coletiva</div>
+          </div>
+          <div class="fstep" style="--c: var(--violet)">
+            <div class="num">12</div>
+            <div class="cap">Equipes</div>
+            <div class="sub">formadas em torno das dores</div>
+          </div>
+          <div class="fstep" style="--c: var(--gold)">
+            <div class="num">34</div>
+            <div class="cap">Entregáveis</div>
+            <div class="sub">protótipos e pitches</div>
+          </div>
+        </div>
+        <div class="grid cols-4" style="margin-top: 30px">
+          <div class="stat" style="--c: var(--electric)">
+            <div class="num">12</div>
+            <div class="cap">Mentores</div>
+            <div class="sub">acompanhamento das equipes</div>
+          </div>
+          <div class="stat" style="--c: var(--hot)">
+            <div class="num">5</div>
+            <div class="cap">Jurados</div>
+            <div class="sub">banca de avaliação final</div>
+          </div>
+          <div class="stat" style="--c: var(--cyan)">
+            <div class="num">135</div>
+            <div class="cap">Avaliações registradas</div>
+            <div class="sub">77 dos times + 58 de pré-pitch</div>
+          </div>
+          <div class="stat" style="--c: var(--gold)">
+            <div class="num">915</div>
+            <div class="cap">Notificações entregues</div>
+            <div class="sub">em 59 comunicados oficiais</div>
+          </div>
+        </div>
+      </div>
+      <div class="footer">
+        <span><b>HackIA SC</b> · Funil de inovação</span>
+        <span>Plataforma própria do evento</span>
+      </div>
+    </section>
+
+    <!-- ===== SLIDE 4 — SATISFAÇÃO E IMPACTO ===== -->
+    <section class="slide" id="s4">
+      <div class="anim">
+        <div class="kicker">
+          Satisfação &amp; impacto regional <span class="idx">04 / 05</span>
+        </div>
+        <h2>
+          Avaliação do público e <span class="acc-fire">eixos atendidos</span>
+        </h2>
+        <p class="section-sub">
+          Pesquisa pós-evento (participantes + mentores) e mapa dos eixos
+          econômicos endereçados pelas inscrições.<br />
+          <span class="pill"
+            >Amostra preliminar · 12 respostas · coleta ainda aberta</span
+          >
+        </p>
+        <div class="split">
+          <div>
+            <div class="nps-hero">
+              <div class="lbl">Recomendação · NPS</div>
+              <div class="big acc">
+                9,0<small style="font-size: 0.4em; color: var(--muted)">
+                  /10</small
+                >
+              </div>
+              <div class="note">
+                8 de 12 respondentes são promotores (nota ≥ 9) · resultado
+                parcial
+              </div>
+            </div>
+            <div class="bars">
+              <div class="bar-row">
+                <span class="name">Alimentação</span
+                ><span class="track"
+                  ><span class="fill" style="--w: 91%"></span></span
+                ><span class="val">9,1</span>
+              </div>
+              <div class="bar-row">
+                <span class="name">Networking</span
+                ><span class="track"
+                  ><span class="fill" style="--w: 90%"></span></span
+                ><span class="val">9,0</span>
+              </div>
+              <div class="bar-row">
+                <span class="name">Facilitação</span
+                ><span class="track"
+                  ><span class="fill" style="--w: 89%"></span></span
+                ><span class="val">8,9</span>
+              </div>
+              <div class="bar-row">
+                <span class="name">Metodologia</span
+                ><span class="track"
+                  ><span class="fill" style="--w: 88%"></span></span
+                ><span class="val">8,8</span>
+              </div>
+              <div class="bar-row">
+                <span class="name">Mentoria</span
+                ><span class="track"
+                  ><span class="fill" style="--w: 88%"></span></span
+                ><span class="val">8,8</span>
+              </div>
+              <div class="bar-row">
+                <span class="name">Organização</span
+                ><span class="track"
+                  ><span class="fill" style="--w: 86%"></span></span
+                ><span class="val">8,6</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="section-sub" style="margin-bottom: 14px">
+              Eixos econômicos endereçados
+              <span style="color: var(--muted)"
+                >(inscrições, múltipla escolha)</span
+              >
+            </div>
+            <div class="axes">
+              <div class="axis">
+                <div class="a-name">Saúde</div>
+                <div class="a-val">15</div>
+              </div>
+              <div class="axis">
+                <div class="a-name">Economia Criativa</div>
+                <div class="a-val">13</div>
+              </div>
+              <div class="axis">
+                <div class="a-name">Têxtil</div>
+                <div class="a-val">9</div>
+              </div>
+              <div class="axis tic">
+                <div class="a-name">
+                  TIC <span>tecnologia da informação</span>
+                </div>
+                <div class="a-val">8</div>
+              </div>
+              <div class="axis">
+                <div class="a-name">Metalmecânico</div>
+                <div class="a-val">4</div>
+              </div>
+              <div class="axis">
+                <div class="a-name">Turismo</div>
+                <div class="a-val">3</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="takeaway">
+          Primeira edição com <b>alta aprovação (NPS 9,0)</b> e adesão real da
+          comunidade de IA da região — base sólida para institucionalizar o
+          HackIA SC como vitrine de inovação ligada aos eixos econômicos de
+          Blumenau.
+        </p>
+      </div>
+      <div class="footer">
+        <span><b>HackIA SC</b> · Resultados para a Governança TIC</span>
+        <span>survey n = 12 · 29–31 mai 2026</span>
+      </div>
+    </section>
+
+    <!-- ===== SLIDE 5 — PRÓXIMOS PASSOS ===== -->
+    <section class="slide" id="s5">
+      <div class="anim">
+        <div class="kicker">
+          Próximos passos <span class="idx">05 / 05</span>
+        </div>
+        <h2>Pontos para <span class="acc">discussão</span></h2>
+        <p class="section-sub">
+          A 1ª edição gerou dados sobre demanda, método e satisfação. Alguns
+          temas que podem ser avaliados a partir destes resultados.
+        </p>
+        <div class="roadmap">
+          <div class="step" style="--c: var(--cyan)">
+            <div class="n">01</div>
+            <h3>Continuidade</h3>
+            <p>
+              Avaliar se há interesse em repetir o evento e em qual
+              periodicidade.
+            </p>
+          </div>
+          <div class="step" style="--c: var(--electric)">
+            <div class="n">02</div>
+            <h3>Eixo TIC</h3>
+            <p>
+              Considerar formas de aproximar os projetos das empresas e demandas
+              de tecnologia da região.
+            </p>
+          </div>
+          <div class="step" style="--c: var(--violet)">
+            <div class="n">03</div>
+            <h3>Pós-evento</h3>
+            <p>
+              Verificar interesse e meios de acompanhar a evolução dos
+              protótipos das 12 equipes.
+            </p>
+          </div>
+          <div class="step" style="--c: var(--gold)">
+            <div class="n">04</div>
+            <h3>Medição</h3>
+            <p>
+              Concluir a coleta do survey e consolidar um relatório de
+              resultados.
+            </p>
+          </div>
+        </div>
+        <p class="takeaway">
+          Os dados desta primeira edição ficam à disposição para subsidiar as
+          decisões da Governança TIC.
+        </p>
+      </div>
+      <div class="footer">
+        <span><b>HackIA SC</b> · Próximos passos</span>
+        <span>Blumenau · 2026</span>
+      </div>
+    </section>
+
+    <script>
+      // reveal on scroll
+      const io = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((e) => {
+            if (e.isIntersecting) e.target.classList.add("in");
+          });
+        },
+        { threshold: 0.4 },
+      );
+      document.querySelectorAll(".slide").forEach((s) => io.observe(s));
+
+      // keyboard navigation
+      const slides = [...document.querySelectorAll(".slide")];
+      let cur = 0;
+      function go(d) {
+        cur = Math.max(0, Math.min(slides.length - 1, cur + d));
+        slides[cur].scrollIntoView({ behavior: "smooth" });
+      }
+      window.addEventListener("keydown", (ev) => {
+        if (["ArrowDown", "ArrowRight", "PageDown", " "].includes(ev.key)) {
+          ev.preventDefault();
+          go(1);
+        }
+        if (["ArrowUp", "ArrowLeft", "PageUp"].includes(ev.key)) {
+          ev.preventDefault();
+          go(-1);
+        }
+      });
+      // keep cur in sync with manual scroll
+      const sync = new IntersectionObserver(
+        (entries) =>
+          entries.forEach((e) => {
+            if (e.isIntersecting) cur = slides.indexOf(e.target);
+          }),
+        { threshold: 0.6 },
+      );
+      slides.forEach((s) => sync.observe(s));
+    </script>
+  </body>
+</html>
